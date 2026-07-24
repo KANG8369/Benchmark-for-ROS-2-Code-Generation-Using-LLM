@@ -1,0 +1,100 @@
+# Copy this file to benchmarks/<package_name>/description.yaml and replace the
+# example values with facts supported by the reference package.
+#
+# intent and functional_requirements are required. interfaces is optional.
+# Within interfaces, omit every field or category that does not apply. Do not
+# use empty lists or placeholder values such as none, N/A, or unknown.
+
+intent:
+  package_name: example_package
+  summary: >-
+    Describe the package's primary purpose and observable outcome.
+  scope: >-
+    State what the package implements and what external systems must provide.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      Describe one observable and independently verifiable package outcome.
+  - id: FR-2
+    text: >-
+      Describe a second distinct outcome without prescribing incidental
+      implementation details.
+
+interfaces:
+  nodes:
+    - name: example_coordinator
+      responsibility: Describe the responsibility of this package-implemented node.
+      topics:
+        - name: /sensor_input
+          type: sensor_msgs/msg/LaserScan
+          direction: subscribe
+          purpose: Receives sensor observations used by the package.
+        - name: /processed_output
+          type: geometry_msgs/msg/PoseStamped
+          direction: publish
+          purpose: Publishes the processed result for downstream consumers.
+      services:
+        - name: /reset_processing
+          type: std_srvs/srv/Trigger
+          role: server
+          purpose: Resets the node's processing state on request.
+      actions:
+        - name: /follow_target
+          type: example_interfaces/action/FollowTarget
+          role: client
+          purpose: Sends generated targets to an external action provider.
+      tf:
+        - source_frame: sensor_frame
+          target_frame: base_link
+          purpose: Looks up sensor observations in the robot base frame.
+      parameters:
+        - name: update_rate
+          type: double
+          purpose: Configures how frequently the node updates its output.
+
+  launch_arguments:
+    - name: use_sim_time
+      purpose: Selects simulated ROS time for launched nodes.
+
+  external_nodes:
+    # Use executable for a process launched from another package.
+    - name: /target_controller
+      package: example_controller
+      executable: controller_node
+      purpose: Executes targets requested by the package-implemented coordinator.
+      topics:
+        - name: /controller_status
+          type: std_msgs/msg/String
+          direction: publish
+          purpose: Reports the external controller's runtime status.
+      services:
+        - name: /controller_state
+          type: std_srvs/srv/Trigger
+          role: server
+          purpose: Reports whether the external controller is ready.
+      actions:
+        - name: /follow_target
+          type: example_interfaces/action/FollowTarget
+          role: server
+          purpose: Accepts targets from the package-implemented coordinator.
+      tf:
+        - source_frame: odom
+          target_frame: base_link
+          purpose: Provides the robot pose relationship used by the controller.
+      parameters:
+        - name: controller_frequency
+          type: double
+          purpose: Configures the external controller's update frequency.
+
+    # Use plugin instead of executable for a composable node loaded from
+    # another package.
+    - name: /perception_container/example_detector
+      package: example_perception
+      plugin: example_perception::Detector
+      purpose: Provides an externally implemented composable detector.
+
+  environment_variables:
+    - name: EXAMPLE_DEVICE
+      purpose: Selects the external device used when the package starts.
+      required: true
