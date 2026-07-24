@@ -1,0 +1,66 @@
+# Copy this file to benchmarks/<package_name>/metric.yaml.
+#
+# A metric represents one package capability.
+# Each pass criterion describes one independently verifiable behavior.
+# Reference evidence identifies where the criterion was derived from in the
+# reference package. It must not be used for exact code matching.
+
+schema_version: "1.0"
+
+package_name: example_package
+
+reference:
+  root: reference/
+
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+
+metrics:
+  - id: M-1
+    name: Example Capability
+    description: >-
+      Describe the package capability evaluated by this metric.
+    requirement_ids:
+      - FR-1
+
+    pass_criteria:
+      - id: M-1-PC-1
+        text: >-
+          Describe one independently verifiable package behavior.
+        evaluation: static
+        reference_evidence:
+          - path: src/example_node.cpp
+            symbol: ExampleNode::callback
+            code: |-
+              // Include a short excerpt demonstrating the behavior.
+            explanation: >-
+              Explain how this reference code demonstrates the criterion.
+
+      - id: M-1-PC-2
+        text: >-
+          Describe another independently verifiable package behavior.
+        evaluation: dynamic
+        reference_evidence:
+          - path: launch/example.launch.py
+            symbol: generate_launch_description
+            explanation: >-
+              Explain how the launch configuration supports this behavior.
+
+  - id: M-2
+    name: Another Capability
+    description: >-
+      Describe another major capability of the package.
+    requirement_ids:
+      - FR-2
+
+    pass_criteria:
+      - id: M-2-PC-1
+        text: >-
+          Describe one behavior required to satisfy this capability.
+        evaluation: hybrid
+        reference_evidence:
+          - path: config/example.yaml
+            symbol: example_node.ros__parameters
+            explanation: >-
+              Explain how this configuration contributes to the behavior.

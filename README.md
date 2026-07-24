@@ -53,6 +53,32 @@ flowchart LR
 
 Only `description.yaml` is provided to the package generator. The metric and reference package remain hidden during generation.
 
+## Description Format
+
+`description.yaml` is the generator-facing specification for one benchmark
+package. It states what package must be generated, which observable behaviors
+must be reproduced, and which verified ROS 2 interfaces must remain
+interoperable. It describes the required contract without exposing the
+reference implementation or prescribing incidental source-code details.
+
+| Section | Required | Purpose |
+| --- | --- | --- |
+| `intent` | Yes | Identifies the package and summarizes its purpose and responsibility boundary. |
+| `functional_requirements` | Yes | Lists observable, independently verifiable package behaviors. |
+| `interfaces` | No | Records verified package nodes, ROS graph resources, launch settings, launched external nodes, and environment variables. |
+
+Use the following files when authoring a benchmark case:
+
+- [Complete description template](templates/description.yaml): a copyable YAML
+  document containing every supported field.
+- [Description format specification](docs/description-format.md): field
+  definitions, required/optional status, validation constraints, and resource
+  ownership rules.
+
+Optional fields and categories must be omitted when they do not apply. Do not
+represent missing information with empty lists or placeholder values such as
+`none`, `N/A`, or `unknown`.
+
 ## Description Example
 
 The following description was derived from `dummy_sensors`, one of the three ROS 2 packages in the `dummy_robot` demo collection. The package provides two nodes that generate synthetic laser-scan and joint-state data.
@@ -109,11 +135,46 @@ interfaces:
 - `interfaces.nodes` records each implemented ROS 2 node and nests the graph resources used by that node. In this example, both resources are published topics.
 - Interface categories that do not apply, such as services, actions, TF lookups, parameters, launch arguments, and external nodes, are omitted instead of being filled with placeholder values.
 
+## Metric Format
+
+Each benchmark case contains a `metric.yaml` file derived from the complete
+reference package.
+
+A metric file has three levels:
+
+1. **Metric**: A major package capability to evaluate.
+2. **Pass criterion**: One independently verifiable behavior required by the
+   capability.
+3. **Reference evidence**: Source code, launch files, or configuration files
+   showing where the criterion was derived from in the reference package.
+
+Reference evidence documents the origin of each criterion. Generated packages
+are evaluated by semantic equivalence and are not required to reproduce the
+same source code, programming language, file structure, node decomposition, or
+implementation technique.
+
+Each pass criterion declares an evaluation method:
+
+- `static`: Evaluated from source code, launch files, manifests, or
+  configuration files.
+- `dynamic`: Evaluated by building or running the generated package and
+  observing its behavior.
+- `hybrid`: Evaluated using both static and dynamic evidence.
+
+Exact constants such as timer periods, queue depths, and parameter values are
+required only when explicitly specified by the package description or when they
+form part of an externally observable interface contract.
+
+Use [the complete metric template](templates/metric.yaml) when authoring a
+benchmark case.
+
 ## Repository Layout
 
 ```text
 .
 ├── README.md
+├── docs/
+│   └── description-format.md
 ├── benchmarks/
 │   ├── README.md
 │   └── <package_name>/
