@@ -19,13 +19,3 @@ Metric schema `2.0` requires every reference-evidence item to declare its
 `kind`, reference-relative `path`, searchable `locator`, exact contiguous
 `snippet`, and behavioral `explanation`. The snippet records provenance; it is
 not used to require source-code identity from a generated package.
-
-Validate all cases with:
-
-```bash
-python3 -m pip install PyYAML
-python3 tools/validate_benchmarks.py
-```
-
-Use `python3 tools/validate_benchmarks.py --static-only` when a benchmark set is
-intended to contain only criteria assigned to static evaluation.
