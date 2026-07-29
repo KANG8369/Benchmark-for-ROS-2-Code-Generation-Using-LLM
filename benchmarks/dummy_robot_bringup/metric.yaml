@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '2.0'
 package_name: dummy_robot_bringup
 reference:
   root: reference/
@@ -6,69 +6,286 @@ evaluation_policy:
   equivalence: semantic
   exact_constants_only_when_specified: true
 metrics:
-  - id: M-1
-    name: Complete dummy robot bringup
-    description: Every installed bringup variant starts the four components required by FR-1.
-    requirement_ids:
-      - FR-1
-    pass_criteria:
-      - id: M-1-PC-1
-        text: Static inspection shows that the installed Python, XML, and YAML bringup launch files each start the dummy map server, robot_state_publisher, dummy joint-state publisher, and dummy laser publisher.
-        evaluation: static
-        reference_evidence:
-          - path: launch/dummy_robot_bringup_launch.py
-            symbol: generate_launch_description
-            explanation: Python launch description creates all four nodes.
-          - path: launch/dummy_robot_bringup_launch.xml
-            symbol: launch
-            explanation: XML launch description declares all four nodes.
-          - path: launch/dummy_robot_bringup_launch.yaml
-            symbol: launch
-            explanation: YAML launch description declares all four nodes.
-          - path: CMakeLists.txt
-            symbol: install
-            explanation: Installs the launch directory into the package share directory.
-  - id: M-2
-    name: Packaged robot description
-    description: Bringup supplies the packaged single_rrbot model to robot_state_publisher as required by FR-2.
-    requirement_ids:
-      - FR-2
-    pass_criteria:
-      - id: M-2-PC-1
-        text: Static inspection shows each launch variant loads the installed single_rrbot.urdf and supplies its contents as robot_description to robot_state_publisher.
-        evaluation: static
-        reference_evidence:
-          - path: launch/dummy_robot_bringup_launch.py
-            symbol: generate_launch_description
-            explanation: Resolves the packaged URDF and passes it as robot_description.
-          - path: launch/dummy_robot_bringup_launch.xml
-            symbol: robot_state_publisher
-            explanation: Loads single_rrbot.urdf into robot_description.
-          - path: launch/dummy_robot_bringup_launch.yaml
-            symbol: robot_state_publisher
-            explanation: Loads single_rrbot.urdf into robot_description.
-          - path: launch/single_rrbot.urdf
-            symbol: single_rrbot
-            explanation: Provides the robot model consumed by the launch files.
-          - path: CMakeLists.txt
-            symbol: install
-            explanation: Installs the launch directory containing the URDF into the package share directory.
-  - id: M-3
-    name: RViz startup in Python bringup
-    description: The Python bringup starts RViz with the packaged configuration as required by FR-3.
-    requirement_ids:
-      - FR-3
-    pass_criteria:
-      - id: M-3-PC-1
-        text: Static inspection shows the Python launch starts rviz2 and passes the path of the package-provided RViz configuration.
-        evaluation: static
-        reference_evidence:
-          - path: launch/dummy_robot_bringup_launch.py
-            symbol: generate_launch_description
-            explanation: Creates the RViz2 node and supplies the packaged configuration path.
-          - path: rviz/dummy_robot.rviz
-            symbol: Visualization Manager
-            explanation: Provides the RViz configuration used by the Python launch.
-          - path: CMakeLists.txt
-            symbol: install
-            explanation: Installs the RViz configuration directory into the package share directory.
+- id: M-1
+  name: Complete dummy robot bringup
+  description: Every installed bringup variant starts the four components required by FR-1.
+  requirement_ids:
+  - FR-1
+  pass_criteria:
+  - id: M-1-PC-1
+    text: Static inspection shows that the installed Python, XML, and YAML bringup launch files each start
+      the dummy map server, robot_state_publisher, dummy joint-state publisher, and dummy laser publisher.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            pkg_share = FindPackageShare('dummy_robot_bringup').find('dummy_robot_bringup')
+
+            default_rviz_config_path = os.path.join(pkg_share, 'rviz/dummy_robot.rviz')
+
+            urdf_file = os.path.join(pkg_share, 'launch', 'single_rrbot.urdf')
+            robot_desc = FileContent(urdf_file)
+            rsp_params = {'robot_description': robot_desc}
+
+            return LaunchDescription([
+                Node(package='dummy_map_server', executable='dummy_map_server', output='screen'),
+                Node(package='robot_state_publisher', executable='robot_state_publisher',
+                     output='screen', parameters=[rsp_params]),
+                Node(package='dummy_sensors', executable='dummy_joint_states', output='screen'),
+                Node(package='dummy_sensors', executable='dummy_laser', output='screen'),
+                Node(package='rviz2', executable='rviz2', name='rviz2', output='screen',
+                     arguments=['-d', default_rviz_config_path])
+
+            ])
+      explanation: Python launch description creates all four nodes.
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.xml
+      locator: launch
+      snippet: |-
+        <launch>
+          <node pkg="dummy_map_server" exec="dummy_map_server" output="screen" />
+          <node pkg="robot_state_publisher" exec="robot_state_publisher" output="screen" >
+            <param name="robot_description" value="$(file-content '$(find-pkg-share dummy_robot_bringup)/launch/single_rrbot.urdf')"/>
+          </node>
+          <node pkg="dummy_sensors" exec="dummy_joint_states" output="screen"/>
+          <node pkg="dummy_sensors" exec="dummy_laser" output="screen"/>
+        </launch>
+      explanation: XML launch description declares all four nodes.
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.yaml
+      locator: launch
+      snippet: |-
+        launch:
+        - node:
+            pkg: dummy_map_server
+            exec: dummy_map_server
+            output: screen
+        - node:
+            pkg: robot_state_publisher
+            exec: robot_state_publisher
+            output: screen
+            param:
+              - name: robot_description
+                value: $(file-content '$(find-pkg-share dummy_robot_bringup)/launch/single_rrbot.urdf')
+        - node:
+            pkg: dummy_sensors
+            exec: dummy_joint_states
+            output: screen
+        - node:
+            pkg: dummy_sensors
+            exec: dummy_laser
+            output: screen
+      explanation: YAML launch description declares all four nodes.
+    - kind: build
+      path: CMakeLists.txt
+      locator: install
+      snippet: |-
+        cmake_minimum_required(VERSION 3.20)
+
+        project(dummy_robot_bringup)
+
+        find_package(ament_cmake REQUIRED)
+
+        install(DIRECTORY launch rviz
+          DESTINATION share/${PROJECT_NAME})
+
+        if(BUILD_TESTING)
+          find_package(ament_lint_auto REQUIRED)
+          ament_lint_auto_find_test_dependencies()
+        endif()
+
+        ament_package()
+      explanation: Installs the launch directory into the package share directory.
+- id: M-2
+  name: Packaged robot description
+  description: Bringup supplies the packaged single_rrbot model to robot_state_publisher as required by
+    FR-2.
+  requirement_ids:
+  - FR-2
+  pass_criteria:
+  - id: M-2-PC-1
+    text: Static inspection shows each launch variant loads the installed single_rrbot.urdf and supplies
+      its contents as robot_description to robot_state_publisher.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            pkg_share = FindPackageShare('dummy_robot_bringup').find('dummy_robot_bringup')
+
+            default_rviz_config_path = os.path.join(pkg_share, 'rviz/dummy_robot.rviz')
+
+            urdf_file = os.path.join(pkg_share, 'launch', 'single_rrbot.urdf')
+            robot_desc = FileContent(urdf_file)
+            rsp_params = {'robot_description': robot_desc}
+
+            return LaunchDescription([
+                Node(package='dummy_map_server', executable='dummy_map_server', output='screen'),
+                Node(package='robot_state_publisher', executable='robot_state_publisher',
+                     output='screen', parameters=[rsp_params]),
+                Node(package='dummy_sensors', executable='dummy_joint_states', output='screen'),
+                Node(package='dummy_sensors', executable='dummy_laser', output='screen'),
+                Node(package='rviz2', executable='rviz2', name='rviz2', output='screen',
+                     arguments=['-d', default_rviz_config_path])
+
+            ])
+      explanation: Resolves the packaged URDF and passes it as robot_description.
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.xml
+      locator: robot_state_publisher
+      snippet: |-
+        <launch>
+          <node pkg="dummy_map_server" exec="dummy_map_server" output="screen" />
+          <node pkg="robot_state_publisher" exec="robot_state_publisher" output="screen" >
+            <param name="robot_description" value="$(file-content '$(find-pkg-share dummy_robot_bringup)/launch/single_rrbot.urdf')"/>
+          </node>
+          <node pkg="dummy_sensors" exec="dummy_joint_states" output="screen"/>
+          <node pkg="dummy_sensors" exec="dummy_laser" output="screen"/>
+        </launch>
+      explanation: Loads single_rrbot.urdf into robot_description.
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.yaml
+      locator: robot_state_publisher
+      snippet: |-
+        launch:
+        - node:
+            pkg: dummy_map_server
+            exec: dummy_map_server
+            output: screen
+        - node:
+            pkg: robot_state_publisher
+            exec: robot_state_publisher
+            output: screen
+            param:
+              - name: robot_description
+                value: $(file-content '$(find-pkg-share dummy_robot_bringup)/launch/single_rrbot.urdf')
+        - node:
+            pkg: dummy_sensors
+            exec: dummy_joint_states
+            output: screen
+        - node:
+            pkg: dummy_sensors
+            exec: dummy_laser
+            output: screen
+      explanation: Loads single_rrbot.urdf into robot_description.
+    - kind: resource
+      path: launch/single_rrbot.urdf
+      locator: single_rrbot
+      snippet: |-
+        <?xml version="1.0" ?>
+        <!-- =================================================================================== -->
+        <!-- |    This document was autogenerated by xacro from single_rrbot.urdf.xacro        | -->
+        <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
+        <!-- =================================================================================== -->
+        <robot name="single_rrbot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+          <!-- Import your models -->
+          <material name="RRBOT/black">
+            <color rgba="0.0 0.0 0.0 1.0"/>
+          </material>
+      explanation: Provides the robot model consumed by the launch files.
+    - kind: build
+      path: CMakeLists.txt
+      locator: install
+      snippet: |-
+        cmake_minimum_required(VERSION 3.20)
+
+        project(dummy_robot_bringup)
+
+        find_package(ament_cmake REQUIRED)
+
+        install(DIRECTORY launch rviz
+          DESTINATION share/${PROJECT_NAME})
+
+        if(BUILD_TESTING)
+          find_package(ament_lint_auto REQUIRED)
+          ament_lint_auto_find_test_dependencies()
+        endif()
+
+        ament_package()
+      explanation: Installs the launch directory containing the URDF into the package share directory.
+- id: M-3
+  name: RViz startup in Python bringup
+  description: The Python bringup starts RViz with the packaged configuration as required by FR-3.
+  requirement_ids:
+  - FR-3
+  pass_criteria:
+  - id: M-3-PC-1
+    text: Static inspection shows the Python launch starts rviz2 and passes the path of the package-provided
+      RViz configuration.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            pkg_share = FindPackageShare('dummy_robot_bringup').find('dummy_robot_bringup')
+
+            default_rviz_config_path = os.path.join(pkg_share, 'rviz/dummy_robot.rviz')
+
+            urdf_file = os.path.join(pkg_share, 'launch', 'single_rrbot.urdf')
+            robot_desc = FileContent(urdf_file)
+            rsp_params = {'robot_description': robot_desc}
+
+            return LaunchDescription([
+                Node(package='dummy_map_server', executable='dummy_map_server', output='screen'),
+                Node(package='robot_state_publisher', executable='robot_state_publisher',
+                     output='screen', parameters=[rsp_params]),
+                Node(package='dummy_sensors', executable='dummy_joint_states', output='screen'),
+                Node(package='dummy_sensors', executable='dummy_laser', output='screen'),
+                Node(package='rviz2', executable='rviz2', name='rviz2', output='screen',
+                     arguments=['-d', default_rviz_config_path])
+
+            ])
+      explanation: Creates the RViz2 node and supplies the packaged configuration path.
+    - kind: resource
+      path: rviz/dummy_robot.rviz
+      locator: Visualization Manager
+      snippet: |2-
+            Splitter Ratio: 0.5886790156364441
+          - Class: rviz_common/Views
+            Expanded:
+              - /Current View1
+            Name: Views
+            Splitter Ratio: 0.5
+        Visualization Manager:
+          Class: ""
+          Displays:
+            - Alpha: 0.5
+              Cell Size: 1
+              Class: rviz_default_plugins/Grid
+              Color: 160; 160; 164
+              Enabled: true
+              Line Style:
+                Line Width: 0.029999999329447746
+                Value: Lines
+              Name: Grid
+      explanation: Provides the RViz configuration used by the Python launch.
+    - kind: build
+      path: CMakeLists.txt
+      locator: install
+      snippet: |-
+        cmake_minimum_required(VERSION 3.20)
+
+        project(dummy_robot_bringup)
+
+        find_package(ament_cmake REQUIRED)
+
+        install(DIRECTORY launch rviz
+          DESTINATION share/${PROJECT_NAME})
+
+        if(BUILD_TESTING)
+          find_package(ament_lint_auto REQUIRED)
+          ament_lint_auto_find_test_dependencies()
+        endif()
+
+        ament_package()
+      explanation: Installs the RViz configuration directory into the package share directory.

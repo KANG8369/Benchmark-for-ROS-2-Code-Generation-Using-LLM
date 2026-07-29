@@ -15,6 +15,11 @@ Only `description.yaml` is given to the code-generation system. `metric.yaml` an
 
 Do not add a case until its description and metrics have been checked against the complete runtime-reachable reference package.
 
+Metric schema `2.0` requires every reference-evidence item to declare its
+`kind`, reference-relative `path`, searchable `locator`, exact contiguous
+`snippet`, and behavioral `explanation`. The snippet records provenance; it is
+not used to require source-code identity from a generated package.
+
 Validate all cases with:
 
 ```bash
