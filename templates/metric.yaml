@@ -1,7 +1,10 @@
 # Copy this file to benchmarks/<package_name>/metric.yaml.
 #
 # A metric represents one package capability.
-# Each pass criterion describes one independently verifiable behavior.
+# Each pass criterion describes exactly one independently verifiable behavior.
+# Split behaviors into separate criteria when one can pass while another fails.
+# Multiple files that demonstrate the same behavior may remain as evidence for
+# one criterion, and one evidence excerpt may support more than one criterion.
 # Reference evidence identifies where the criterion was derived from in the
 # reference package. The snippet must be an exact, contiguous excerpt, but it
 # is provenance for the criterion and must not be used to require code identity.

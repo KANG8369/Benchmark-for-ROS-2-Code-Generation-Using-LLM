@@ -148,6 +148,13 @@ A metric file has three levels:
 3. **Reference evidence**: A typed, traceable excerpt showing where the
    criterion was derived from in the reference package.
 
+Pass criteria must be granular enough to score independently. If one behavior
+can be implemented correctly while another behavior in the same sentence can
+fail, represent them as separate criteria such as `M-1-PC-1` and `M-1-PC-2`.
+Multiple reference files that demonstrate the same required behavior remain
+evidence for one criterion. The same evidence excerpt may be cited by multiple
+criteria when it genuinely supports each behavior.
+
 Reference evidence documents the origin of each criterion. Generated packages
 are evaluated by semantic equivalence and are not required to reproduce the
 same source code, programming language, file structure, node decomposition, or

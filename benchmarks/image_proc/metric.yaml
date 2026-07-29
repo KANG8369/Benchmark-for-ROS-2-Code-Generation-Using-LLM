@@ -14,9 +14,7 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows an installed launch description with configurable namespace and container
-      that defines debayer, mono rectify, and color rectify components and can either start a new component
-      container or load them into an existing one.
+    text: Static inspection shows the launch description accepts a configurable namespace input.
     evaluation: static
     reference_evidence:
     - kind: launch
@@ -96,6 +94,334 @@ metrics:
             ])
       explanation: Declares namespace/container inputs, defines the three composable nodes, and selects
         new-container or existing-container loading.
+  - id: M-1-PC-2
+    text: Static inspection shows the launch description accepts a configurable component-container input.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/image_proc.launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            arg_namespace = DeclareLaunchArgument(
+                name='namespace', default_value='',
+                description=('namespace for all components loaded')
+            )
+
+            composable_nodes = [
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::DebayerNode',
+                    name='debayer_node',
+                    namespace=LaunchConfiguration('namespace'),
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_mono_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_mono'),
+                        ('image_rect', 'image_rect')
+                    ],
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_color_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_color'),
+                        ('image_rect', 'image_rect_color')
+                    ],
+                )
+            ]
+
+            arg_container = DeclareLaunchArgument(
+                name='container', default_value='',
+                description=(
+                    'Name of an existing node container to load launched nodes into. '
+                    'If unset, a new container will be created.'
+                )
+            )
+
+            # If an existing container is not provided, start a container and load nodes into it
+            image_processing_container = ComposableNodeContainer(
+                condition=LaunchConfigurationEquals('container', ''),
+                name='image_proc_container',
+                namespace=LaunchConfiguration('namespace'),
+                package='rclcpp_components',
+                executable='component_container',
+                composable_node_descriptions=composable_nodes,
+                output='screen'
+            )
+
+            # If an existing container name is provided, load composable nodes into it
+            # This will block until a container with the provided name is available and nodes are loaded
+            load_composable_nodes = LoadComposableNodes(
+                condition=LaunchConfigurationNotEquals('container', ''),
+                composable_node_descriptions=composable_nodes,
+                target_container=LaunchConfiguration('container'),
+            )
+
+            return LaunchDescription([
+                arg_namespace,
+                arg_container,
+                image_processing_container,
+                load_composable_nodes,
+            ])
+      explanation: Declares namespace/container inputs, defines the three composable nodes, and selects
+        new-container or existing-container loading.
+  - id: M-1-PC-3
+    text: Static inspection shows debayer, mono rectify, and color rectify composable nodes are defined.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/image_proc.launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            arg_namespace = DeclareLaunchArgument(
+                name='namespace', default_value='',
+                description=('namespace for all components loaded')
+            )
+
+            composable_nodes = [
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::DebayerNode',
+                    name='debayer_node',
+                    namespace=LaunchConfiguration('namespace'),
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_mono_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_mono'),
+                        ('image_rect', 'image_rect')
+                    ],
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_color_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_color'),
+                        ('image_rect', 'image_rect_color')
+                    ],
+                )
+            ]
+
+            arg_container = DeclareLaunchArgument(
+                name='container', default_value='',
+                description=(
+                    'Name of an existing node container to load launched nodes into. '
+                    'If unset, a new container will be created.'
+                )
+            )
+
+            # If an existing container is not provided, start a container and load nodes into it
+            image_processing_container = ComposableNodeContainer(
+                condition=LaunchConfigurationEquals('container', ''),
+                name='image_proc_container',
+                namespace=LaunchConfiguration('namespace'),
+                package='rclcpp_components',
+                executable='component_container',
+                composable_node_descriptions=composable_nodes,
+                output='screen'
+            )
+
+            # If an existing container name is provided, load composable nodes into it
+            # This will block until a container with the provided name is available and nodes are loaded
+            load_composable_nodes = LoadComposableNodes(
+                condition=LaunchConfigurationNotEquals('container', ''),
+                composable_node_descriptions=composable_nodes,
+                target_container=LaunchConfiguration('container'),
+            )
+
+            return LaunchDescription([
+                arg_namespace,
+                arg_container,
+                image_processing_container,
+                load_composable_nodes,
+            ])
+      explanation: Declares namespace/container inputs, defines the three composable nodes, and selects
+        new-container or existing-container loading.
+  - id: M-1-PC-4
+    text: Static inspection shows the components can be started in a new component container.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/image_proc.launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            arg_namespace = DeclareLaunchArgument(
+                name='namespace', default_value='',
+                description=('namespace for all components loaded')
+            )
+
+            composable_nodes = [
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::DebayerNode',
+                    name='debayer_node',
+                    namespace=LaunchConfiguration('namespace'),
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_mono_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_mono'),
+                        ('image_rect', 'image_rect')
+                    ],
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_color_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_color'),
+                        ('image_rect', 'image_rect_color')
+                    ],
+                )
+            ]
+
+            arg_container = DeclareLaunchArgument(
+                name='container', default_value='',
+                description=(
+                    'Name of an existing node container to load launched nodes into. '
+                    'If unset, a new container will be created.'
+                )
+            )
+
+            # If an existing container is not provided, start a container and load nodes into it
+            image_processing_container = ComposableNodeContainer(
+                condition=LaunchConfigurationEquals('container', ''),
+                name='image_proc_container',
+                namespace=LaunchConfiguration('namespace'),
+                package='rclcpp_components',
+                executable='component_container',
+                composable_node_descriptions=composable_nodes,
+                output='screen'
+            )
+
+            # If an existing container name is provided, load composable nodes into it
+            # This will block until a container with the provided name is available and nodes are loaded
+            load_composable_nodes = LoadComposableNodes(
+                condition=LaunchConfigurationNotEquals('container', ''),
+                composable_node_descriptions=composable_nodes,
+                target_container=LaunchConfiguration('container'),
+            )
+
+            return LaunchDescription([
+                arg_namespace,
+                arg_container,
+                image_processing_container,
+                load_composable_nodes,
+            ])
+      explanation: Declares namespace/container inputs, defines the three composable nodes, and selects
+        new-container or existing-container loading.
+  - id: M-1-PC-5
+    text: Static inspection shows the components can instead be loaded into an existing container.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/image_proc.launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            arg_namespace = DeclareLaunchArgument(
+                name='namespace', default_value='',
+                description=('namespace for all components loaded')
+            )
+
+            composable_nodes = [
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::DebayerNode',
+                    name='debayer_node',
+                    namespace=LaunchConfiguration('namespace'),
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_mono_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_mono'),
+                        ('image_rect', 'image_rect')
+                    ],
+                ),
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_color_node',
+                    namespace=LaunchConfiguration('namespace'),
+                    # Remap subscribers and publishers
+                    remappings=[
+                        ('image', 'image_color'),
+                        ('image_rect', 'image_rect_color')
+                    ],
+                )
+            ]
+
+            arg_container = DeclareLaunchArgument(
+                name='container', default_value='',
+                description=(
+                    'Name of an existing node container to load launched nodes into. '
+                    'If unset, a new container will be created.'
+                )
+            )
+
+            # If an existing container is not provided, start a container and load nodes into it
+            image_processing_container = ComposableNodeContainer(
+                condition=LaunchConfigurationEquals('container', ''),
+                name='image_proc_container',
+                namespace=LaunchConfiguration('namespace'),
+                package='rclcpp_components',
+                executable='component_container',
+                composable_node_descriptions=composable_nodes,
+                output='screen'
+            )
+
+            # If an existing container name is provided, load composable nodes into it
+            # This will block until a container with the provided name is available and nodes are loaded
+            load_composable_nodes = LoadComposableNodes(
+                condition=LaunchConfigurationNotEquals('container', ''),
+                composable_node_descriptions=composable_nodes,
+                target_container=LaunchConfiguration('container'),
+            )
+
+            return LaunchDescription([
+                arg_namespace,
+                arg_container,
+                image_processing_container,
+                load_composable_nodes,
+            ])
+      explanation: Declares namespace/container inputs, defines the three composable nodes, and selects
+        new-container or existing-container loading.
+  - id: M-1-PC-6
+    text: Static inspection shows the launch directory is installed into the package share directory.
+    evaluation: static
+    reference_evidence:
     - kind: build
       path: CMakeLists.txt
       locator: ament_auto_package
@@ -116,9 +442,8 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows a public Processor class accepts supported raw mono, color, and Bayer
-      encodings, constructs requested mono and/or color outputs, and optionally rectifies requested outputs
-      using camera calibration.
+    text: Static inspection shows a public Processor API exposes processing flags, output storage, and
+      a process operation.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -150,6 +475,277 @@ metrics:
             ImageSet & output, int flags = ALL) const;
         };
       explanation: Declares the public processing flags, output collection, and process API.
+  - id: M-2-PC-2
+    text: Static inspection shows supported mono, color, and Bayer raw encodings are accepted.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/image_proc/processor.cpp
+      locator: image_proc::Processor::process
+      snippet: |2-
+          const sensor_msgs::msg::Image::ConstSharedPtr & raw_image,
+          const image_geometry::PinholeCameraModel & model,
+          ImageSet & output, int flags) const
+        {
+          static const int MONO_EITHER = MONO | RECT;
+          static const int COLOR_EITHER = COLOR | RECT_COLOR;
+          if (!(flags & ALL)) {
+            return true;
+          }
+
+          // Check if raw_image is color
+          const std::string & raw_encoding = raw_image->encoding;
+          int raw_type = CV_8UC1;
+          if (raw_encoding == sensor_msgs::image_encodings::BGR8 ||
+            raw_encoding == sensor_msgs::image_encodings::RGB8)
+          {
+            raw_type = CV_8UC3;
+            output.color_encoding = raw_encoding;
+          }
+          // Construct cv::Mat pointing to raw_image data
+          const cv::Mat raw(
+            raw_image->height, raw_image->width, raw_type,
+            const_cast<uint8_t *>(&raw_image->data[0]), raw_image->step);
+
+          ///////////////////////////////////////////////////////
+          // Construct colorized (unrectified) images from raw //
+          ///////////////////////////////////////////////////////
+
+          // Bayer case
+          if (raw_encoding.find("bayer") != std::string::npos) {
+            // Convert to color BGR
+            // TODO(unknown): Faster to convert directly to mono when color is not requested,
+            //                but OpenCV doesn't support
+            int code = 0;
+            if (raw_encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              code = cv::COLOR_BayerBG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              code = cv::COLOR_BayerRG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              code = cv::COLOR_BayerGR2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              code = cv::COLOR_BayerGB2BGR;
+            } else {
+              RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+              return false;
+            }
+            cv::cvtColor(raw, output.color, code);
+            output.color_encoding = sensor_msgs::image_encodings::BGR8;
+
+            if (flags & MONO_EITHER) {
+              cv::cvtColor(output.color, output.mono, cv::COLOR_BGR2GRAY);
+            }
+          } else if (raw_type == CV_8UC3) {  // Color case
+            output.color = raw;
+            if (flags & MONO_EITHER) {
+              int code =
+                (raw_encoding ==
+                sensor_msgs::image_encodings::BGR8) ? cv::COLOR_BGR2GRAY : cv::COLOR_RGB2GRAY;
+              cv::cvtColor(output.color, output.mono, code);
+            }
+          } else if (raw_encoding == sensor_msgs::image_encodings::MONO8) {  // Mono case
+            output.mono = raw;
+            if (flags & COLOR_EITHER) {
+              output.color_encoding = sensor_msgs::image_encodings::MONO8;
+              output.color = raw;
+            }
+          } else if (raw_encoding == sensor_msgs::image_encodings::TYPE_8UC3) {
+            // 8UC3 does not specify a color encoding. Is it BGR, RGB, HSV, XYZ, LUV...?
+            RCUTILS_LOG_ERROR(
+              "[image_proc] Ambiguous encoding '8UC3'. "
+              "The camera driver should set the encoding to 'bgr8' or 'rgb8'.");
+            return false;
+          } else {
+            // Something else we can't handle
+            RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+            return false;
+          }
+
+          //////////////////////////////////////////////////////
+          // Construct rectified images from colorized images //
+      explanation: Implements raw encoding conversion and optional calibrated rectification.
+  - id: M-2-PC-3
+    text: Static inspection shows a requested mono output product is constructed.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/image_proc/processor.cpp
+      locator: image_proc::Processor::process
+      snippet: |2-
+          const sensor_msgs::msg::Image::ConstSharedPtr & raw_image,
+          const image_geometry::PinholeCameraModel & model,
+          ImageSet & output, int flags) const
+        {
+          static const int MONO_EITHER = MONO | RECT;
+          static const int COLOR_EITHER = COLOR | RECT_COLOR;
+          if (!(flags & ALL)) {
+            return true;
+          }
+
+          // Check if raw_image is color
+          const std::string & raw_encoding = raw_image->encoding;
+          int raw_type = CV_8UC1;
+          if (raw_encoding == sensor_msgs::image_encodings::BGR8 ||
+            raw_encoding == sensor_msgs::image_encodings::RGB8)
+          {
+            raw_type = CV_8UC3;
+            output.color_encoding = raw_encoding;
+          }
+          // Construct cv::Mat pointing to raw_image data
+          const cv::Mat raw(
+            raw_image->height, raw_image->width, raw_type,
+            const_cast<uint8_t *>(&raw_image->data[0]), raw_image->step);
+
+          ///////////////////////////////////////////////////////
+          // Construct colorized (unrectified) images from raw //
+          ///////////////////////////////////////////////////////
+
+          // Bayer case
+          if (raw_encoding.find("bayer") != std::string::npos) {
+            // Convert to color BGR
+            // TODO(unknown): Faster to convert directly to mono when color is not requested,
+            //                but OpenCV doesn't support
+            int code = 0;
+            if (raw_encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              code = cv::COLOR_BayerBG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              code = cv::COLOR_BayerRG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              code = cv::COLOR_BayerGR2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              code = cv::COLOR_BayerGB2BGR;
+            } else {
+              RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+              return false;
+            }
+            cv::cvtColor(raw, output.color, code);
+            output.color_encoding = sensor_msgs::image_encodings::BGR8;
+
+            if (flags & MONO_EITHER) {
+              cv::cvtColor(output.color, output.mono, cv::COLOR_BGR2GRAY);
+            }
+          } else if (raw_type == CV_8UC3) {  // Color case
+            output.color = raw;
+            if (flags & MONO_EITHER) {
+              int code =
+                (raw_encoding ==
+                sensor_msgs::image_encodings::BGR8) ? cv::COLOR_BGR2GRAY : cv::COLOR_RGB2GRAY;
+              cv::cvtColor(output.color, output.mono, code);
+            }
+          } else if (raw_encoding == sensor_msgs::image_encodings::MONO8) {  // Mono case
+            output.mono = raw;
+            if (flags & COLOR_EITHER) {
+              output.color_encoding = sensor_msgs::image_encodings::MONO8;
+              output.color = raw;
+            }
+          } else if (raw_encoding == sensor_msgs::image_encodings::TYPE_8UC3) {
+            // 8UC3 does not specify a color encoding. Is it BGR, RGB, HSV, XYZ, LUV...?
+            RCUTILS_LOG_ERROR(
+              "[image_proc] Ambiguous encoding '8UC3'. "
+              "The camera driver should set the encoding to 'bgr8' or 'rgb8'.");
+            return false;
+          } else {
+            // Something else we can't handle
+            RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+            return false;
+          }
+
+          //////////////////////////////////////////////////////
+          // Construct rectified images from colorized images //
+      explanation: Implements raw encoding conversion and optional calibrated rectification.
+  - id: M-2-PC-4
+    text: Static inspection shows a requested color output product is constructed.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/image_proc/processor.cpp
+      locator: image_proc::Processor::process
+      snippet: |2-
+          const sensor_msgs::msg::Image::ConstSharedPtr & raw_image,
+          const image_geometry::PinholeCameraModel & model,
+          ImageSet & output, int flags) const
+        {
+          static const int MONO_EITHER = MONO | RECT;
+          static const int COLOR_EITHER = COLOR | RECT_COLOR;
+          if (!(flags & ALL)) {
+            return true;
+          }
+
+          // Check if raw_image is color
+          const std::string & raw_encoding = raw_image->encoding;
+          int raw_type = CV_8UC1;
+          if (raw_encoding == sensor_msgs::image_encodings::BGR8 ||
+            raw_encoding == sensor_msgs::image_encodings::RGB8)
+          {
+            raw_type = CV_8UC3;
+            output.color_encoding = raw_encoding;
+          }
+          // Construct cv::Mat pointing to raw_image data
+          const cv::Mat raw(
+            raw_image->height, raw_image->width, raw_type,
+            const_cast<uint8_t *>(&raw_image->data[0]), raw_image->step);
+
+          ///////////////////////////////////////////////////////
+          // Construct colorized (unrectified) images from raw //
+          ///////////////////////////////////////////////////////
+
+          // Bayer case
+          if (raw_encoding.find("bayer") != std::string::npos) {
+            // Convert to color BGR
+            // TODO(unknown): Faster to convert directly to mono when color is not requested,
+            //                but OpenCV doesn't support
+            int code = 0;
+            if (raw_encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              code = cv::COLOR_BayerBG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              code = cv::COLOR_BayerRG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              code = cv::COLOR_BayerGR2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              code = cv::COLOR_BayerGB2BGR;
+            } else {
+              RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+              return false;
+            }
+            cv::cvtColor(raw, output.color, code);
+            output.color_encoding = sensor_msgs::image_encodings::BGR8;
+
+            if (flags & MONO_EITHER) {
+              cv::cvtColor(output.color, output.mono, cv::COLOR_BGR2GRAY);
+            }
+          } else if (raw_type == CV_8UC3) {  // Color case
+            output.color = raw;
+            if (flags & MONO_EITHER) {
+              int code =
+                (raw_encoding ==
+                sensor_msgs::image_encodings::BGR8) ? cv::COLOR_BGR2GRAY : cv::COLOR_RGB2GRAY;
+              cv::cvtColor(output.color, output.mono, code);
+            }
+          } else if (raw_encoding == sensor_msgs::image_encodings::MONO8) {  // Mono case
+            output.mono = raw;
+            if (flags & COLOR_EITHER) {
+              output.color_encoding = sensor_msgs::image_encodings::MONO8;
+              output.color = raw;
+            }
+          } else if (raw_encoding == sensor_msgs::image_encodings::TYPE_8UC3) {
+            // 8UC3 does not specify a color encoding. Is it BGR, RGB, HSV, XYZ, LUV...?
+            RCUTILS_LOG_ERROR(
+              "[image_proc] Ambiguous encoding '8UC3'. "
+              "The camera driver should set the encoding to 'bgr8' or 'rgb8'.");
+            return false;
+          } else {
+            // Something else we can't handle
+            RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+            return false;
+          }
+
+          //////////////////////////////////////////////////////
+          // Construct rectified images from colorized images //
+      explanation: Implements raw encoding conversion and optional calibrated rectification.
+  - id: M-2-PC-5
+    text: Static inspection shows requested output products can be rectified using camera calibration.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/image_proc/processor.cpp
       locator: image_proc::Processor::process
@@ -242,8 +838,7 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows public utilities implementing both edge-aware and weighted edge-aware
-      Bayer demosaicing.
+    text: Static inspection shows a public edge-aware Bayer demosaicing utility is declared and implemented.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -262,22 +857,6 @@ metrics:
 
         #endif  // IMAGE_PROC__EDGE_AWARE_HPP_
       explanation: Declares the edge-aware demosaicing utility.
-    - kind: source_code
-      path: include/image_proc/edge_aware.hpp
-      locator: image_proc::debayerEdgeAwareWeighted
-      snippet: |-
-        // Edge-aware debayering algorithms, intended for eventual inclusion in OpenCV.
-
-        namespace image_proc
-        {
-
-        void debayerEdgeAware(const cv::Mat & bayer, cv::Mat & color);
-        void debayerEdgeAwareWeighted(const cv::Mat & bayer, cv::Mat & color);
-
-        }  // namespace image_proc
-
-        #endif  // IMAGE_PROC__EDGE_AWARE_HPP_
-      explanation: Declares the weighted edge-aware demosaicing utility.
     - kind: source_code
       path: src/edge_aware.cpp
       locator: image_proc::debayerEdgeAware
@@ -363,6 +942,27 @@ metrics:
               dv = std::abs(bayer_pixel[0] - bayer_pixel[bayer_line_step2]);
               dh = std::abs(bayer_pixel[bayer_line_step - 1] - bayer_pixel[bayer_line_step + 1]);
       explanation: Implements edge-aware Bayer demosaicing.
+  - id: M-3-PC-2
+    text: Static inspection shows a public weighted edge-aware Bayer demosaicing utility is declared and
+      implemented.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: include/image_proc/edge_aware.hpp
+      locator: image_proc::debayerEdgeAwareWeighted
+      snippet: |-
+        // Edge-aware debayering algorithms, intended for eventual inclusion in OpenCV.
+
+        namespace image_proc
+        {
+
+        void debayerEdgeAware(const cv::Mat & bayer, cv::Mat & color);
+        void debayerEdgeAwareWeighted(const cv::Mat & bayer, cv::Mat & color);
+
+        }  // namespace image_proc
+
+        #endif  // IMAGE_PROC__EDGE_AWARE_HPP_
+      explanation: Declares the weighted edge-aware demosaicing utility.
     - kind: source_code
       path: src/edge_aware.cpp
       locator: image_proc::debayerEdgeAwareWeighted
@@ -456,8 +1056,73 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows a shared QoS utility returns SensorDataQoS when no publisher is discovered
-      and otherwise derives reliability and durability compatible with the discovered publisher.
+    text: Static inspection shows SensorDataQoS is returned when no publisher is discovered.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: include/image_proc/utils.hpp
+      locator: image_proc::getQosProfile
+      snippet: |-
+        rclcpp::QoS getQosProfile(rclcpp::Node * node, const std::string & topic)
+        {
+          /**
+           * Given a topic name, get the QoS profile with which it is being published.
+        ￼  * Replaces history and depth settings with default sensor values since they cannot be retrieved.
+           * @param node pointer to the ROS node
+           * @param topic name of the topic
+           * @returns QoS profile of the publisher to the topic. If there are several publishers, it returns
+           *     returns the profile of the first one on the list. If no publishers exist, it returns
+           *     the sensor data profile.
+           */
+          std::string topic_resolved = node->get_node_base_interface()->resolve_topic_or_service_name(
+            topic, false);
+          auto topics_info = node->get_publishers_info_by_topic(topic_resolved);
+          if (topics_info.size()) {
+            auto profile = topics_info[0].qos_profile();
+            profile.history(rclcpp::SensorDataQoS().history());
+            profile.keep_last(rclcpp::SensorDataQoS().depth());
+            return profile;
+          } else {
+            return rclcpp::SensorDataQoS();
+          }
+        }
+      explanation: Examines topic publisher information, applies compatible policies, and uses SensorDataQoS
+        as the no-publisher fallback.
+  - id: M-4-PC-2
+    text: Static inspection shows input reliability is derived to be compatible with the discovered publisher.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: include/image_proc/utils.hpp
+      locator: image_proc::getQosProfile
+      snippet: |-
+        rclcpp::QoS getQosProfile(rclcpp::Node * node, const std::string & topic)
+        {
+          /**
+           * Given a topic name, get the QoS profile with which it is being published.
+        ￼  * Replaces history and depth settings with default sensor values since they cannot be retrieved.
+           * @param node pointer to the ROS node
+           * @param topic name of the topic
+           * @returns QoS profile of the publisher to the topic. If there are several publishers, it returns
+           *     returns the profile of the first one on the list. If no publishers exist, it returns
+           *     the sensor data profile.
+           */
+          std::string topic_resolved = node->get_node_base_interface()->resolve_topic_or_service_name(
+            topic, false);
+          auto topics_info = node->get_publishers_info_by_topic(topic_resolved);
+          if (topics_info.size()) {
+            auto profile = topics_info[0].qos_profile();
+            profile.history(rclcpp::SensorDataQoS().history());
+            profile.keep_last(rclcpp::SensorDataQoS().depth());
+            return profile;
+          } else {
+            return rclcpp::SensorDataQoS();
+          }
+        }
+      explanation: Examines topic publisher information, applies compatible policies, and uses SensorDataQoS
+        as the no-publisher fallback.
+  - id: M-4-PC-3
+    text: Static inspection shows input durability is derived to be compatible with the discovered publisher.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -496,8 +1161,8 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows DebayerNode subscribes lazily based on output demand, publishes requested
-      mono and color products, and rejects or reports unsupported or ambiguous input encodings.
+    text: Static inspection shows supported Bayer input is converted and published as a requested color
+      product.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -585,6 +1250,11 @@ metrics:
               cv_image->toImageMsg(*color_msg);
               pub_color_.publish(std::move(color_msg));
       explanation: Converts supported Bayer input into a color product and publishes the converted image.
+  - id: M-5-PC-2
+    text: Static inspection shows a requested mono product is published directly or through cv_bridge
+      conversion.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/debayer.cpp
       locator: DebayerNode::imageCb
@@ -624,6 +1294,10 @@ metrics:
             }
           }
       explanation: Publishes a requested mono product directly or through cv_bridge conversion.
+  - id: M-5-PC-3
+    text: Static inspection shows malformed Bayer input is rejected before OpenCV image construction.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/debayer.cpp
       locator: Received malformed Bayer image
@@ -638,6 +1312,10 @@ metrics:
               return;
             }
       explanation: Rejects malformed Bayer input before constructing an OpenCV view.
+  - id: M-5-PC-4
+    text: Static inspection shows ambiguous 8UC3 input is reported explicitly.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/debayer.cpp
       locator: TYPE_8UC3
@@ -655,6 +1333,31 @@ metrics:
               sub_raw_.getTopic().c_str(), raw_msg->encoding.c_str());
           }
       explanation: Reports ambiguous 8UC3 input and other unsupported encodings explicitly.
+  - id: M-5-PC-5
+    text: Static inspection shows unsupported input encodings are reported explicitly.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/debayer.cpp
+      locator: TYPE_8UC3
+      snippet: |2-
+          } else if (raw_msg->encoding == sensor_msgs::image_encodings::TYPE_8UC3) {
+            // 8UC3 does not specify a color encoding. Is it BGR, RGB, HSV, XYZ, LUV...?
+            RCLCPP_WARN(
+              this->get_logger(),
+              "Raw image topic '%s' has ambiguous encoding '8UC3'. The "
+              "source should set the encoding to 'bgr8' or 'rgb8'.",
+              sub_raw_.getTopic().c_str());
+          } else {
+            RCLCPP_WARN(
+              this->get_logger(), "Raw image topic '%s' has unsupported encoding '%s'",
+              sub_raw_.getTopic().c_str(), raw_msg->encoding.c_str());
+          }
+      explanation: Reports ambiguous 8UC3 input and other unsupported encodings explicitly.
+  - id: M-5-PC-6
+    text: Static inspection shows raw-image subscription is created or shut down according to output demand.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/debayer.cpp
       locator: image_proc::DebayerNode::DebayerNode
@@ -707,8 +1410,60 @@ metrics:
   - FR-6
   pass_criteria:
   - id: M-6-PC-1
-    text: Static inspection shows RectifyNode subscribes lazily, suppresses output for uncalibrated input,
-      passes through zero-distortion images, and otherwise publishes a calibrated rectified image.
+    text: Static inspection shows the camera subscription is managed lazily according to rectified-output
+      demand.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/rectify.cpp
+      locator: image_proc::RectifyNode::RectifyNode
+      snippet: |-
+        RectifyNode::RectifyNode(const rclcpp::NodeOptions & options)
+        : rclcpp::Node("RectifyNode", options)
+        {
+          // TransportHints does not actually declare the parameter
+          this->declare_parameter<std::string>("image_transport", "raw");
+
+          // For compressed topics to remap appropriately, we need to pass a
+          // fully expanded and remapped topic name to image_transport
+          auto node_base = this->get_node_base_interface();
+          image_topic_ = node_base->resolve_topic_or_service_name("image", false);
+          std::string rect_topic =
+            node_base->resolve_topic_or_service_name("image_rect", false);
+
+
+          queue_size_ = this->declare_parameter("queue_size", 5);
+          interpolation_ = this->declare_parameter("interpolation", 1);
+
+          // Setup lazy subscriber using publisher connection callback
+          rclcpp::PublisherOptions pub_options;
+          pub_options.event_callbacks.matched_callback =
+            [this](rclcpp::MatchedInfo &)
+            {
+              if (pub_rect_.getNumSubscribers() == 0) {
+                sub_camera_.shutdown();
+              } else if (!sub_camera_) {
+                // Create subscriber with QoS matched to subscribed topic publisher
+                auto qos_profile = getQosProfile(this, image_topic_);
+                image_transport::TransportHints hints(*this);
+                sub_camera_ = image_transport::create_camera_subscription(
+                  *this, image_topic_,
+                  [this](
+                    const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
+                    imageCb(image_msg, info_msg);
+                  }, hints.getTransport(), qos_profile);
+              }
+            };
+
+          // Create publisher - allow overriding QoS settings (history, depth, reliability)
+          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
+          pub_rect_ = image_transport::create_publisher(*this, rect_topic, rclcpp::SystemDefaultsQoS(),
+              pub_options);
+        }
+      explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+  - id: M-6-PC-2
+    text: Static inspection shows rectified output is suppressed for uncalibrated input.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -792,54 +1547,176 @@ metrics:
         }
       explanation: Checks subscribers and calibration, handles zero distortion, and rectifies nonzero-distortion
         images.
+  - id: M-6-PC-3
+    text: Static inspection shows zero-distortion input is passed through without remapping.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/rectify.cpp
-      locator: image_proc::RectifyNode::RectifyNode
+      locator: image_proc::RectifyNode::imageCb
       snippet: |-
-        RectifyNode::RectifyNode(const rclcpp::NodeOptions & options)
-        : rclcpp::Node("RectifyNode", options)
+        void RectifyNode::imageCb(
+          const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+          const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg)
         {
-          // TransportHints does not actually declare the parameter
-          this->declare_parameter<std::string>("image_transport", "raw");
+          TRACEPOINT(
+            image_proc_rectify_init,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
 
-          // For compressed topics to remap appropriately, we need to pass a
-          // fully expanded and remapped topic name to image_transport
-          auto node_base = this->get_node_base_interface();
-          image_topic_ = node_base->resolve_topic_or_service_name("image", false);
-          std::string rect_topic =
-            node_base->resolve_topic_or_service_name("image_rect", false);
+          if (pub_rect_.getNumSubscribers() < 1) {
+            TRACEPOINT(
+              image_proc_rectify_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
 
+            return;
+          }
 
-          queue_size_ = this->declare_parameter("queue_size", 5);
-          interpolation_ = this->declare_parameter("interpolation", 1);
+          // Verify camera is actually calibrated
+          if (info_msg->k[0] == 0.0) {
+            RCLCPP_ERROR(
+              this->get_logger(), "Rectified topic '%s' requested but camera publishing '%s' "
+              "is uncalibrated", pub_rect_.getTopic().c_str(), sub_camera_.getInfoTopic().c_str());
+            TRACEPOINT(
+              image_proc_rectify_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            return;
+          }
 
-          // Setup lazy subscriber using publisher connection callback
-          rclcpp::PublisherOptions pub_options;
-          pub_options.event_callbacks.matched_callback =
-            [this](rclcpp::MatchedInfo &)
-            {
-              if (pub_rect_.getNumSubscribers() == 0) {
-                sub_camera_.shutdown();
-              } else if (!sub_camera_) {
-                // Create subscriber with QoS matched to subscribed topic publisher
-                auto qos_profile = getQosProfile(this, image_topic_);
-                image_transport::TransportHints hints(*this);
-                sub_camera_ = image_transport::create_camera_subscription(
-                  *this, image_topic_,
-                  [this](
-                    const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
-                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
-                    imageCb(image_msg, info_msg);
-                  }, hints.getTransport(), qos_profile);
-              }
-            };
+          // If zero distortion, just pass the message along
+          bool zero_distortion = true;
 
-          // Create publisher - allow overriding QoS settings (history, depth, reliability)
-          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
-          pub_rect_ = image_transport::create_publisher(*this, rect_topic, rclcpp::SystemDefaultsQoS(),
-              pub_options);
+          for (size_t i = 0; i < info_msg->d.size(); ++i) {
+            if (info_msg->d[i] != 0.0) {
+              zero_distortion = false;
+              break;
+            }
+          }
+
+          // This will be true if D is empty/zero sized
+          if (zero_distortion) {
+            pub_rect_.publish(image_msg);
+            TRACEPOINT(
+              image_proc_rectify_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            return;
+          }
+
+          // Update the camera model
+          model_.fromCameraInfo(info_msg);
+
+          // Create cv::Mat views onto both buffers
+          const cv::Mat image = cv_bridge::toCvShare(image_msg)->image;
+          cv::Mat rect;
+
+          // Rectify and publish
+          model_.rectifyImage(image, rect, interpolation_);
+
+          // Allocate new rectified image message
+          auto rect_msg = std::make_unique<sensor_msgs::msg::Image>();
+          cv_bridge::CvImage(image_msg->header, image_msg->encoding, rect).toImageMsg(*rect_msg);
+          pub_rect_.publish(std::move(rect_msg));
+
+          TRACEPOINT(
+            image_proc_rectify_fini,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
         }
-      explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+      explanation: Checks subscribers and calibration, handles zero distortion, and rectifies nonzero-distortion
+        images.
+  - id: M-6-PC-4
+    text: Static inspection shows nonzero-distortion input is rectified with camera calibration and published.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/rectify.cpp
+      locator: image_proc::RectifyNode::imageCb
+      snippet: |-
+        void RectifyNode::imageCb(
+          const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+          const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg)
+        {
+          TRACEPOINT(
+            image_proc_rectify_init,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+
+          if (pub_rect_.getNumSubscribers() < 1) {
+            TRACEPOINT(
+              image_proc_rectify_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+
+            return;
+          }
+
+          // Verify camera is actually calibrated
+          if (info_msg->k[0] == 0.0) {
+            RCLCPP_ERROR(
+              this->get_logger(), "Rectified topic '%s' requested but camera publishing '%s' "
+              "is uncalibrated", pub_rect_.getTopic().c_str(), sub_camera_.getInfoTopic().c_str());
+            TRACEPOINT(
+              image_proc_rectify_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            return;
+          }
+
+          // If zero distortion, just pass the message along
+          bool zero_distortion = true;
+
+          for (size_t i = 0; i < info_msg->d.size(); ++i) {
+            if (info_msg->d[i] != 0.0) {
+              zero_distortion = false;
+              break;
+            }
+          }
+
+          // This will be true if D is empty/zero sized
+          if (zero_distortion) {
+            pub_rect_.publish(image_msg);
+            TRACEPOINT(
+              image_proc_rectify_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            return;
+          }
+
+          // Update the camera model
+          model_.fromCameraInfo(info_msg);
+
+          // Create cv::Mat views onto both buffers
+          const cv::Mat image = cv_bridge::toCvShare(image_msg)->image;
+          cv::Mat rect;
+
+          // Rectify and publish
+          model_.rectifyImage(image, rect, interpolation_);
+
+          // Allocate new rectified image message
+          auto rect_msg = std::make_unique<sensor_msgs::msg::Image>();
+          cv_bridge::CvImage(image_msg->header, image_msg->encoding, rect).toImageMsg(*rect_msg);
+          pub_rect_.publish(std::move(rect_msg));
+
+          TRACEPOINT(
+            image_proc_rectify_fini,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+        }
+      explanation: Checks subscribers and calibration, handles zero distortion, and rectifies nonzero-distortion
+        images.
 - id: M-7
   name: Lazy crop and decimation
   description: CropDecimate performs validated crop/downsample processing and calibration updates as required
@@ -848,9 +1725,7 @@ metrics:
   - FR-7
   pass_criteria:
   - id: M-7-PC-1
-    text: Static inspection shows CropDecimateNode lazily crops and downsamples the image, updates output
-      binning and ROI calibration fields, and returns without output for crop offsets outside the input
-      image or unsupported Bayer decimation cases.
+    text: Static inspection shows the requested image crop is applied.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -937,6 +1812,187 @@ metrics:
                 case 16:
                   decimate<16>(output.image, decimated, decimation_x, decimation_y);
       explanation: Applies the requested crop and downsampling and rejects unsupported Bayer decimation.
+  - id: M-7-PC-2
+    text: Static inspection shows the cropped image is downsampled according to the requested decimation.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/crop_decimate.cpp
+      locator: image_proc::CropDecimateNode::imageCb
+      snippet: |2-
+          // Except in Bayer downsampling case, output has same encoding as the input
+          CvImage output(source->header, source->encoding);
+          // Apply ROI (no copy, still a view of the image_msg data)
+          output.image = source->image(cv::Rect(offset_x_, offset_y_, width, height));
+
+          // Special case: when decimating Bayer images, we first do a 2x2 decimation to BGR
+          if (is_bayer && (decimation_x > 1 || decimation_y > 1)) {
+            if (decimation_x % 2 != 0 || decimation_y % 2 != 0) {
+              RCLCPP_ERROR(
+                get_logger(),
+                "Odd decimation not supported for Bayer images");
+              return;
+            }
+
+            cv::Mat bgr;
+            int step = output.image.step1();
+            if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, 0, 1, step, step + 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, step + 1, 1, step, 0);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, step, 0, step + 1, 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, 1, 0, step + 1, step);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_RGGB16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, 0, 1, step, step + 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_BGGR16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, step + 1, 1, step, 0);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GBRG16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, step, 0, step + 1, 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GRBG16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, 1, 0, step + 1, step);
+            } else {
+              RCLCPP_ERROR(
+                get_logger(), "Unrecognized Bayer encoding '%s'",
+                image_msg->encoding.c_str());
+              return;
+            }
+
+            output.image = bgr;
+            output.encoding = (bgr.depth() == CV_8U) ? sensor_msgs::image_encodings::BGR8 :
+              sensor_msgs::image_encodings::BGR16;
+            decimation_x /= 2;
+            decimation_y /= 2;
+          }
+
+          // Apply further downsampling, if necessary
+          if (decimation_x > 1 || decimation_y > 1) {
+            cv::Mat decimated;
+
+            if (interpolation_ == image_proc::CropDecimateModes::CropDecimate_NN) {
+              // Use optimized method instead of OpenCV's more general NN resize
+              int pixel_size = output.image.elemSize();
+
+              switch (pixel_size) {
+                // Currently support up through 4-channel float
+                case 1:
+                  decimate<1>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 2:
+                  decimate<2>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 3:
+                  decimate<3>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 4:
+                  decimate<4>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 6:
+                  decimate<6>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 8:
+                  decimate<8>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 12:
+                  decimate<12>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 16:
+                  decimate<16>(output.image, decimated, decimation_x, decimation_y);
+      explanation: Applies the requested crop and downsampling and rejects unsupported Bayer decimation.
+  - id: M-7-PC-3
+    text: Static inspection shows unsupported Bayer decimation returns without output.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/crop_decimate.cpp
+      locator: image_proc::CropDecimateNode::imageCb
+      snippet: |2-
+          // Except in Bayer downsampling case, output has same encoding as the input
+          CvImage output(source->header, source->encoding);
+          // Apply ROI (no copy, still a view of the image_msg data)
+          output.image = source->image(cv::Rect(offset_x_, offset_y_, width, height));
+
+          // Special case: when decimating Bayer images, we first do a 2x2 decimation to BGR
+          if (is_bayer && (decimation_x > 1 || decimation_y > 1)) {
+            if (decimation_x % 2 != 0 || decimation_y % 2 != 0) {
+              RCLCPP_ERROR(
+                get_logger(),
+                "Odd decimation not supported for Bayer images");
+              return;
+            }
+
+            cv::Mat bgr;
+            int step = output.image.step1();
+            if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, 0, 1, step, step + 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, step + 1, 1, step, 0);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, step, 0, step + 1, 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, 1, 0, step + 1, step);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_RGGB16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, 0, 1, step, step + 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_BGGR16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, step + 1, 1, step, 0);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GBRG16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, step, 0, step + 1, 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GRBG16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, 1, 0, step + 1, step);
+            } else {
+              RCLCPP_ERROR(
+                get_logger(), "Unrecognized Bayer encoding '%s'",
+                image_msg->encoding.c_str());
+              return;
+            }
+
+            output.image = bgr;
+            output.encoding = (bgr.depth() == CV_8U) ? sensor_msgs::image_encodings::BGR8 :
+              sensor_msgs::image_encodings::BGR16;
+            decimation_x /= 2;
+            decimation_y /= 2;
+          }
+
+          // Apply further downsampling, if necessary
+          if (decimation_x > 1 || decimation_y > 1) {
+            cv::Mat decimated;
+
+            if (interpolation_ == image_proc::CropDecimateModes::CropDecimate_NN) {
+              // Use optimized method instead of OpenCV's more general NN resize
+              int pixel_size = output.image.elemSize();
+
+              switch (pixel_size) {
+                // Currently support up through 4-channel float
+                case 1:
+                  decimate<1>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 2:
+                  decimate<2>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 3:
+                  decimate<3>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 4:
+                  decimate<4>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 6:
+                  decimate<6>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 8:
+                  decimate<8>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 12:
+                  decimate<12>(output.image, decimated, decimation_x, decimation_y);
+                  break;
+                case 16:
+                  decimate<16>(output.image, decimated, decimation_x, decimation_y);
+      explanation: Applies the requested crop and downsampling and rejects unsupported Bayer decimation.
+  - id: M-7-PC-4
+    text: Static inspection shows crop offsets outside the input image cause processing to return without
+      output.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/crop_decimate.cpp
       locator: CropDecimateNode::imageCb
@@ -961,6 +2017,10 @@ metrics:
             return;
           }
       explanation: Returns without output when either crop offset lies outside the input image.
+  - id: M-7-PC-5
+    text: Static inspection shows CameraInfo binning fields are updated for the transformed image.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/crop_decimate.cpp
       locator: out_info->binning_x
@@ -976,6 +2036,29 @@ metrics:
           out_info->roi.height = height * binning_y;
           out_info->roi.width = width * binning_x;
       explanation: Updates CameraInfo binning and ROI fields to match the transformed image.
+  - id: M-7-PC-6
+    text: Static inspection shows CameraInfo ROI fields are updated for the transformed image.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/crop_decimate.cpp
+      locator: out_info->binning_x
+      snippet: |2-
+          // Create updated CameraInfo message
+          auto out_info = std::make_unique<sensor_msgs::msg::CameraInfo>(*info_msg);
+          int binning_x = std::max(static_cast<int>(info_msg->binning_x), 1);
+          int binning_y = std::max(static_cast<int>(info_msg->binning_y), 1);
+          out_info->binning_x = binning_x * decimation_x_;
+          out_info->binning_y = binning_y * decimation_y_;
+          out_info->roi.x_offset += offset_x_ * binning_x;
+          out_info->roi.y_offset += offset_y_ * binning_y;
+          out_info->roi.height = height * binning_y;
+          out_info->roi.width = width * binning_x;
+      explanation: Updates CameraInfo binning and ROI fields to match the transformed image.
+  - id: M-7-PC-7
+    text: Static inspection shows the camera subscription is managed lazily according to output demand.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/crop_decimate.cpp
       locator: image_proc::CropDecimateNode::CropDecimateNode
@@ -1044,9 +2127,53 @@ metrics:
   - FR-8
   pass_criteria:
   - id: M-8-PC-1
-    text: Static inspection shows CropNonZeroNode subscribes lazily, accepts suitable single-channel images,
-      computes the bounding region of the largest nonzero region, publishes that crop, and returns without
-      output for unsupported channel layouts or all-zero input.
+    text: Static inspection shows the input subscription is managed lazily according to cropped-output
+      demand.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/crop_non_zero.cpp
+      locator: image_proc::CropNonZeroNode::CropNonZeroNode
+      snippet: |-
+        CropNonZeroNode::CropNonZeroNode(const rclcpp::NodeOptions & options)
+        : Node("CropNonZeroNode", options)
+        {
+          // TransportHints does not actually declare the parameter
+          this->declare_parameter<std::string>("image_transport", "raw");
+
+          // For compressed topics to remap appropriately, we need to pass a
+          // fully expanded and remapped topic name to image_transport
+          auto node_base = this->get_node_base_interface();
+          image_topic_ = node_base->resolve_topic_or_service_name("image_raw", false);
+          std::string pub_topic = node_base->resolve_topic_or_service_name("image", false);
+
+          // Setup lazy subscriber using publisher connection callback
+          rclcpp::PublisherOptions pub_options;
+          pub_options.event_callbacks.matched_callback =
+            [this](rclcpp::MatchedInfo &)
+            {
+              if (pub_.getNumSubscribers() == 0) {
+                sub_raw_.shutdown();
+              } else if (!sub_raw_) {
+                // Create subscriber with QoS matched to subscribed topic publisher
+                auto qos_profile = getQosProfile(this, image_topic_);
+                image_transport::TransportHints hints(*this);
+                sub_raw_ = image_transport::create_subscription(
+                  *this, image_topic_,
+                  [this](const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg) {imageCb(raw_msg);},
+                  hints.getTransport(), qos_profile);
+              }
+            };
+
+          // Create publisher - allow overriding QoS settings (history, depth, reliability)
+          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
+          pub_ = image_transport::create_publisher(*this, pub_topic, rclcpp::SystemDefaultsQoS(),
+            pub_options);
+        }
+      explanation: Configures a publisher matched callback that creates or shuts down the input subscription
+        according to output demand.
+  - id: M-8-PC-2
+    text: Static inspection shows unsupported channel layouts are rejected without output.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -1114,47 +2241,213 @@ metrics:
         }
       explanation: Validates channel layout, selects the largest external nonzero contour, publishes its
         bounding crop, and skips invalid or empty cases.
+  - id: M-8-PC-3
+    text: Static inspection shows the largest external nonzero region is selected.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/crop_non_zero.cpp
-      locator: image_proc::CropNonZeroNode::CropNonZeroNode
+      locator: image_proc::CropNonZeroNode::imageCb
       snippet: |-
-        CropNonZeroNode::CropNonZeroNode(const rclcpp::NodeOptions & options)
-        : Node("CropNonZeroNode", options)
+        void CropNonZeroNode::imageCb(const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg)
         {
-          // TransportHints does not actually declare the parameter
-          this->declare_parameter<std::string>("image_transport", "raw");
+          cv_bridge::CvImageConstPtr cv_ptr;
+          try {
+            cv_ptr = cv_bridge::toCvShare(raw_msg);
+          } catch (cv_bridge::Exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
 
-          // For compressed topics to remap appropriately, we need to pass a
-          // fully expanded and remapped topic name to image_transport
-          auto node_base = this->get_node_base_interface();
-          image_topic_ = node_base->resolve_topic_or_service_name("image_raw", false);
-          std::string pub_topic = node_base->resolve_topic_or_service_name("image", false);
+          // Check the number of channels
+          if (sensor_msgs::image_encodings::numChannels(raw_msg->encoding) != 1) {
+            RCLCPP_ERROR(
+              this->get_logger(), "Only grayscale image is acceptable, got [%s]",
+              raw_msg->encoding.c_str());
+            return;
+          }
+          std::vector<std::vector<cv::Point>> cnt;
+          cv::Mat1b m(raw_msg->width, raw_msg->height);
 
-          // Setup lazy subscriber using publisher connection callback
-          rclcpp::PublisherOptions pub_options;
-          pub_options.event_callbacks.matched_callback =
-            [this](rclcpp::MatchedInfo &)
-            {
-              if (pub_.getNumSubscribers() == 0) {
-                sub_raw_.shutdown();
-              } else if (!sub_raw_) {
-                // Create subscriber with QoS matched to subscribed topic publisher
-                auto qos_profile = getQosProfile(this, image_topic_);
-                image_transport::TransportHints hints(*this);
-                sub_raw_ = image_transport::create_subscription(
-                  *this, image_topic_,
-                  [this](const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg) {imageCb(raw_msg);},
-                  hints.getTransport(), qos_profile);
-              }
-            };
+          if (raw_msg->encoding == sensor_msgs::image_encodings::TYPE_8UC1) {
+            m = cv_ptr->image;
+          } else {
+            double minVal, maxVal;
+            cv::minMaxIdx(cv_ptr->image, &minVal, &maxVal, 0, 0, cv_ptr->image != 0.);
+            double ra = maxVal - minVal;
 
-          // Create publisher - allow overriding QoS settings (history, depth, reliability)
-          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
-          pub_ = image_transport::create_publisher(*this, pub_topic, rclcpp::SystemDefaultsQoS(),
-            pub_options);
+            cv_ptr->image.convertTo(m, CV_8U, 255. / ra, -minVal * 255. / ra);
+          }
+
+          cv::findContours(m, cnt, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+          if (cnt.empty()) {
+            RCLCPP_WARN(
+              this->get_logger(),
+              "No non-zero pixels found in image; skipping crop.");
+            return;
+          }
+
+          // search the largest area
+          std::vector<std::vector<cv::Point>>::iterator it =
+            std::max_element(
+            cnt.begin(), cnt.end(), [](std::vector<cv::Point> a,
+            std::vector<cv::Point> b) {
+              return a.size() < b.size();
+            });
+
+          cv::Rect r = cv::boundingRect(cnt[std::distance(cnt.begin(), it)]);
+
+          cv_bridge::CvImage out_msg;
+          out_msg.header = raw_msg->header;
+          out_msg.encoding = raw_msg->encoding;
+          out_msg.image = cv_ptr->image(r);
+
+          auto out_image = std::make_unique<sensor_msgs::msg::Image>();
+          out_msg.toImageMsg(*out_image);
+
+          pub_.publish(std::move(out_image));
         }
-      explanation: Configures a publisher matched callback that creates or shuts down the input subscription
-        according to output demand.
+      explanation: Validates channel layout, selects the largest external nonzero contour, publishes its
+        bounding crop, and skips invalid or empty cases.
+  - id: M-8-PC-4
+    text: Static inspection shows the bounding crop of the selected region is published.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/crop_non_zero.cpp
+      locator: image_proc::CropNonZeroNode::imageCb
+      snippet: |-
+        void CropNonZeroNode::imageCb(const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg)
+        {
+          cv_bridge::CvImageConstPtr cv_ptr;
+          try {
+            cv_ptr = cv_bridge::toCvShare(raw_msg);
+          } catch (cv_bridge::Exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
+
+          // Check the number of channels
+          if (sensor_msgs::image_encodings::numChannels(raw_msg->encoding) != 1) {
+            RCLCPP_ERROR(
+              this->get_logger(), "Only grayscale image is acceptable, got [%s]",
+              raw_msg->encoding.c_str());
+            return;
+          }
+          std::vector<std::vector<cv::Point>> cnt;
+          cv::Mat1b m(raw_msg->width, raw_msg->height);
+
+          if (raw_msg->encoding == sensor_msgs::image_encodings::TYPE_8UC1) {
+            m = cv_ptr->image;
+          } else {
+            double minVal, maxVal;
+            cv::minMaxIdx(cv_ptr->image, &minVal, &maxVal, 0, 0, cv_ptr->image != 0.);
+            double ra = maxVal - minVal;
+
+            cv_ptr->image.convertTo(m, CV_8U, 255. / ra, -minVal * 255. / ra);
+          }
+
+          cv::findContours(m, cnt, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+          if (cnt.empty()) {
+            RCLCPP_WARN(
+              this->get_logger(),
+              "No non-zero pixels found in image; skipping crop.");
+            return;
+          }
+
+          // search the largest area
+          std::vector<std::vector<cv::Point>>::iterator it =
+            std::max_element(
+            cnt.begin(), cnt.end(), [](std::vector<cv::Point> a,
+            std::vector<cv::Point> b) {
+              return a.size() < b.size();
+            });
+
+          cv::Rect r = cv::boundingRect(cnt[std::distance(cnt.begin(), it)]);
+
+          cv_bridge::CvImage out_msg;
+          out_msg.header = raw_msg->header;
+          out_msg.encoding = raw_msg->encoding;
+          out_msg.image = cv_ptr->image(r);
+
+          auto out_image = std::make_unique<sensor_msgs::msg::Image>();
+          out_msg.toImageMsg(*out_image);
+
+          pub_.publish(std::move(out_image));
+        }
+      explanation: Validates channel layout, selects the largest external nonzero contour, publishes its
+        bounding crop, and skips invalid or empty cases.
+  - id: M-8-PC-5
+    text: Static inspection shows all-zero input returns without publishing a crop.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/crop_non_zero.cpp
+      locator: image_proc::CropNonZeroNode::imageCb
+      snippet: |-
+        void CropNonZeroNode::imageCb(const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg)
+        {
+          cv_bridge::CvImageConstPtr cv_ptr;
+          try {
+            cv_ptr = cv_bridge::toCvShare(raw_msg);
+          } catch (cv_bridge::Exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
+
+          // Check the number of channels
+          if (sensor_msgs::image_encodings::numChannels(raw_msg->encoding) != 1) {
+            RCLCPP_ERROR(
+              this->get_logger(), "Only grayscale image is acceptable, got [%s]",
+              raw_msg->encoding.c_str());
+            return;
+          }
+          std::vector<std::vector<cv::Point>> cnt;
+          cv::Mat1b m(raw_msg->width, raw_msg->height);
+
+          if (raw_msg->encoding == sensor_msgs::image_encodings::TYPE_8UC1) {
+            m = cv_ptr->image;
+          } else {
+            double minVal, maxVal;
+            cv::minMaxIdx(cv_ptr->image, &minVal, &maxVal, 0, 0, cv_ptr->image != 0.);
+            double ra = maxVal - minVal;
+
+            cv_ptr->image.convertTo(m, CV_8U, 255. / ra, -minVal * 255. / ra);
+          }
+
+          cv::findContours(m, cnt, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+          if (cnt.empty()) {
+            RCLCPP_WARN(
+              this->get_logger(),
+              "No non-zero pixels found in image; skipping crop.");
+            return;
+          }
+
+          // search the largest area
+          std::vector<std::vector<cv::Point>>::iterator it =
+            std::max_element(
+            cnt.begin(), cnt.end(), [](std::vector<cv::Point> a,
+            std::vector<cv::Point> b) {
+              return a.size() < b.size();
+            });
+
+          cv::Rect r = cv::boundingRect(cnt[std::distance(cnt.begin(), it)]);
+
+          cv_bridge::CvImage out_msg;
+          out_msg.header = raw_msg->header;
+          out_msg.encoding = raw_msg->encoding;
+          out_msg.image = cv_ptr->image(r);
+
+          auto out_image = std::make_unique<sensor_msgs::msg::Image>();
+          out_msg.toImageMsg(*out_image);
+
+          pub_.publish(std::move(out_image));
+        }
+      explanation: Validates channel layout, selects the largest external nonzero contour, publishes its
+        bounding crop, and skips invalid or empty cases.
 - id: M-9
   name: Calibrated image resizing
   description: Resize supports scale- or dimension-driven lazy resizing and calibration updates as required
@@ -1163,8 +2456,64 @@ metrics:
   - FR-9
   pass_criteria:
   - id: M-9-PC-1
-    text: Static inspection shows ResizeNode lazily chooses output dimensions from configured scale factors
-      or explicit dimensions, resizes the image, and scales camera calibration and ROI fields consistently.
+    text: Static inspection shows the camera subscription is managed lazily according to resized-output
+      demand.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/resize.cpp
+      locator: image_proc::ResizeNode::ResizeNode
+      snippet: |-
+        ResizeNode::ResizeNode(const rclcpp::NodeOptions & options)
+        : rclcpp::Node("ResizeNode", options)
+        {
+          // TransportHints does not actually declare the parameter
+          this->declare_parameter<std::string>("image_transport", "raw");
+
+          // For compressed topics to remap appropriately, we need to pass a
+          // fully expanded and remapped topic name to image_transport
+          auto node_base = this->get_node_base_interface();
+          image_topic_ = node_base->resolve_topic_or_service_name("image/image_raw", false);
+          std::string pub_topic = node_base->resolve_topic_or_service_name("resize/image_raw", false);
+
+          // Declare parameters before we setup any publishers or subscribers
+          interpolation_ = this->declare_parameter("interpolation", 1);
+          use_scale_ = this->declare_parameter("use_scale", true);
+          scale_height_ = this->declare_parameter("scale_height", 1.0);
+          scale_width_ = this->declare_parameter("scale_width", 1.0);
+          height_ = this->declare_parameter("height", -1);
+          width_ = this->declare_parameter("width", -1);
+
+          // Setup lazy subscriber using publisher connection callback
+          rclcpp::PublisherOptions pub_options;
+          pub_options.event_callbacks.matched_callback =
+            [this](rclcpp::MatchedInfo &)
+            {
+              if (pub_image_.getNumSubscribers() == 0) {
+                sub_image_.shutdown();
+              } else if (!sub_image_) {
+                // Create subscriber with QoS matched to subscribed topic publisher
+                auto qos_profile = getQosProfile(this, image_topic_);
+                image_transport::TransportHints hints(*this);
+                sub_image_ = image_transport::create_camera_subscription(
+                  *this, image_topic_,
+                  [this](
+                    const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
+                    imageCb(image_msg, info_msg);
+                  }, hints.getTransport(), qos_profile);
+              }
+            };
+
+          // Create publisher - allow overriding QoS settings (history, depth, reliability)
+          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
+          pub_image_ =
+            image_transport::create_camera_publisher(*this, pub_topic, rclcpp::SystemDefaultsQoS(),
+              pub_options);
+        }
+      explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+  - id: M-9-PC-2
+    text: Static inspection shows output dimensions can be resolved from configured scale factors.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -1253,58 +2602,276 @@ metrics:
             static_cast<const void *>(&(*info_msg)));
       explanation: Resolves dimensions, resizes the image, and scales intrinsic/projection and ROI calibration
         values.
+  - id: M-9-PC-3
+    text: Static inspection shows explicit output dimensions override scale-derived dimensions when configured.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/resize.cpp
-      locator: image_proc::ResizeNode::ResizeNode
+      locator: image_proc::ResizeNode::imageCb
       snippet: |-
-        ResizeNode::ResizeNode(const rclcpp::NodeOptions & options)
-        : rclcpp::Node("ResizeNode", options)
+        void ResizeNode::imageCb(
+          sensor_msgs::msg::Image::ConstSharedPtr image_msg,
+          sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
         {
-          // TransportHints does not actually declare the parameter
-          this->declare_parameter<std::string>("image_transport", "raw");
+          TRACEPOINT(
+            image_proc_resize_init,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
 
-          // For compressed topics to remap appropriately, we need to pass a
-          // fully expanded and remapped topic name to image_transport
-          auto node_base = this->get_node_base_interface();
-          image_topic_ = node_base->resolve_topic_or_service_name("image/image_raw", false);
-          std::string pub_topic = node_base->resolve_topic_or_service_name("resize/image_raw", false);
+          cv_bridge::CvImageConstPtr cv_ptr;
 
-          // Declare parameters before we setup any publishers or subscribers
-          interpolation_ = this->declare_parameter("interpolation", 1);
-          use_scale_ = this->declare_parameter("use_scale", true);
-          scale_height_ = this->declare_parameter("scale_height", 1.0);
-          scale_width_ = this->declare_parameter("scale_width", 1.0);
-          height_ = this->declare_parameter("height", -1);
-          width_ = this->declare_parameter("width", -1);
+          try {
+            cv_ptr = cv_bridge::toCvShare(image_msg);
+          } catch (cv_bridge::Exception & e) {
+            TRACEPOINT(
+              image_proc_resize_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
 
-          // Setup lazy subscriber using publisher connection callback
-          rclcpp::PublisherOptions pub_options;
-          pub_options.event_callbacks.matched_callback =
-            [this](rclcpp::MatchedInfo &)
-            {
-              if (pub_image_.getNumSubscribers() == 0) {
-                sub_image_.shutdown();
-              } else if (!sub_image_) {
-                // Create subscriber with QoS matched to subscribed topic publisher
-                auto qos_profile = getQosProfile(this, image_topic_);
-                image_transport::TransportHints hints(*this);
-                sub_image_ = image_transport::create_camera_subscription(
-                  *this, image_topic_,
-                  [this](
-                    const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
-                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
-                    imageCb(image_msg, info_msg);
-                  }, hints.getTransport(), qos_profile);
-              }
-            };
+          if (use_scale_) {
+            cv::resize(
+              cv_ptr->image, scaled_cv_.image, cv::Size(0, 0), scale_width_,
+              scale_height_, interpolation_);
+          } else {
+            int height = height_ == -1 ? image_msg->height : height_;
+            int width = width_ == -1 ? image_msg->width : width_;
+            cv::resize(cv_ptr->image, scaled_cv_.image, cv::Size(width, height), 0, 0, interpolation_);
+          }
 
-          // Create publisher - allow overriding QoS settings (history, depth, reliability)
-          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
-          pub_image_ =
-            image_transport::create_camera_publisher(*this, pub_topic, rclcpp::SystemDefaultsQoS(),
-              pub_options);
-        }
-      explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+          auto dst_info_msg = std::make_unique<sensor_msgs::msg::CameraInfo>(*info_msg);
+
+          double scale_y;
+          double scale_x;
+
+          if (use_scale_) {
+            scale_y = scale_height_;
+            scale_x = scale_width_;
+            dst_info_msg->height = static_cast<int>(info_msg->height * scale_height_);
+            dst_info_msg->width = static_cast<int>(info_msg->width * scale_width_);
+          } else {
+            scale_y = static_cast<double>(height_) / info_msg->height;
+            scale_x = static_cast<double>(width_) / info_msg->width;
+            dst_info_msg->height = height_;
+            dst_info_msg->width = width_;
+          }
+
+          dst_info_msg->k[0] = dst_info_msg->k[0] * scale_x;  // fx
+          dst_info_msg->k[2] = dst_info_msg->k[2] * scale_x;  // cx
+          dst_info_msg->k[4] = dst_info_msg->k[4] * scale_y;  // fy
+          dst_info_msg->k[5] = dst_info_msg->k[5] * scale_y;  // cy
+
+          dst_info_msg->p[0] = dst_info_msg->p[0] * scale_x;  // fx
+          dst_info_msg->p[2] = dst_info_msg->p[2] * scale_x;  // cx
+          dst_info_msg->p[3] = dst_info_msg->p[3] * scale_x;  // T
+          dst_info_msg->p[5] = dst_info_msg->p[5] * scale_y;  // fy
+          dst_info_msg->p[6] = dst_info_msg->p[6] * scale_y;  // cy
+
+          dst_info_msg->roi.x_offset = static_cast<int>(dst_info_msg->roi.x_offset * scale_x);
+          dst_info_msg->roi.y_offset = static_cast<int>(dst_info_msg->roi.y_offset * scale_y);
+          dst_info_msg->roi.width = static_cast<int>(dst_info_msg->roi.width * scale_x);
+          dst_info_msg->roi.height = static_cast<int>(dst_info_msg->roi.height * scale_y);
+
+          auto dst_image_msg = std::make_unique<sensor_msgs::msg::Image>();
+
+          scaled_cv_.header = image_msg->header;
+          scaled_cv_.encoding = image_msg->encoding;
+          scaled_cv_.toImageMsg(*dst_image_msg);
+
+          pub_image_.publish(std::move(dst_image_msg), std::move(dst_info_msg));
+
+          TRACEPOINT(
+            image_proc_resize_fini,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+      explanation: Resolves dimensions, resizes the image, and scales intrinsic/projection and ROI calibration
+        values.
+  - id: M-9-PC-4
+    text: Static inspection shows the input image is resized to the resolved dimensions.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/resize.cpp
+      locator: image_proc::ResizeNode::imageCb
+      snippet: |-
+        void ResizeNode::imageCb(
+          sensor_msgs::msg::Image::ConstSharedPtr image_msg,
+          sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
+        {
+          TRACEPOINT(
+            image_proc_resize_init,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+
+          cv_bridge::CvImageConstPtr cv_ptr;
+
+          try {
+            cv_ptr = cv_bridge::toCvShare(image_msg);
+          } catch (cv_bridge::Exception & e) {
+            TRACEPOINT(
+              image_proc_resize_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
+
+          if (use_scale_) {
+            cv::resize(
+              cv_ptr->image, scaled_cv_.image, cv::Size(0, 0), scale_width_,
+              scale_height_, interpolation_);
+          } else {
+            int height = height_ == -1 ? image_msg->height : height_;
+            int width = width_ == -1 ? image_msg->width : width_;
+            cv::resize(cv_ptr->image, scaled_cv_.image, cv::Size(width, height), 0, 0, interpolation_);
+          }
+
+          auto dst_info_msg = std::make_unique<sensor_msgs::msg::CameraInfo>(*info_msg);
+
+          double scale_y;
+          double scale_x;
+
+          if (use_scale_) {
+            scale_y = scale_height_;
+            scale_x = scale_width_;
+            dst_info_msg->height = static_cast<int>(info_msg->height * scale_height_);
+            dst_info_msg->width = static_cast<int>(info_msg->width * scale_width_);
+          } else {
+            scale_y = static_cast<double>(height_) / info_msg->height;
+            scale_x = static_cast<double>(width_) / info_msg->width;
+            dst_info_msg->height = height_;
+            dst_info_msg->width = width_;
+          }
+
+          dst_info_msg->k[0] = dst_info_msg->k[0] * scale_x;  // fx
+          dst_info_msg->k[2] = dst_info_msg->k[2] * scale_x;  // cx
+          dst_info_msg->k[4] = dst_info_msg->k[4] * scale_y;  // fy
+          dst_info_msg->k[5] = dst_info_msg->k[5] * scale_y;  // cy
+
+          dst_info_msg->p[0] = dst_info_msg->p[0] * scale_x;  // fx
+          dst_info_msg->p[2] = dst_info_msg->p[2] * scale_x;  // cx
+          dst_info_msg->p[3] = dst_info_msg->p[3] * scale_x;  // T
+          dst_info_msg->p[5] = dst_info_msg->p[5] * scale_y;  // fy
+          dst_info_msg->p[6] = dst_info_msg->p[6] * scale_y;  // cy
+
+          dst_info_msg->roi.x_offset = static_cast<int>(dst_info_msg->roi.x_offset * scale_x);
+          dst_info_msg->roi.y_offset = static_cast<int>(dst_info_msg->roi.y_offset * scale_y);
+          dst_info_msg->roi.width = static_cast<int>(dst_info_msg->roi.width * scale_x);
+          dst_info_msg->roi.height = static_cast<int>(dst_info_msg->roi.height * scale_y);
+
+          auto dst_image_msg = std::make_unique<sensor_msgs::msg::Image>();
+
+          scaled_cv_.header = image_msg->header;
+          scaled_cv_.encoding = image_msg->encoding;
+          scaled_cv_.toImageMsg(*dst_image_msg);
+
+          pub_image_.publish(std::move(dst_image_msg), std::move(dst_info_msg));
+
+          TRACEPOINT(
+            image_proc_resize_fini,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+      explanation: Resolves dimensions, resizes the image, and scales intrinsic/projection and ROI calibration
+        values.
+  - id: M-9-PC-5
+    text: Static inspection shows camera intrinsics, projection values, and ROI fields are scaled consistently.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/resize.cpp
+      locator: image_proc::ResizeNode::imageCb
+      snippet: |-
+        void ResizeNode::imageCb(
+          sensor_msgs::msg::Image::ConstSharedPtr image_msg,
+          sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
+        {
+          TRACEPOINT(
+            image_proc_resize_init,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+
+          cv_bridge::CvImageConstPtr cv_ptr;
+
+          try {
+            cv_ptr = cv_bridge::toCvShare(image_msg);
+          } catch (cv_bridge::Exception & e) {
+            TRACEPOINT(
+              image_proc_resize_fini,
+              static_cast<const void *>(this),
+              static_cast<const void *>(&(*image_msg)),
+              static_cast<const void *>(&(*info_msg)));
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
+
+          if (use_scale_) {
+            cv::resize(
+              cv_ptr->image, scaled_cv_.image, cv::Size(0, 0), scale_width_,
+              scale_height_, interpolation_);
+          } else {
+            int height = height_ == -1 ? image_msg->height : height_;
+            int width = width_ == -1 ? image_msg->width : width_;
+            cv::resize(cv_ptr->image, scaled_cv_.image, cv::Size(width, height), 0, 0, interpolation_);
+          }
+
+          auto dst_info_msg = std::make_unique<sensor_msgs::msg::CameraInfo>(*info_msg);
+
+          double scale_y;
+          double scale_x;
+
+          if (use_scale_) {
+            scale_y = scale_height_;
+            scale_x = scale_width_;
+            dst_info_msg->height = static_cast<int>(info_msg->height * scale_height_);
+            dst_info_msg->width = static_cast<int>(info_msg->width * scale_width_);
+          } else {
+            scale_y = static_cast<double>(height_) / info_msg->height;
+            scale_x = static_cast<double>(width_) / info_msg->width;
+            dst_info_msg->height = height_;
+            dst_info_msg->width = width_;
+          }
+
+          dst_info_msg->k[0] = dst_info_msg->k[0] * scale_x;  // fx
+          dst_info_msg->k[2] = dst_info_msg->k[2] * scale_x;  // cx
+          dst_info_msg->k[4] = dst_info_msg->k[4] * scale_y;  // fy
+          dst_info_msg->k[5] = dst_info_msg->k[5] * scale_y;  // cy
+
+          dst_info_msg->p[0] = dst_info_msg->p[0] * scale_x;  // fx
+          dst_info_msg->p[2] = dst_info_msg->p[2] * scale_x;  // cx
+          dst_info_msg->p[3] = dst_info_msg->p[3] * scale_x;  // T
+          dst_info_msg->p[5] = dst_info_msg->p[5] * scale_y;  // fy
+          dst_info_msg->p[6] = dst_info_msg->p[6] * scale_y;  // cy
+
+          dst_info_msg->roi.x_offset = static_cast<int>(dst_info_msg->roi.x_offset * scale_x);
+          dst_info_msg->roi.y_offset = static_cast<int>(dst_info_msg->roi.y_offset * scale_y);
+          dst_info_msg->roi.width = static_cast<int>(dst_info_msg->roi.width * scale_x);
+          dst_info_msg->roi.height = static_cast<int>(dst_info_msg->roi.height * scale_y);
+
+          auto dst_image_msg = std::make_unique<sensor_msgs::msg::Image>();
+
+          scaled_cv_.header = image_msg->header;
+          scaled_cv_.encoding = image_msg->encoding;
+          scaled_cv_.toImageMsg(*dst_image_msg);
+
+          pub_image_.publish(std::move(dst_image_msg), std::move(dst_info_msg));
+
+          TRACEPOINT(
+            image_proc_resize_fini,
+            static_cast<const void *>(this),
+            static_cast<const void *>(&(*image_msg)),
+            static_cast<const void *>(&(*info_msg)));
+      explanation: Resolves dimensions, resizes the image, and scales intrinsic/projection and ROI calibration
+        values.
 - id: M-10
   name: ArUco marker pose tracking
   description: TrackMarker detects the configured ArUco marker and publishes its pose as required by FR-10.
@@ -1312,67 +2879,9 @@ metrics:
   - FR-10
   pass_criteria:
   - id: M-10-PC-1
-    text: Static inspection shows TrackMarkerNode subscribes lazily and uses configured dictionary, marker
-      ID, and marker size to detect an ArUco marker in camera images, estimate its calibrated pose, and
-      publish geometry_msgs/msg/PoseStamped.
+    text: Static inspection shows dictionary, marker ID, and marker size configuration is declared.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: image_proc::TrackMarkerNode::imageCb
-      snippet: |-
-        void TrackMarkerNode::imageCb(
-          const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
-          const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg)
-        {
-          cv_bridge::CvImageConstPtr cv_ptr;
-          try {
-            cv_ptr = cv_bridge::toCvShare(image_msg);
-          } catch (cv_bridge::Exception & e) {
-            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
-            return;
-          }
-
-          std::vector<int> marker_ids;
-          std::vector<std::vector<cv::Point2f>> marker_corners;
-          cv::aruco::detectMarkers(cv_ptr->image, dictionary_, marker_corners, marker_ids);
-
-          for (size_t i = 0; i < marker_ids.size(); ++i) {
-            if (marker_ids[i] == marker_id_) {
-              // This is our desired marker
-              std::vector<std::vector<cv::Point2f>> corners;
-              corners.push_back(marker_corners[i]);
-
-              // Copy the matrices since they are const and OpenCV functions are not
-              auto k = info_msg->k;
-              auto d = info_msg->d;
-
-              // Get the camera info
-              cv::Mat intrinsics(3, 3, CV_64FC1, reinterpret_cast<void *>(k.data()));
-              cv::Mat dist_coeffs(info_msg->d.size(), 1, CV_64FC1, reinterpret_cast<void *>(d.data()));
-
-              // Estimate pose
-              std::vector<cv::Vec3d> rvecs, tvecs;
-              cv::aruco::estimatePoseSingleMarkers(
-                corners, marker_size_, intrinsics, dist_coeffs, rvecs, tvecs);
-
-              // Publish pose of marker
-              geometry_msgs::msg::PoseStamped pose;
-              pose.header = image_msg->header;
-              // Fill in pose
-              pose.pose.position.x = tvecs[0][0];
-              pose.pose.position.y = tvecs[0][1];
-              pose.pose.position.z = tvecs[0][2];
-              // Convert angle-axis to quaternion
-              const tf2::Vector3 rvec(rvecs[0][0], rvecs[0][1], rvecs[0][2]);
-              const tf2::Quaternion q(rvec.normalized(), rvec.length());
-              tf2::convert(q, pose.pose.orientation);
-              pub_->publish(pose);
-            }
-          }
-        }
-      explanation: Detects configured marker IDs, estimates pose from camera calibration and marker size,
-        and publishes the pose.
     - kind: source_code
       path: src/track_marker.cpp
       locator: image_proc::TrackMarkerNode::TrackMarkerNode
@@ -1435,3 +2944,190 @@ metrics:
         }
       explanation: Declares marker configuration and manages the lazy synchronized camera subscription
         from output demand.
+  - id: M-10-PC-2
+    text: Static inspection shows synchronized camera subscription is managed lazily according to pose-output
+      demand.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/track_marker.cpp
+      locator: image_proc::TrackMarkerNode::TrackMarkerNode
+      snippet: |-
+        TrackMarkerNode::TrackMarkerNode(const rclcpp::NodeOptions & options)
+        : rclcpp::Node("TrackMarkerNode", options)
+        {
+          // TransportHints does not actually declare the parameter
+          this->declare_parameter<std::string>("image_transport", "raw");
+
+          // For compressed topics to remap appropriately, we need to pass a
+          // fully expanded and remapped topic name to image_transport
+          auto node_base = this->get_node_base_interface();
+          image_topic_ = node_base->resolve_topic_or_service_name("image", false);
+
+          // Declare parameters before we setup any publishers or subscribers
+          marker_id_ = this->declare_parameter("marker_id", 0);
+          marker_size_ = this->declare_parameter("marker_size", 0.05);
+          // Default dictionary is cv::aruco::DICT_6X6_250
+          int dict_id = this->declare_parameter("dictionary", 10);
+
+          #if CV_VERSION_MAJOR > 4 || CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 7
+          detector_params_ = cv::makePtr<cv::aruco::DetectorParameters>();
+          #else
+          detector_params_ = cv::aruco::DetectorParameters::create();
+          #endif
+
+          #if CV_VERSION_MAJOR > 4 || CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 7
+          dictionary_ = cv::makePtr<cv::aruco::Dictionary>(cv::aruco::getPredefinedDictionary(dict_id));
+          #else
+          dictionary_ = cv::aruco::getPredefinedDictionary(dict_id);
+          #endif
+
+          // Setup lazy subscriber using publisher connection callback
+          rclcpp::PublisherOptions pub_options;
+          pub_options.event_callbacks.matched_callback =
+            [this](rclcpp::MatchedInfo &)
+            {
+              if (pub_->get_subscription_count() == 0) {
+                sub_camera_.shutdown();
+              } else if (!sub_camera_) {
+                // Create subscriber with QoS matched to subscribed topic publisher
+                auto qos_profile = getQosProfile(this, image_topic_);
+                image_transport::TransportHints hints(*this);
+                sub_camera_ = image_transport::create_camera_subscription(
+                  *this, image_topic_,
+                  [this](
+                    const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
+                    imageCb(image_msg, info_msg);
+                  },
+                  hints.getTransport(), qos_profile);
+              }
+            };
+
+          // Create publisher - allow overriding QoS settings (history, depth, reliability)
+          pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
+          pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
+            "tracked_pose", 10, pub_options);
+        }
+      explanation: Declares marker configuration and manages the lazy synchronized camera subscription
+        from output demand.
+  - id: M-10-PC-3
+    text: Static inspection shows the configured ArUco marker is detected and its calibrated pose is estimated.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/track_marker.cpp
+      locator: image_proc::TrackMarkerNode::imageCb
+      snippet: |-
+        void TrackMarkerNode::imageCb(
+          const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+          const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg)
+        {
+          cv_bridge::CvImageConstPtr cv_ptr;
+          try {
+            cv_ptr = cv_bridge::toCvShare(image_msg);
+          } catch (cv_bridge::Exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
+
+          std::vector<int> marker_ids;
+          std::vector<std::vector<cv::Point2f>> marker_corners;
+          cv::aruco::detectMarkers(cv_ptr->image, dictionary_, marker_corners, marker_ids);
+
+          for (size_t i = 0; i < marker_ids.size(); ++i) {
+            if (marker_ids[i] == marker_id_) {
+              // This is our desired marker
+              std::vector<std::vector<cv::Point2f>> corners;
+              corners.push_back(marker_corners[i]);
+
+              // Copy the matrices since they are const and OpenCV functions are not
+              auto k = info_msg->k;
+              auto d = info_msg->d;
+
+              // Get the camera info
+              cv::Mat intrinsics(3, 3, CV_64FC1, reinterpret_cast<void *>(k.data()));
+              cv::Mat dist_coeffs(info_msg->d.size(), 1, CV_64FC1, reinterpret_cast<void *>(d.data()));
+
+              // Estimate pose
+              std::vector<cv::Vec3d> rvecs, tvecs;
+              cv::aruco::estimatePoseSingleMarkers(
+                corners, marker_size_, intrinsics, dist_coeffs, rvecs, tvecs);
+
+              // Publish pose of marker
+              geometry_msgs::msg::PoseStamped pose;
+              pose.header = image_msg->header;
+              // Fill in pose
+              pose.pose.position.x = tvecs[0][0];
+              pose.pose.position.y = tvecs[0][1];
+              pose.pose.position.z = tvecs[0][2];
+              // Convert angle-axis to quaternion
+              const tf2::Vector3 rvec(rvecs[0][0], rvecs[0][1], rvecs[0][2]);
+              const tf2::Quaternion q(rvec.normalized(), rvec.length());
+              tf2::convert(q, pose.pose.orientation);
+              pub_->publish(pose);
+            }
+          }
+        }
+      explanation: Detects configured marker IDs, estimates pose from camera calibration and marker size,
+        and publishes the pose.
+  - id: M-10-PC-4
+    text: Static inspection shows the estimated marker pose is published as geometry_msgs/msg/PoseStamped.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/track_marker.cpp
+      locator: image_proc::TrackMarkerNode::imageCb
+      snippet: |-
+        void TrackMarkerNode::imageCb(
+          const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+          const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg)
+        {
+          cv_bridge::CvImageConstPtr cv_ptr;
+          try {
+            cv_ptr = cv_bridge::toCvShare(image_msg);
+          } catch (cv_bridge::Exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+            return;
+          }
+
+          std::vector<int> marker_ids;
+          std::vector<std::vector<cv::Point2f>> marker_corners;
+          cv::aruco::detectMarkers(cv_ptr->image, dictionary_, marker_corners, marker_ids);
+
+          for (size_t i = 0; i < marker_ids.size(); ++i) {
+            if (marker_ids[i] == marker_id_) {
+              // This is our desired marker
+              std::vector<std::vector<cv::Point2f>> corners;
+              corners.push_back(marker_corners[i]);
+
+              // Copy the matrices since they are const and OpenCV functions are not
+              auto k = info_msg->k;
+              auto d = info_msg->d;
+
+              // Get the camera info
+              cv::Mat intrinsics(3, 3, CV_64FC1, reinterpret_cast<void *>(k.data()));
+              cv::Mat dist_coeffs(info_msg->d.size(), 1, CV_64FC1, reinterpret_cast<void *>(d.data()));
+
+              // Estimate pose
+              std::vector<cv::Vec3d> rvecs, tvecs;
+              cv::aruco::estimatePoseSingleMarkers(
+                corners, marker_size_, intrinsics, dist_coeffs, rvecs, tvecs);
+
+              // Publish pose of marker
+              geometry_msgs::msg::PoseStamped pose;
+              pose.header = image_msg->header;
+              // Fill in pose
+              pose.pose.position.x = tvecs[0][0];
+              pose.pose.position.y = tvecs[0][1];
+              pose.pose.position.z = tvecs[0][2];
+              // Convert angle-axis to quaternion
+              const tf2::Vector3 rvec(rvecs[0][0], rvecs[0][1], rvecs[0][2]);
+              const tf2::Quaternion q(rvec.normalized(), rvec.length());
+              tf2::convert(q, pose.pose.orientation);
+              pub_->publish(pose);
+            }
+          }
+        }
+      explanation: Detects configured marker IDs, estimates pose from camera calibration and marker size,
+        and publishes the pose.

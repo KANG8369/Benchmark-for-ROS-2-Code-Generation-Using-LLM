@@ -13,9 +13,105 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows cam2image uses a timer to publish sensor_msgs/msg/Image messages from
-      either a camera frame or the synthetic burger renderer, with a current timestamp and configured
-      frame identifier.
+    text: Static inspection shows cam2image uses a timer-driven sensor_msgs/msg/Image publisher.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::timerCallback
+      snippet: |2-
+          void timerCallback()
+          {
+            cv::Mat frame;
+
+            // Initialize a shared pointer to an Image message.
+            // Get the frame from the video capture.
+            if (burger_mode_) {
+              frame = burger_cap.render_burger(width_, height_);
+            } else {
+              cap >> frame;
+            }
+
+            // If no frame was grabbed, return early
+            if (frame.empty()) {
+              return;
+            }
+
+            // Conditionally flip the image
+            if (is_flipped_) {
+              cv::flip(frame, frame, 1);
+            }
+
+            // Conditionally show image
+            if (show_camera_) {
+              // Show the image in a window called "cam2image".
+              cv::imshow("cam2image", frame);
+              // Draw the image to the screen and wait 1 millisecond.
+              cv::waitKey(1);
+            }
+
+            std_msgs::msg::Header header;
+            header.frame_id = frame_id_;
+            header.stamp = this->now();
+            image_tools::ROSCvMatContainer container(frame, header);
+
+            // Publish the image message and increment the publish_number_.
+            RCLCPP_INFO(get_logger(), "Publishing image #%zd", publish_number_++);
+            pub_->publish(std::move(container));
+          }
+      explanation: Selects camera or synthetic input, constructs a ROS-compatible image container, stamps
+        it, and publishes it.
+  - id: M-1-PC-2
+    text: Static inspection shows camera frames are used as the image source when camera input is enabled.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::timerCallback
+      snippet: |2-
+          void timerCallback()
+          {
+            cv::Mat frame;
+
+            // Initialize a shared pointer to an Image message.
+            // Get the frame from the video capture.
+            if (burger_mode_) {
+              frame = burger_cap.render_burger(width_, height_);
+            } else {
+              cap >> frame;
+            }
+
+            // If no frame was grabbed, return early
+            if (frame.empty()) {
+              return;
+            }
+
+            // Conditionally flip the image
+            if (is_flipped_) {
+              cv::flip(frame, frame, 1);
+            }
+
+            // Conditionally show image
+            if (show_camera_) {
+              // Show the image in a window called "cam2image".
+              cv::imshow("cam2image", frame);
+              // Draw the image to the screen and wait 1 millisecond.
+              cv::waitKey(1);
+            }
+
+            std_msgs::msg::Header header;
+            header.frame_id = frame_id_;
+            header.stamp = this->now();
+            image_tools::ROSCvMatContainer container(frame, header);
+
+            // Publish the image message and increment the publish_number_.
+            RCLCPP_INFO(get_logger(), "Publishing image #%zd", publish_number_++);
+            pub_->publish(std::move(container));
+          }
+      explanation: Selects camera or synthetic input, constructs a ROS-compatible image container, stamps
+        it, and publishes it.
+  - id: M-1-PC-3
+    text: Static inspection shows the synthetic burger renderer supplies images when camera input is disabled.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -132,6 +228,104 @@ metrics:
           return burger_buf;
         }
       explanation: Generates the synthetic burger image used when camera input is disabled.
+  - id: M-1-PC-4
+    text: Static inspection shows published images receive a current timestamp.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::timerCallback
+      snippet: |2-
+          void timerCallback()
+          {
+            cv::Mat frame;
+
+            // Initialize a shared pointer to an Image message.
+            // Get the frame from the video capture.
+            if (burger_mode_) {
+              frame = burger_cap.render_burger(width_, height_);
+            } else {
+              cap >> frame;
+            }
+
+            // If no frame was grabbed, return early
+            if (frame.empty()) {
+              return;
+            }
+
+            // Conditionally flip the image
+            if (is_flipped_) {
+              cv::flip(frame, frame, 1);
+            }
+
+            // Conditionally show image
+            if (show_camera_) {
+              // Show the image in a window called "cam2image".
+              cv::imshow("cam2image", frame);
+              // Draw the image to the screen and wait 1 millisecond.
+              cv::waitKey(1);
+            }
+
+            std_msgs::msg::Header header;
+            header.frame_id = frame_id_;
+            header.stamp = this->now();
+            image_tools::ROSCvMatContainer container(frame, header);
+
+            // Publish the image message and increment the publish_number_.
+            RCLCPP_INFO(get_logger(), "Publishing image #%zd", publish_number_++);
+            pub_->publish(std::move(container));
+          }
+      explanation: Selects camera or synthetic input, constructs a ROS-compatible image container, stamps
+        it, and publishes it.
+  - id: M-1-PC-5
+    text: Static inspection shows published images use the configured frame identifier.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::timerCallback
+      snippet: |2-
+          void timerCallback()
+          {
+            cv::Mat frame;
+
+            // Initialize a shared pointer to an Image message.
+            // Get the frame from the video capture.
+            if (burger_mode_) {
+              frame = burger_cap.render_burger(width_, height_);
+            } else {
+              cap >> frame;
+            }
+
+            // If no frame was grabbed, return early
+            if (frame.empty()) {
+              return;
+            }
+
+            // Conditionally flip the image
+            if (is_flipped_) {
+              cv::flip(frame, frame, 1);
+            }
+
+            // Conditionally show image
+            if (show_camera_) {
+              // Show the image in a window called "cam2image".
+              cv::imshow("cam2image", frame);
+              // Draw the image to the screen and wait 1 millisecond.
+              cv::waitKey(1);
+            }
+
+            std_msgs::msg::Header header;
+            header.frame_id = frame_id_;
+            header.stamp = this->now();
+            image_tools::ROSCvMatContainer container(frame, header);
+
+            // Publish the image message and increment the publish_number_.
+            RCLCPP_INFO(get_logger(), "Publishing image #%zd", publish_number_++);
+            pub_->publish(std::move(container));
+          }
+      explanation: Selects camera or synthetic input, constructs a ROS-compatible image container, stamps
+        it, and publishes it.
 - id: M-2
   name: Runtime horizontal flip
   description: A true Bool command on flip_image enables horizontal flipping as required by FR-2.
@@ -139,8 +333,7 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows cam2image subscribes to flip_image using std_msgs/msg/Bool and horizontally
-      flips subsequent images when the received value is true.
+    text: Static inspection shows cam2image subscribes to flip_image using std_msgs/msg/Bool.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -198,6 +391,69 @@ metrics:
           }
       explanation: Creates the Bool subscription and stores each command in the flip state used by the
         image-processing path.
+  - id: M-2-PC-2
+    text: Static inspection shows received Bool values are stored as the current horizontal-flip state.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::initialize
+      snippet: |2-
+          void initialize()
+          {
+            auto qos = rclcpp::QoS(
+              rclcpp::QoSInitialization(
+                // The history policy determines how messages are saved until taken by
+                // the reader.
+                // KEEP_ALL saves all messages until they are taken.
+                // KEEP_LAST enforces a limit on the number of messages that are saved,
+                // specified by the "depth" parameter.
+                history_policy_,
+                // Depth represents how many messages to store in history when the
+                // history policy is KEEP_LAST.
+                depth_
+            ));
+            // The reliability policy can be reliable, meaning that the underlying transport layer will try
+            // ensure that every message gets received in order, or best effort, meaning that the transport
+            // makes no guarantees about the order or reliability of delivery.
+            qos.reliability(reliability_policy_);
+            pub_ = create_publisher<image_tools::ROSCvMatContainer>("image", qos);
+
+            // Subscribe to a message that will toggle flipping or not flipping, and manage the state in a
+            // callback
+            auto callback = [this](std_msgs::msg::Bool::ConstSharedPtr msg) -> void
+              {
+                this->is_flipped_ = msg->data;
+                RCLCPP_INFO(this->get_logger(), "Set flip mode to: %s", this->is_flipped_ ? "on" : "off");
+              };
+            // Set the QoS profile for the subscription to the flip message.
+            sub_ = create_subscription<std_msgs::msg::Bool>(
+              "flip_image", rclcpp::SensorDataQoS(), callback);
+
+            if (!burger_mode_) {
+              // Initialize OpenCV video capture stream.
+              cap.open(device_id_);
+
+              // Set the width and height based on command line arguments.
+              cap.set(cv::CAP_PROP_FRAME_WIDTH, static_cast<double>(width_));
+              cap.set(cv::CAP_PROP_FRAME_HEIGHT, static_cast<double>(height_));
+              if (!cap.isOpened()) {
+                RCLCPP_ERROR(this->get_logger(), "Could not open video stream");
+                throw std::runtime_error("Could not open video stream");
+              }
+            }
+
+            // Start main timer loop
+            timer_ = this->create_wall_timer(
+              std::chrono::milliseconds(static_cast<int>(1000.0 / freq_)),
+              std::bind(&Cam2Image::timerCallback, this));
+          }
+      explanation: Creates the Bool subscription and stores each command in the flip state used by the
+        image-processing path.
+  - id: M-2-PC-3
+    text: Static inspection shows subsequent images are flipped horizontally when that state is true.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/cam2image.cpp
       locator: Cam2Image::timerCallback
@@ -249,8 +505,55 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows the timer callback checks camera capture success or frame validity and
-      returns without publishing when a frame cannot be obtained.
+    text: Static inspection shows camera capture success and frame validity are checked before image construction.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::timerCallback
+      snippet: |2-
+          void timerCallback()
+          {
+            cv::Mat frame;
+
+            // Initialize a shared pointer to an Image message.
+            // Get the frame from the video capture.
+            if (burger_mode_) {
+              frame = burger_cap.render_burger(width_, height_);
+            } else {
+              cap >> frame;
+            }
+
+            // If no frame was grabbed, return early
+            if (frame.empty()) {
+              return;
+            }
+
+            // Conditionally flip the image
+            if (is_flipped_) {
+              cv::flip(frame, frame, 1);
+            }
+
+            // Conditionally show image
+            if (show_camera_) {
+              // Show the image in a window called "cam2image".
+              cv::imshow("cam2image", frame);
+              // Draw the image to the screen and wait 1 millisecond.
+              cv::waitKey(1);
+            }
+
+            std_msgs::msg::Header header;
+            header.frame_id = frame_id_;
+            header.stamp = this->now();
+            image_tools::ROSCvMatContainer container(frame, header);
+
+            // Publish the image message and increment the publish_number_.
+            RCLCPP_INFO(get_logger(), "Publishing image #%zd", publish_number_++);
+            pub_->publish(std::move(container));
+          }
+      explanation: Guards image construction and publication when camera capture does not provide a frame.
+  - id: M-3-PC-2
+    text: Static inspection shows the callback returns without publishing when no valid frame is available.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -305,8 +608,7 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows explicit error or exception paths for camera-open failure, invalid QoS
-      reliability or history settings, and synthetic burger dimensions that are too small.
+    text: Static inspection shows camera initialization reports an explicit camera-open failure.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -363,6 +665,10 @@ metrics:
               std::bind(&Cam2Image::timerCallback, this));
           }
       explanation: Validates camera opening and initializes configured publishing resources.
+  - id: M-4-PC-2
+    text: Static inspection shows unsupported QoS reliability settings are rejected explicitly.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/cam2image.cpp
       locator: Cam2Image::parse_parameters
@@ -416,6 +722,67 @@ metrics:
             frame_id_ = this->declare_parameter("frame_id", "camera_frame");
           }
       explanation: Validates QoS-related parameter values.
+  - id: M-4-PC-3
+    text: Static inspection shows unsupported QoS history settings are rejected explicitly.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/cam2image.cpp
+      locator: Cam2Image::parse_parameters
+      snippet: |2-
+          void parse_parameters()
+          {
+            // Parse 'reliability' parameter
+            rcl_interfaces::msg::ParameterDescriptor reliability_desc;
+            reliability_desc.description = "Reliability QoS setting for the image publisher";
+            reliability_desc.additional_constraints = "Must be one of: ";
+            for (auto entry : name_to_reliability_policy_map) {
+              reliability_desc.additional_constraints += entry.first + " ";
+            }
+            const std::string reliability_param = this->declare_parameter(
+              "reliability", "reliable", reliability_desc);
+            auto reliability = name_to_reliability_policy_map.find(reliability_param);
+            if (reliability == name_to_reliability_policy_map.end()) {
+              std::ostringstream oss;
+              oss << "Invalid QoS reliability setting '" << reliability_param << "'";
+              throw std::runtime_error(oss.str());
+            }
+            reliability_policy_ = reliability->second;
+
+            // Parse 'history' parameter
+            rcl_interfaces::msg::ParameterDescriptor history_desc;
+            history_desc.description = "History QoS setting for the image publisher";
+            history_desc.additional_constraints = "Must be one of: ";
+            for (auto entry : name_to_history_policy_map) {
+              history_desc.additional_constraints += entry.first + " ";
+            }
+            const std::string history_param = this->declare_parameter(
+              "history", name_to_history_policy_map.begin()->first, history_desc);
+            auto history = name_to_history_policy_map.find(history_param);
+            if (history == name_to_history_policy_map.end()) {
+              std::ostringstream oss;
+              oss << "Invalid QoS history setting '" << history_param << "'";
+              throw std::runtime_error(oss.str());
+            }
+            history_policy_ = history->second;
+
+            // Declare and get remaining parameters
+            depth_ = this->declare_parameter("depth", 10);
+            freq_ = this->declare_parameter("frequency", 30.0);
+            show_camera_ = this->declare_parameter("show_camera", false);
+            device_id_ = static_cast<int>(this->declare_parameter("device_id", 0));
+            width_ = this->declare_parameter("width", 320);
+            height_ = this->declare_parameter("height", 240);
+            rcl_interfaces::msg::ParameterDescriptor burger_mode_desc;
+            burger_mode_desc.description = "Produce images of burgers rather than connecting to a camera";
+            burger_mode_ = this->declare_parameter("burger_mode", false, burger_mode_desc);
+            frame_id_ = this->declare_parameter("frame_id", "camera_frame");
+          }
+      explanation: Validates QoS-related parameter values.
+  - id: M-4-PC-4
+    text: Static inspection shows synthetic burger dimensions that are too small raise an explicit error.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/burger.cpp
       locator: Burger::render_burger
@@ -493,8 +860,7 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows showimage creates an image subscription using validated QoS settings,
-      converts supported images, and displays them only when display is enabled.
+    text: Static inspection shows showimage creates an image subscription using the configured QoS.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -534,32 +900,10 @@ metrics:
             }
           }
       explanation: Creates the configured image subscription.
-    - kind: source_code
-      path: src/showimage.cpp
-      locator: ShowImage::process_image
-      snippet: |2-
-          void process_image(
-            const image_tools::ROSCvMatContainer & container, bool show_image, rclcpp::Logger logger)
-          {
-            RCLCPP_INFO(logger, "Received image #%s", container.header().frame_id.c_str());
-
-            if (show_image) {
-              cv::Mat frame = container.cv_mat();
-
-              if (frame.type() == CV_8UC3 /* rgb8 */) {
-                cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
-              } else if (frame.type() == CV_8UC2) {
-                container.is_bigendian() ? cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_UYVY) :
-                cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_YUYV);
-              }
-
-              // Show the image in a window
-              cv::imshow(window_name_, frame);
-              // Draw the screen and wait for 1 millisecond.
-              cv::waitKey(1);
-            }
-          }
-      explanation: Converts incoming image data and conditionally displays it.
+  - id: M-5-PC-2
+    text: Static inspection shows requested QoS reliability and history settings are validated.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/showimage.cpp
       locator: ShowImage::parse_parameters
@@ -606,6 +950,66 @@ metrics:
             window_name_ = this->declare_parameter("window_name", "");
           }
       explanation: Parses and validates the requested QoS settings.
+  - id: M-5-PC-3
+    text: Static inspection shows supported incoming image data is converted for display.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/showimage.cpp
+      locator: ShowImage::process_image
+      snippet: |2-
+          void process_image(
+            const image_tools::ROSCvMatContainer & container, bool show_image, rclcpp::Logger logger)
+          {
+            RCLCPP_INFO(logger, "Received image #%s", container.header().frame_id.c_str());
+
+            if (show_image) {
+              cv::Mat frame = container.cv_mat();
+
+              if (frame.type() == CV_8UC3 /* rgb8 */) {
+                cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
+              } else if (frame.type() == CV_8UC2) {
+                container.is_bigendian() ? cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_UYVY) :
+                cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_YUYV);
+              }
+
+              // Show the image in a window
+              cv::imshow(window_name_, frame);
+              // Draw the screen and wait for 1 millisecond.
+              cv::waitKey(1);
+            }
+          }
+      explanation: Converts incoming image data and conditionally displays it.
+  - id: M-5-PC-4
+    text: Static inspection shows image display occurs only when display output is enabled.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: src/showimage.cpp
+      locator: ShowImage::process_image
+      snippet: |2-
+          void process_image(
+            const image_tools::ROSCvMatContainer & container, bool show_image, rclcpp::Logger logger)
+          {
+            RCLCPP_INFO(logger, "Received image #%s", container.header().frame_id.c_str());
+
+            if (show_image) {
+              cv::Mat frame = container.cv_mat();
+
+              if (frame.type() == CV_8UC3 /* rgb8 */) {
+                cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
+              } else if (frame.type() == CV_8UC2) {
+                container.is_bigendian() ? cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_UYVY) :
+                cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_YUYV);
+              }
+
+              // Show the image in a window
+              cv::imshow(window_name_, frame);
+              // Draw the screen and wait for 1 millisecond.
+              cv::waitKey(1);
+            }
+          }
+      explanation: Converts incoming image data and conditionally displays it.
 - id: M-6
   name: ROS/OpenCV type adaptation
   description: The exported ROSCvMatContainer provides the header-preserving adaptation and ownership
@@ -614,9 +1018,7 @@ metrics:
   - FR-6
   pass_criteria:
   - id: M-6-PC-1
-    text: Static inspection shows a public ROSCvMatContainer and rclcpp type adapter that convert between
-      cv::Mat and sensor_msgs/msg/Image while preserving headers and supporting owned, referenced, and
-      copied matrix access.
+    text: Static inspection shows a public ROSCvMatContainer and rclcpp type adapter are declared.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -705,6 +1107,101 @@ metrics:
           IMAGE_TOOLS_PUBLIC
       explanation: Declares ownership-aware constructors, matrix accessors, copy operations, and the exported
         type adapter.
+  - id: M-6-PC-2
+    text: Static inspection shows owned, referenced, and copied matrix access modes are exposed.
+    evaluation: static
+    reference_evidence:
+    - kind: source_code
+      path: include/image_tools/cv_mat_sensor_msgs_image_type_adapter.hpp
+      locator: image_tools::ROSCvMatContainer
+      snippet: |2-
+          IMAGE_TOOLS_PUBLIC
+          explicit ROSCvMatContainer(std::unique_ptr<sensor_msgs::msg::Image> unique_sensor_msgs_image);
+
+          /// Store an owning pointer to a sensor_msg::msg::Image, and create a cv::Mat that references it.
+          IMAGE_TOOLS_PUBLIC
+          explicit ROSCvMatContainer(std::shared_ptr<sensor_msgs::msg::Image> shared_sensor_msgs_image);
+
+          /// Shallow copy the given cv::Mat into this class, but do not own the data directly.
+          IMAGE_TOOLS_PUBLIC
+          ROSCvMatContainer(
+            const cv::Mat & mat_frame,
+            const std_msgs::msg::Header & header,
+            bool is_bigendian = is_bigendian_system);
+
+          /// Move the given cv::Mat into this class.
+          IMAGE_TOOLS_PUBLIC
+          ROSCvMatContainer(
+            cv::Mat && mat_frame,
+            const std_msgs::msg::Header & header,
+            bool is_bigendian = is_bigendian_system);
+
+          /// Copy the sensor_msgs::msg::Image into this contain and create a cv::Mat that references it.
+          IMAGE_TOOLS_PUBLIC
+          explicit ROSCvMatContainer(const sensor_msgs::msg::Image & sensor_msgs_image);
+
+          /// Return true if this class owns the data the cv_mat references.
+          /**
+           * Note that this does not check if the cv::Mat owns its own data, only if
+           * this class owns a sensor_msgs::msg::Image that the cv::Mat references.
+           */
+          IMAGE_TOOLS_PUBLIC
+          bool
+          is_owning() const;
+
+          /// Const access the cv::Mat in this class.
+          IMAGE_TOOLS_PUBLIC
+          const cv::Mat &
+          cv_mat() const;
+
+          /// Get a shallow copy of the cv::Mat that is in this class.
+          /**
+           * Note that if you want to let this container go out of scope you should
+           * make a deep copy with cv::Mat::clone() beforehand.
+           */
+          IMAGE_TOOLS_PUBLIC
+          cv::Mat
+          cv_mat();
+
+          /// Const access the ROS Header.
+          IMAGE_TOOLS_PUBLIC
+          const std_msgs::msg::Header &
+          header() const;
+
+          /// Access the ROS Header.
+          IMAGE_TOOLS_PUBLIC
+          std_msgs::msg::Header &
+          header();
+
+          /// Get shared const pointer to the sensor_msgs::msg::Image if available, otherwise nullptr.
+          IMAGE_TOOLS_PUBLIC
+          std::shared_ptr<const sensor_msgs::msg::Image>
+          get_sensor_msgs_msg_image_pointer() const;
+
+          /// Get copy as a unique pointer to the sensor_msgs::msg::Image.
+          IMAGE_TOOLS_PUBLIC
+          std::unique_ptr<sensor_msgs::msg::Image>
+          get_sensor_msgs_msg_image_pointer_copy() const;
+
+          /// Get a copy of the image as a sensor_msgs::msg::Image.
+          IMAGE_TOOLS_PUBLIC
+          sensor_msgs::msg::Image
+          get_sensor_msgs_msg_image_copy() const;
+
+          /// Get a copy of the image as a sensor_msgs::msg::Image.
+          IMAGE_TOOLS_PUBLIC
+          void
+          get_sensor_msgs_msg_image_copy(sensor_msgs::msg::Image & sensor_msgs_image) const;
+
+          /// Return true if the data is stored in big endian, otherwise return false.
+          IMAGE_TOOLS_PUBLIC
+      explanation: Declares ownership-aware constructors, matrix accessors, copy operations, and the exported
+        type adapter.
+  - id: M-6-PC-3
+    text: Static inspection shows deep conversion to sensor_msgs/msg/Image preserves dimensions, encoding,
+      data, and the ROS header.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/cv_mat_sensor_msgs_image_type_adapter.cpp
       locator: ROSCvMatContainer::get_sensor_msgs_msg_image_copy
@@ -739,6 +1236,11 @@ metrics:
         }
       explanation: Implements deep image copying while preserving dimensions, encoding, data, and ROS
         header metadata.
+  - id: M-6-PC-4
+    text: Static inspection shows the public headers and image_tools library target are installed and
+      exported.
+    evaluation: static
+    reference_evidence:
     - kind: build
       path: CMakeLists.txt
       locator: install
@@ -775,8 +1277,7 @@ metrics:
   - FR-7
   pass_criteria:
   - id: M-7-PC-1
-    text: Static inspection shows conversion paths throw or return explicit errors for unsupported cv::Mat
-      element types and unsupported incoming sensor_msgs image encodings.
+    text: Static inspection shows OpenCV-to-ROS conversion rejects unsupported cv::Mat element types.
     evaluation: static
     reference_evidence:
     - kind: source_code
@@ -830,6 +1331,10 @@ metrics:
           }
         };
       explanation: The OpenCV-to-ROS conversion switch throws for unsupported cv::Mat element types.
+  - id: M-7-PC-2
+    text: Static inspection shows ROS-to-OpenCV conversion rejects unsupported sensor_msgs image encodings.
+    evaluation: static
+    reference_evidence:
     - kind: source_code
       path: src/cv_mat_sensor_msgs_image_type_adapter.cpp
       locator: encoding2mat_type

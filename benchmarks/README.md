@@ -19,3 +19,8 @@ Metric schema `2.0` requires every reference-evidence item to declare its
 `kind`, reference-relative `path`, searchable `locator`, exact contiguous
 `snippet`, and behavioral `explanation`. The snippet records provenance; it is
 not used to require source-code identity from a generated package.
+
+Each pass criterion must represent one independently scorable behavior.
+Behaviors that can pass or fail separately must use separate sequential IDs,
+while multiple reference artifacts demonstrating the same behavior remain
+grouped under one criterion.

@@ -13,8 +13,8 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows that the installed Python, XML, and YAML bringup launch files each start
-      the dummy map server, robot_state_publisher, dummy joint-state publisher, and dummy laser publisher.
+    text: Static inspection shows the Python bringup launch starts the map server, robot_state_publisher,
+      joint-state publisher, and laser publisher.
     evaluation: static
     reference_evidence:
     - kind: launch
@@ -42,6 +42,10 @@ metrics:
 
             ])
       explanation: Python launch description creates all four nodes.
+  - id: M-1-PC-2
+    text: Static inspection shows the XML bringup launch starts the same four required nodes.
+    evaluation: static
+    reference_evidence:
     - kind: launch
       path: launch/dummy_robot_bringup_launch.xml
       locator: launch
@@ -55,6 +59,10 @@ metrics:
           <node pkg="dummy_sensors" exec="dummy_laser" output="screen"/>
         </launch>
       explanation: XML launch description declares all four nodes.
+  - id: M-1-PC-3
+    text: Static inspection shows the YAML bringup launch starts the same four required nodes.
+    evaluation: static
+    reference_evidence:
     - kind: launch
       path: launch/dummy_robot_bringup_launch.yaml
       locator: launch
@@ -80,6 +88,10 @@ metrics:
             exec: dummy_laser
             output: screen
       explanation: YAML launch description declares all four nodes.
+  - id: M-1-PC-4
+    text: Static inspection shows the launch directory is installed into the package share directory.
+    evaluation: static
+    reference_evidence:
     - kind: build
       path: CMakeLists.txt
       locator: install
@@ -108,8 +120,7 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows each launch variant loads the installed single_rrbot.urdf and supplies
-      its contents as robot_description to robot_state_publisher.
+    text: Static inspection shows the Python launch loads single_rrbot.urdf and passes it as robot_description.
     evaluation: static
     reference_evidence:
     - kind: launch
@@ -137,6 +148,10 @@ metrics:
 
             ])
       explanation: Resolves the packaged URDF and passes it as robot_description.
+  - id: M-2-PC-2
+    text: Static inspection shows the XML launch loads single_rrbot.urdf and passes it as robot_description.
+    evaluation: static
+    reference_evidence:
     - kind: launch
       path: launch/dummy_robot_bringup_launch.xml
       locator: robot_state_publisher
@@ -150,6 +165,10 @@ metrics:
           <node pkg="dummy_sensors" exec="dummy_laser" output="screen"/>
         </launch>
       explanation: Loads single_rrbot.urdf into robot_description.
+  - id: M-2-PC-3
+    text: Static inspection shows the YAML launch loads single_rrbot.urdf and passes it as robot_description.
+    evaluation: static
+    reference_evidence:
     - kind: launch
       path: launch/dummy_robot_bringup_launch.yaml
       locator: robot_state_publisher
@@ -175,6 +194,10 @@ metrics:
             exec: dummy_laser
             output: screen
       explanation: Loads single_rrbot.urdf into robot_description.
+  - id: M-2-PC-4
+    text: Static inspection shows the package provides a single_rrbot robot model.
+    evaluation: static
+    reference_evidence:
     - kind: resource
       path: launch/single_rrbot.urdf
       locator: single_rrbot
@@ -190,6 +213,11 @@ metrics:
             <color rgba="0.0 0.0 0.0 1.0"/>
           </material>
       explanation: Provides the robot model consumed by the launch files.
+  - id: M-2-PC-5
+    text: Static inspection shows the directory containing the URDF is installed into the package share
+      directory.
+    evaluation: static
+    reference_evidence:
     - kind: build
       path: CMakeLists.txt
       locator: install
@@ -217,8 +245,36 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows the Python launch starts rviz2 and passes the path of the package-provided
-      RViz configuration.
+    text: Static inspection shows the Python bringup launch starts an rviz2 node.
+    evaluation: static
+    reference_evidence:
+    - kind: launch
+      path: launch/dummy_robot_bringup_launch.py
+      locator: generate_launch_description
+      snippet: |-
+        def generate_launch_description():
+
+            pkg_share = FindPackageShare('dummy_robot_bringup').find('dummy_robot_bringup')
+
+            default_rviz_config_path = os.path.join(pkg_share, 'rviz/dummy_robot.rviz')
+
+            urdf_file = os.path.join(pkg_share, 'launch', 'single_rrbot.urdf')
+            robot_desc = FileContent(urdf_file)
+            rsp_params = {'robot_description': robot_desc}
+
+            return LaunchDescription([
+                Node(package='dummy_map_server', executable='dummy_map_server', output='screen'),
+                Node(package='robot_state_publisher', executable='robot_state_publisher',
+                     output='screen', parameters=[rsp_params]),
+                Node(package='dummy_sensors', executable='dummy_joint_states', output='screen'),
+                Node(package='dummy_sensors', executable='dummy_laser', output='screen'),
+                Node(package='rviz2', executable='rviz2', name='rviz2', output='screen',
+                     arguments=['-d', default_rviz_config_path])
+
+            ])
+      explanation: Creates the RViz2 node and supplies the packaged configuration path.
+  - id: M-3-PC-2
+    text: Static inspection shows rviz2 receives the path to the package-provided RViz configuration.
     evaluation: static
     reference_evidence:
     - kind: launch
@@ -269,6 +325,11 @@ metrics:
                 Value: Lines
               Name: Grid
       explanation: Provides the RViz configuration used by the Python launch.
+  - id: M-3-PC-3
+    text: Static inspection shows the RViz configuration directory is installed into the package share
+      directory.
+    evaluation: static
+    reference_evidence:
     - kind: build
       path: CMakeLists.txt
       locator: install
