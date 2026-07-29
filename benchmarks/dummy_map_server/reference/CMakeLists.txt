@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(dummy_map_server)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_ros_core REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rmw REQUIRED)
+
+add_executable(dummy_map_server src/dummy_map_server.cpp)
+target_link_libraries(dummy_map_server PRIVATE
+  rclcpp::rclcpp
+  nav_msgs::nav_msgs
+  ament_cmake_ros_core::ament_ros_defaults
+)
+
+install(TARGETS dummy_map_server
+  DESTINATION lib/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()

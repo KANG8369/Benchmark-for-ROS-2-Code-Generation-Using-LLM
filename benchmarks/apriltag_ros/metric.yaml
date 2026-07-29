@@ -1,0 +1,98 @@
+schema_version: "1.0"
+package_name: apriltag_ros
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: AprilTag detection publication
+    description: Camera input is processed into configured AprilTag detections as required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows synchronized image and camera-calibration input is processed by an AprilTag detector and accepted detections are published as an AprilTagDetectionArray.
+        evaluation: static
+        reference_evidence:
+          - path: src/AprilTagNode.cpp
+            symbol: AprilTagNode::onCamera
+            explanation: Converts camera input, runs the detector, constructs detection messages, and publishes the array.
+  - id: M-2
+    name: Optional tag pose transforms
+    description: Pose-enabled detections produce tag transforms when calibration is valid as required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows that, when pose estimation is enabled and valid camera intrinsics are available, each accepted detection can produce a TF transform from the image frame to the configured or derived tag frame.
+        evaluation: static
+        reference_evidence:
+          - path: src/AprilTagNode.cpp
+            symbol: AprilTagNode::onCamera
+            explanation: Checks pose-estimation state and camera intrinsics, estimates tag pose, assigns parent and child frames, and broadcasts transforms.
+          - path: src/pose_estimation.cpp
+            symbol: pnp
+            explanation: Implements the default pose-estimation method from detection corners, camera intrinsics, and tag size.
+  - id: M-3
+    name: Configured tag filtering and metadata
+    description: Detection filtering and per-tag frame/size selection satisfy FR-3.
+    requirement_ids:
+      - FR-3
+    pass_criteria:
+      - id: M-3-PC-1
+        text: Static inspection shows detections are filtered by configured tag IDs and maximum Hamming correction, and accepted tags use per-ID frame and size values when supplied.
+        evaluation: static
+        reference_evidence:
+          - path: src/AprilTagNode.cpp
+            symbol: AprilTagNode::onCamera
+            explanation: Skips disallowed IDs and excessive Hamming corrections, then selects configured per-tag frame and size mappings.
+  - id: M-4
+    name: Configuration validation
+    description: Invalid tag-family and list configurations are rejected as required by FR-4.
+    requirement_ids:
+      - FR-4
+    pass_criteria:
+      - id: M-4-PC-1
+        text: Static inspection shows startup rejects unsupported tag families and rejects mismatched IDs/frames or IDs/sizes list lengths with explicit errors.
+        evaluation: static
+        reference_evidence:
+          - path: src/AprilTagNode.cpp
+            symbol: AprilTagNode::AprilTagNode
+            explanation: Validates list lengths and family support before activating detector processing.
+  - id: M-5
+    name: Runtime detector updates
+    description: Runtime parameter updates affect subsequent processing as required by FR-5.
+    requirement_ids:
+      - FR-5
+    pass_criteria:
+      - id: M-5-PC-1
+        text: Static inspection shows an on-set-parameters callback updates detector tuning, maximum Hamming correction, and profiling state used by the camera callback.
+        evaluation: static
+        reference_evidence:
+          - path: src/AprilTagNode.cpp
+            symbol: AprilTagNode::onParameter
+            explanation: Applies supported runtime parameter changes to detector and filtering state.
+          - path: src/AprilTagNode.cpp
+            symbol: AprilTagNode::onCamera
+            explanation: Consumes the updated filtering and profiling state during image processing.
+  - id: M-6
+    name: Installed camera demonstration launch
+    description: The package provides the configurable rectified-camera demo required by FR-6.
+    requirement_ids:
+      - FR-6
+    pass_criteria:
+      - id: M-6-PC-1
+        text: Static inspection shows an installed launch description that accepts a camera device argument, starts/configures camera processing for rectified imagery, and starts the AprilTag node with packaged configuration.
+        evaluation: static
+        reference_evidence:
+          - path: launch/camera_36h11.launch.yml
+            symbol: launch
+            explanation: Declares the camera device argument and composes camera, rectification, and AprilTag processing.
+          - path: cfg/tags_36h11.yaml
+            symbol: apriltag.ros__parameters
+            explanation: Supplies the demo's AprilTag family and tag configuration.
+          - path: CMakeLists.txt
+            symbol: install
+            explanation: Installs both the launch and cfg directories into the package share directory.

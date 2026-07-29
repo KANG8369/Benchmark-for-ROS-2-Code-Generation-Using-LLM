@@ -1,0 +1,64 @@
+intent:
+  package_name: turtlebot3_automatic_parking
+  summary: Performs a laser-scan and odometry-guided automatic parking maneuver for
+    a TurtleBot3, publishing velocity commands and reset requests.
+  scope: Detects a reflective parking location, visualizes detected scan markers,
+    and controls the parking sequence; external robot systems provide laser scans
+    and odometry and consume velocity and reset commands.
+functional_requirements:
+- id: FR-1
+  text: The node uses laser scans and odometry to identify a reflective parking spot
+    and calculate a maneuver toward it.
+- id: FR-2
+  text: The node republishes every received laser scan on /scan_spot and marks the
+    detected parking spot's start, center, and end measurements when available.
+- id: FR-3
+  text: The node publishes /cmd_vel velocity commands to rotate, position, reorient,
+    and reverse the robot into the detected parking spot.
+- id: FR-4
+  text: The node publishes a zero velocity command and an Empty reset request on /reset
+    at parking maneuver reset points.
+- id: FR-5
+  text: The node reports repeated unsuccessful parking-spot searches and continues
+    searching.
+- id: FR-6
+  text: The node terminates after successful parking following its final stop and
+    reset request.
+- id: FR-7
+  text: The node rejects startup when LDS_MODEL is LDS-02 because that laser scanner
+    model is unsupported.
+interfaces:
+  nodes:
+  - name: turtlebot3_automatic_parking
+    responsibility: Executes the automatic parking detection and motion-control sequence;
+      direct execution without the package launch file uses the source-declared node
+      name automatic_parking.
+    topics:
+    - name: /cmd_vel
+      type: geometry_msgs/msg/Twist
+      direction: publish
+      purpose: Sends commanded linear and angular velocity for the parking maneuver.
+    - name: /reset
+      type: std_msgs/msg/Empty
+      direction: publish
+      purpose: Requests reset of the external robot system at parking maneuver reset
+        points.
+    - name: /scan_spot
+      type: sensor_msgs/msg/LaserScan
+      direction: publish
+      purpose: Publishes received scans with parking-spot intensity markers when a
+        spot has been detected.
+    - name: /scan
+      type: sensor_msgs/msg/LaserScan
+      direction: subscribe
+      purpose: Receives laser scan measurements used to locate and approach a parking
+        spot.
+    - name: /odom
+      type: nav_msgs/msg/Odometry
+      direction: subscribe
+      purpose: Receives robot pose and orientation used to control parking motion.
+  environment_variables:
+  - name: LDS_MODEL
+    purpose: Selects the laser scanner model and causes startup rejection for the
+      unsupported LDS-02 model.
+    required: true

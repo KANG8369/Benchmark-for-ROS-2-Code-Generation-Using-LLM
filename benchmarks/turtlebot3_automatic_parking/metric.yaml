@@ -1,0 +1,105 @@
+schema_version: "1.0"
+package_name: turtlebot3_automatic_parking
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Reflective-spot parking state machine
+    description: Scan and odometry data drive reflective-spot detection and parking maneuvers as required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows LaserScan and Odometry subscriptions feed a staged controller that identifies a reflective parking spot and uses the sensed geometry and robot pose to maneuver toward it.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._scan_parking_spot
+            explanation: Finds reflective scan regions and derives the parking-spot geometry.
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._run
+            explanation: Implements the odometry-aware staged parking controller.
+  - id: M-2
+    name: Annotated scan republishing
+    description: Every received scan is republished with detected spot markers as required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows each LaserScan callback copies and republishes the scan on /scan_spot and marks the detected spot's start, center, and end in the intensity array when available.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._scan_callback
+            explanation: Copies scan fields, annotates selected indices, and publishes every callback.
+  - id: M-3
+    name: Staged velocity commands
+    description: Parking stages publish the required translational and rotational commands, satisfying FR-3.
+    requirement_ids:
+      - FR-3
+    pass_criteria:
+      - id: M-3-PC-1
+        text: Static inspection shows the parking state machine publishes geometry_msgs/msg/Twist commands on /cmd_vel with distinct rotation and translation stages selected from scan and odometry progress.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._run
+            explanation: Selects angular or linear commands for each parking sequence and publishes them.
+  - id: M-4
+    name: Stop and odometry reset
+    description: Defined reset points issue both a stop command and reset notification as required by FR-4.
+    requirement_ids:
+      - FR-4
+    pass_criteria:
+      - id: M-4-PC-1
+        text: Static inspection shows reset points call a shared operation that publishes a zero Twist and a std_msgs/msg/Empty reset message.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._stop_and_reset
+            explanation: Publishes zero linear/angular velocity followed by the reset notification.
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._run
+            explanation: Invokes stop/reset at maneuver transition and completion points.
+  - id: M-5
+    name: Recoverable failed search
+    description: Repeated unsuccessful searches are reported without terminating the search, satisfying FR-5.
+    requirement_ids:
+      - FR-5
+    pass_criteria:
+      - id: M-5-PC-1
+        text: Static inspection shows repeated parking-spot search failures are counted and logged, after which the count is reset and scanning continues rather than terminating the node.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._run
+            explanation: Logs failure after repeated misses, resets the search counter, and remains in the search state.
+  - id: M-6
+    name: Successful completion
+    description: The controller reaches a terminal success path after final stop/reset as required by FR-6.
+    requirement_ids:
+      - FR-6
+    pass_criteria:
+      - id: M-6-PC-1
+        text: Static inspection shows the final parking stage stops and resets the robot, reports completion, and transitions out of continued maneuver execution.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking._run
+            explanation: Detects final-position completion, logs success, calls stop/reset, and exits the active sequence.
+  - id: M-7
+    name: LDS-02 startup rejection
+    description: Startup rejects the unsupported LDS-02 model as required by FR-7.
+    requirement_ids:
+      - FR-7
+    pass_criteria:
+      - id: M-7-PC-1
+        text: Static inspection shows node initialization reads LDS_MODEL and fails explicitly when its value identifies LDS-02.
+        evaluation: static
+        reference_evidence:
+          - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+            symbol: AutomaticParking.__init__
+            explanation: Checks LDS_MODEL during construction and rejects LDS-02.

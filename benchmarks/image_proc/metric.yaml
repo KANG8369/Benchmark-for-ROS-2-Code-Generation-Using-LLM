@@ -1,0 +1,171 @@
+schema_version: "1.0"
+package_name: image_proc
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Configurable composable image pipeline
+    description: The launch description loads debayer and mono/color rectification components as required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows an installed launch description with configurable namespace and container that defines debayer, mono rectify, and color rectify components and can either start a new component container or load them into an existing one.
+        evaluation: static
+        reference_evidence:
+          - path: launch/image_proc.launch.py
+            symbol: generate_launch_description
+            explanation: Declares namespace/container inputs, defines the three composable nodes, and selects new-container or existing-container loading.
+          - path: CMakeLists.txt
+            symbol: ament_auto_package
+            explanation: Installs the launch directory into the package share directory.
+  - id: M-2
+    name: Public raw-image processor
+    description: The public Processor API performs the requested mono/color conversion and optional rectification required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows a public Processor class accepts supported raw mono, color, and Bayer encodings, constructs requested mono and/or color outputs, and optionally rectifies requested outputs using camera calibration.
+        evaluation: static
+        reference_evidence:
+          - path: include/image_proc/processor.hpp
+            symbol: image_proc::Processor
+            explanation: Declares the public processing flags, output collection, and process API.
+          - path: src/image_proc/processor.cpp
+            symbol: image_proc::Processor::process
+            explanation: Implements raw encoding conversion and optional calibrated rectification.
+  - id: M-3
+    name: Edge-aware debayer utilities
+    description: Both edge-aware debayer variants required by FR-3 are available.
+    requirement_ids:
+      - FR-3
+    pass_criteria:
+      - id: M-3-PC-1
+        text: Static inspection shows public utilities implementing both edge-aware and weighted edge-aware Bayer demosaicing.
+        evaluation: static
+        reference_evidence:
+          - path: include/image_proc/edge_aware.hpp
+            symbol: image_proc::debayerEdgeAware
+            explanation: Declares the edge-aware demosaicing utility.
+          - path: include/image_proc/edge_aware.hpp
+            symbol: image_proc::debayerEdgeAwareWeighted
+            explanation: Declares the weighted edge-aware demosaicing utility.
+          - path: src/edge_aware.cpp
+            symbol: image_proc::debayerEdgeAware
+            explanation: Implements edge-aware Bayer demosaicing.
+          - path: src/edge_aware.cpp
+            symbol: image_proc::debayerEdgeAwareWeighted
+            explanation: Implements weighted edge-aware Bayer demosaicing.
+  - id: M-4
+    name: Publisher-compatible input QoS
+    description: Subscription QoS follows publisher compatibility and sensor fallback rules required by FR-4.
+    requirement_ids:
+      - FR-4
+    pass_criteria:
+      - id: M-4-PC-1
+        text: Static inspection shows a shared QoS utility returns SensorDataQoS when no publisher is discovered and otherwise derives reliability and durability compatible with the discovered publisher.
+        evaluation: static
+        reference_evidence:
+          - path: include/image_proc/utils.hpp
+            symbol: image_proc::getQosProfile
+            explanation: Examines topic publisher information, applies compatible policies, and uses SensorDataQoS as the no-publisher fallback.
+  - id: M-5
+    name: Lazy debayer processing
+    description: Debayer output is demand-driven and validates raw encodings as required by FR-5.
+    requirement_ids:
+      - FR-5
+    pass_criteria:
+      - id: M-5-PC-1
+        text: Static inspection shows DebayerNode subscribes lazily based on output demand, publishes requested mono and color products, and rejects or reports unsupported or ambiguous input encodings.
+        evaluation: static
+        reference_evidence:
+          - path: src/debayer.cpp
+            symbol: image_proc::DebayerNode::imageCb
+            explanation: Converts supported mono/color/Bayer input into requested products and reports unsupported encodings.
+          - path: src/debayer.cpp
+            symbol: image_proc::DebayerNode::DebayerNode
+            explanation: Configures publisher connection callbacks that manage the lazy raw-image subscription.
+  - id: M-6
+    name: Calibrated lazy rectification
+    description: Rectify processing follows the demand and calibration behavior required by FR-6.
+    requirement_ids:
+      - FR-6
+    pass_criteria:
+      - id: M-6-PC-1
+        text: Static inspection shows RectifyNode subscribes lazily, suppresses output for uncalibrated input, passes through zero-distortion images, and otherwise publishes a calibrated rectified image.
+        evaluation: static
+        reference_evidence:
+          - path: src/rectify.cpp
+            symbol: image_proc::RectifyNode::imageCb
+            explanation: Checks subscribers and calibration, handles zero distortion, and rectifies nonzero-distortion images.
+          - path: src/rectify.cpp
+            symbol: image_proc::RectifyNode::RectifyNode
+            explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+  - id: M-7
+    name: Lazy crop and decimation
+    description: CropDecimate performs validated crop/downsample processing and calibration updates as required by FR-7.
+    requirement_ids:
+      - FR-7
+    pass_criteria:
+      - id: M-7-PC-1
+        text: Static inspection shows CropDecimateNode lazily crops and downsamples the image, updates output binning and ROI calibration fields, and returns without output for crop offsets outside the input image or unsupported Bayer decimation cases.
+        evaluation: static
+        reference_evidence:
+          - path: src/crop_decimate.cpp
+            symbol: image_proc::CropDecimateNode::imageCb
+            explanation: Rejects out-of-bounds offsets and unsupported Bayer decimation, performs crop/downsampling, and updates CameraInfo binning and ROI.
+          - path: src/crop_decimate.cpp
+            symbol: image_proc::CropDecimateNode::CropDecimateNode
+            explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+  - id: M-8
+    name: Nonzero-region cropping
+    description: CropNonZero publishes the largest valid nonzero region and skips unsuitable input as required by FR-8.
+    requirement_ids:
+      - FR-8
+    pass_criteria:
+      - id: M-8-PC-1
+        text: Static inspection shows CropNonZeroNode subscribes lazily, accepts suitable single-channel images, computes the bounding region of the largest nonzero region, publishes that crop, and returns without output for unsupported channel layouts or all-zero input.
+        evaluation: static
+        reference_evidence:
+          - path: src/crop_non_zero.cpp
+            symbol: image_proc::CropNonZeroNode::imageCb
+            explanation: Validates channel layout, selects the largest external nonzero contour, publishes its bounding crop, and skips invalid or empty cases.
+          - path: src/crop_non_zero.cpp
+            symbol: image_proc::CropNonZeroNode::CropNonZeroNode
+            explanation: Configures a publisher matched callback that creates or shuts down the input subscription according to output demand.
+  - id: M-9
+    name: Calibrated image resizing
+    description: Resize supports scale- or dimension-driven lazy resizing and calibration updates as required by FR-9.
+    requirement_ids:
+      - FR-9
+    pass_criteria:
+      - id: M-9-PC-1
+        text: Static inspection shows ResizeNode lazily chooses output dimensions from configured scale factors or explicit dimensions, resizes the image, and scales camera calibration and ROI fields consistently.
+        evaluation: static
+        reference_evidence:
+          - path: src/resize.cpp
+            symbol: image_proc::ResizeNode::imageCb
+            explanation: Resolves dimensions, resizes the image, and scales intrinsic/projection and ROI calibration values.
+          - path: src/resize.cpp
+            symbol: image_proc::ResizeNode::ResizeNode
+            explanation: Configures publisher connection callbacks that manage the lazy camera subscription.
+  - id: M-10
+    name: ArUco marker pose tracking
+    description: TrackMarker detects the configured ArUco marker and publishes its pose as required by FR-10.
+    requirement_ids:
+      - FR-10
+    pass_criteria:
+      - id: M-10-PC-1
+        text: Static inspection shows TrackMarkerNode subscribes lazily and uses configured dictionary, marker ID, and marker size to detect an ArUco marker in camera images, estimate its calibrated pose, and publish geometry_msgs/msg/PoseStamped.
+        evaluation: static
+        reference_evidence:
+          - path: src/track_marker.cpp
+            symbol: image_proc::TrackMarkerNode::imageCb
+            explanation: Detects configured marker IDs, estimates pose from camera calibration and marker size, and publishes the pose.
+          - path: src/track_marker.cpp
+            symbol: image_proc::TrackMarkerNode::TrackMarkerNode
+            explanation: Declares marker configuration and manages the lazy synchronized camera subscription from output demand.
