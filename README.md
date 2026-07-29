@@ -171,6 +171,12 @@ Metric schema `2.0` represents each `reference_evidence` item with:
 - `explanation`: The behavior demonstrated by that excerpt and its relevance to
   the pass criterion.
 
+Use the minimum code needed to establish the criterion; there is no fixed
+line-count limit. If the proof is non-contiguous, cite multiple short evidence
+items instead of expanding one snippet across unrelated code. Use `locator` for
+search context rather than copying an entire function, and make every
+`explanation` specific to the criterion it supports.
+
 The excerpt is authoring and evaluation provenance, not a string-matching
 requirement for generated code. Evaluators must inspect the generated package
 for semantically equivalent behavior.

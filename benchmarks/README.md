@@ -20,6 +20,10 @@ Metric schema `2.0` requires every reference-evidence item to declare its
 `snippet`, and behavioral `explanation`. The snippet records provenance; it is
 not used to require source-code identity from a generated package.
 
+Keep each snippet to the minimum code needed to establish its criterion; no
+fixed line-count limit applies. When proof is non-contiguous, use multiple
+short evidence items rather than one excerpt containing unrelated code.
+
 Each pass criterion must represent one independently scorable behavior.
 Behaviors that can pass or fail separately must use separate sequential IDs,
 while multiple reference artifacts demonstrating the same behavior remain

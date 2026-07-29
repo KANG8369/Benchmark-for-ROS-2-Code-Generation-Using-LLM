@@ -23,106 +23,15 @@ metrics:
       snippet: |-
         void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
                                     const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Converts camera input, runs the detector, constructs detection messages, and publishes
-        the array.
+      explanation: The camera callback receives synchronized Image and CameraInfo messages.
   - id: M-1-PC-2
     text: Static inspection shows camera images are passed through the configured AprilTag detector.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
+      locator: apriltag_detector_detect
+      snippet: |2-
             // convert to 8bit monochrome image
             const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
 
@@ -131,119 +40,15 @@ metrics:
             // detect tags
             mutex.lock();
             zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Converts camera input, runs the detector, constructs detection messages, and publishes
-        the array.
+      explanation: Converts the incoming image to mono8 and passes it to the AprilTag detector.
   - id: M-1-PC-3
     text: Static inspection shows accepted detections are converted into AprilTag detection messages.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
+      locator: AprilTagDetection
+      snippet: |2-
                 // detection
                 apriltag_msgs::msg::AprilTagDetection msg_detection;
                 msg_detection.family = std::string(det->family->name);
@@ -255,116 +60,25 @@ metrics:
                 std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
                 std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
                 msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Converts camera input, runs the detector, constructs detection messages, and publishes
-        the array.
+      explanation: Copies the accepted detector result into an AprilTagDetection message and appends it
+        to the array.
   - id: M-1-PC-4
     text: Static inspection shows an AprilTagDetectionArray containing accepted detections is published.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
+      locator: AprilTagDetectionArray
+      snippet: |2-
             apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
             msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
+      explanation: Creates the detection-array message and preserves the image header.
+    - kind: source_code
+      path: src/AprilTagNode.cpp
+      locator: pub_detections->publish
+      snippet: |2-
             pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Converts camera input, runs the detector, constructs detection messages, and publishes
-        the array.
+      explanation: Publishes the completed AprilTagDetectionArray.
 - id: M-2
   name: Optional tag pose transforms
   description: Pose-enabled detections produce tag transforms when calibration is valid as required by
@@ -378,197 +92,52 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
+      locator: estimate_pose
+      snippet: |2-
             // check for valid intrinsics
             const bool calibrated = msg_ci->width && msg_ci->height &&
                                     intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
 
             if(estimate_pose != nullptr && !calibrated) {
                 RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
+      explanation: Computes camera-calibration validity and warns when enabled pose estimation lacks calibration.
+    - kind: source_code
+      path: src/AprilTagNode.cpp
+      locator: estimate_pose != nullptr && calibrated
+      snippet: |2-
                 if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Checks pose-estimation state and camera intrinsics, estimates tag pose, assigns parent
-        and child frames, and broadcasts transforms.
+      explanation: Executes pose generation only when an estimator is enabled and calibration is valid.
   - id: M-2-PC-2
     text: Static inspection shows tag pose is estimated from detection corners, camera intrinsics, and
       tag size.
     evaluation: static
     reference_evidence:
     - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Checks pose-estimation state and camera intrinsics, estimates tag pose, assigns parent
-        and child frames, and broadcasts transforms.
-    - kind: source_code
       path: src/pose_estimation.cpp
-      locator: pnp
-      snippet: |-
-        pnp(apriltag_detection_t* const detection, const std::array<double, 4>& intr, double tagsize)
-        {
+      locator: objectPoints
+      snippet: |2-
             const std::vector<cv::Point3d> objectPoints{
                 {-tagsize / 2, -tagsize / 2, 0},
                 {+tagsize / 2, -tagsize / 2, 0},
                 {+tagsize / 2, +tagsize / 2, 0},
                 {-tagsize / 2, +tagsize / 2, 0},
             };
-
+      explanation: Constructs tag object corners from the configured physical tag size.
+    - kind: source_code
+      path: src/pose_estimation.cpp
+      locator: imagePoints
+      snippet: |2-
             const std::vector<cv::Point2d> imagePoints{
                 {detection->p[0][0], detection->p[0][1]},
                 {detection->p[1][0], detection->p[1][1]},
                 {detection->p[2][0], detection->p[2][1]},
                 {detection->p[3][0], detection->p[3][1]},
             };
-
+      explanation: Uses the detected tag corners as image points.
+    - kind: source_code
+      path: src/pose_estimation.cpp
+      locator: cv::solvePnP
+      snippet: |2-
             cv::Matx33d cameraMatrix;
             cameraMatrix(0, 0) = intr[0];// fx
             cameraMatrix(1, 1) = intr[1];// fy
@@ -577,11 +146,7 @@ metrics:
 
             cv::Mat rvec, tvec;
             cv::solvePnP(objectPoints, imagePoints, cameraMatrix, {}, rvec, tvec);
-
-            return tf2::toMsg<std::pair<cv::Mat_<double>, cv::Mat_<double>>, geometry_msgs::msg::Transform>(std::make_pair(tvec, rvec));
-        }
-      explanation: Implements the default pose-estimation method from detection corners, camera intrinsics,
-        and tag size.
+      explanation: Builds the camera matrix from intrinsics and estimates pose with solvePnP.
   - id: M-2-PC-3
     text: Static inspection shows each transform uses the image frame as parent and a configured or derived
       tag frame as child.
@@ -589,176 +154,26 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
+      locator: tf.child_frame_id
+      snippet: |2-
                     geometry_msgs::msg::TransformStamped tf;
                     tf.header = msg_img->header;
                     // set child frame name by generic tag name or configured tag name
                     tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
                     const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Checks pose-estimation state and camera intrinsics, estimates tag pose, assigns parent
-        and child frames, and broadcasts transforms.
+      explanation: Copies the image header as the parent frame and chooses a configured or derived tag
+        child frame.
   - id: M-2-PC-4
     text: Static inspection shows the resulting tag transforms are broadcast through TF.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
+      locator: tf_broadcaster.sendTransform
+      snippet: |2-
             if(estimate_pose != nullptr)
                 tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Checks pose-estimation state and camera intrinsics, estimates tag pose, assigns parent
-        and child frames, and broadcasts transforms.
+      explanation: Broadcasts the collected tag transforms through TF when pose estimation is enabled.
 - id: M-3
   name: Configured tag filtering and metadata
   description: Detection filtering and per-tag frame/size selection satisfy FR-3.
@@ -772,352 +187,43 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
+      locator: tag_frames.count
+      snippet: |2-
                 // ignore untracked tags
                 if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Skips disallowed IDs and excessive Hamming corrections, then selects configured per-tag
-        frame and size mappings.
+      explanation: Skips detections whose IDs are absent from a configured ID/frame map.
   - id: M-3-PC-2
     text: Static inspection shows detections exceeding the maximum Hamming correction are rejected.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
+      locator: det->hamming > max_hamming
+      snippet: |2-
                 // reject detections with more corrected bits than allowed
                 if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Skips disallowed IDs and excessive Hamming corrections, then selects configured per-tag
-        frame and size mappings.
+      explanation: Skips detections whose corrected-bit count exceeds max_hamming.
   - id: M-3-PC-3
     text: Static inspection shows a configured per-ID frame is used for accepted tags.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
+      locator: tf.child_frame_id
+      snippet: |2-
                     // set child frame name by generic tag name or configured tag name
                     tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Skips disallowed IDs and excessive Hamming corrections, then selects configured per-tag
-        frame and size mappings.
+      explanation: Uses the per-ID configured frame when one exists.
   - id: M-3-PC-4
     text: Static inspection shows a configured per-ID tag size is used for accepted tags.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
-            if(profile)
-                timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
-                // reject detections with more corrected bits than allowed
-                if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
+      locator: tag_sizes.count
+      snippet: |2-
                     const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Skips disallowed IDs and excessive Hamming corrections, then selects configured per-tag
-        frame and size mappings.
+      explanation: Uses the per-ID configured size when one exists.
 - id: M-4
   name: Configuration validation
   description: Invalid tag-family and list configurations are rejected as required by FR-4.
@@ -1130,7 +236,7 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::AprilTagNode
+      locator: ids.size() != frames.size()
       snippet: |2-
             if(!frames.empty()) {
                 if(ids.size() != frames.size()) {
@@ -1138,39 +244,15 @@ metrics:
                 }
                 for(size_t i = 0; i < ids.size(); i++) { tag_frames[ids[i]] = frames[i]; }
             }
-
-            if(!sizes.empty()) {
-                // use tag specific size
-                if(ids.size() != sizes.size()) {
-                    throw std::runtime_error("Number of tag ids (" + std::to_string(ids.size()) + ") and sizes (" + std::to_string(sizes.size()) + ") mismatch!");
-                }
-                for(size_t i = 0; i < ids.size(); i++) { tag_sizes[ids[i]] = sizes[i]; }
-            }
-
-            if(tag_fun.count(tag_family)) {
-                tf = tag_fun.at(tag_family).first();
-                tf_destructor = tag_fun.at(tag_family).second;
-                apriltag_detector_add_family(td, tf);
-            }
-            else {
-                throw std::runtime_error("Unsupported tag family: " + tag_family);
-            }
-      explanation: Validates list lengths and family support before activating detector processing.
+      explanation: Throws an explicit error when nonempty frame and ID lists have different lengths.
   - id: M-4-PC-2
     text: Static inspection shows startup rejects mismatched tag ID and size-list lengths.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::AprilTagNode
+      locator: ids.size() != sizes.size()
       snippet: |2-
-            if(!frames.empty()) {
-                if(ids.size() != frames.size()) {
-                    throw std::runtime_error("Number of tag ids (" + std::to_string(ids.size()) + ") and frames (" + std::to_string(frames.size()) + ") mismatch!");
-                }
-                for(size_t i = 0; i < ids.size(); i++) { tag_frames[ids[i]] = frames[i]; }
-            }
-
             if(!sizes.empty()) {
                 // use tag specific size
                 if(ids.size() != sizes.size()) {
@@ -1178,39 +260,15 @@ metrics:
                 }
                 for(size_t i = 0; i < ids.size(); i++) { tag_sizes[ids[i]] = sizes[i]; }
             }
-
-            if(tag_fun.count(tag_family)) {
-                tf = tag_fun.at(tag_family).first();
-                tf_destructor = tag_fun.at(tag_family).second;
-                apriltag_detector_add_family(td, tf);
-            }
-            else {
-                throw std::runtime_error("Unsupported tag family: " + tag_family);
-            }
-      explanation: Validates list lengths and family support before activating detector processing.
+      explanation: Throws an explicit error when nonempty size and ID lists have different lengths.
   - id: M-4-PC-3
     text: Static inspection shows startup rejects unsupported tag families with an explicit error.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::AprilTagNode
+      locator: Unsupported tag family
       snippet: |2-
-            if(!frames.empty()) {
-                if(ids.size() != frames.size()) {
-                    throw std::runtime_error("Number of tag ids (" + std::to_string(ids.size()) + ") and frames (" + std::to_string(frames.size()) + ") mismatch!");
-                }
-                for(size_t i = 0; i < ids.size(); i++) { tag_frames[ids[i]] = frames[i]; }
-            }
-
-            if(!sizes.empty()) {
-                // use tag specific size
-                if(ids.size() != sizes.size()) {
-                    throw std::runtime_error("Number of tag ids (" + std::to_string(ids.size()) + ") and sizes (" + std::to_string(sizes.size()) + ") mismatch!");
-                }
-                for(size_t i = 0; i < ids.size(); i++) { tag_sizes[ids[i]] = sizes[i]; }
-            }
-
             if(tag_fun.count(tag_family)) {
                 tf = tag_fun.at(tag_family).first();
                 tf_destructor = tag_fun.at(tag_family).second;
@@ -1218,8 +276,7 @@ metrics:
             }
             else {
                 throw std::runtime_error("Unsupported tag family: " + tag_family);
-            }
-      explanation: Validates list lengths and family support before activating detector processing.
+      explanation: Selects registered tag families and throws for every unsupported family.
 - id: M-5
   name: Runtime detector updates
   description: Runtime parameter updates affect subsequent processing as required by FR-5.
@@ -1232,14 +289,8 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onParameter
-      snippet: |-
-        AprilTagNode::onParameter(const std::vector<rclcpp::Parameter>& parameters)
-        {
-            rcl_interfaces::msg::SetParametersResult result;
-
-            mutex.lock();
-
+      locator: detector.threads
+      snippet: |2-
             for(const rclcpp::Parameter& parameter : parameters) {
                 RCLCPP_DEBUG_STREAM(get_logger(), "setting: " << parameter);
 
@@ -1249,172 +300,45 @@ metrics:
                 IF("detector.refine", td->refine_edges)
                 IF("detector.sharpening", td->decode_sharpening)
                 IF("detector.debug", td->debug)
-                IF("max_hamming", max_hamming)
-                IF("profile", profile)
-            }
-
-            mutex.unlock();
-
-            result.successful = true;
-
-            return result;
-        }
-      explanation: Applies supported runtime parameter changes to detector and filtering state.
+      explanation: Maps supported detector parameters to the live detector fields in the parameter callback.
   - id: M-5-PC-2
     text: Static inspection shows runtime updates change the maximum Hamming correction.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onParameter
-      snippet: |-
-        AprilTagNode::onParameter(const std::vector<rclcpp::Parameter>& parameters)
-        {
-            rcl_interfaces::msg::SetParametersResult result;
-
-            mutex.lock();
-
-            for(const rclcpp::Parameter& parameter : parameters) {
-                RCLCPP_DEBUG_STREAM(get_logger(), "setting: " << parameter);
-
-                IF("detector.threads", td->nthreads)
-                IF("detector.decimate", td->quad_decimate)
-                IF("detector.blur", td->quad_sigma)
-                IF("detector.refine", td->refine_edges)
-                IF("detector.sharpening", td->decode_sharpening)
-                IF("detector.debug", td->debug)
+      locator: IF("max_hamming"
+      snippet: |2-
                 IF("max_hamming", max_hamming)
-                IF("profile", profile)
-            }
-
-            mutex.unlock();
-
-            result.successful = true;
-
-            return result;
-        }
-      explanation: Applies supported runtime parameter changes to detector and filtering state.
+      explanation: Maps a max_hamming parameter update to the filtering state.
   - id: M-5-PC-3
     text: Static inspection shows runtime updates change detector profiling state.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onParameter
-      snippet: |-
-        AprilTagNode::onParameter(const std::vector<rclcpp::Parameter>& parameters)
-        {
-            rcl_interfaces::msg::SetParametersResult result;
-
-            mutex.lock();
-
-            for(const rclcpp::Parameter& parameter : parameters) {
-                RCLCPP_DEBUG_STREAM(get_logger(), "setting: " << parameter);
-
-                IF("detector.threads", td->nthreads)
-                IF("detector.decimate", td->quad_decimate)
-                IF("detector.blur", td->quad_sigma)
-                IF("detector.refine", td->refine_edges)
-                IF("detector.sharpening", td->decode_sharpening)
-                IF("detector.debug", td->debug)
-                IF("max_hamming", max_hamming)
+      locator: IF("profile"
+      snippet: |2-
                 IF("profile", profile)
-            }
-
-            mutex.unlock();
-
-            result.successful = true;
-
-            return result;
-        }
-      explanation: Applies supported runtime parameter changes to detector and filtering state.
+      explanation: Maps a profile parameter update to the profiling state.
   - id: M-5-PC-4
     text: Static inspection shows the camera callback consumes the updated filtering and profiling state.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
-      snippet: |-
-        void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
-                                    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
-        {
-            // camera intrinsics for rectified images
-            const std::array<double, 4> intrinsics = {msg_ci->p[0], msg_ci->p[5], msg_ci->p[2], msg_ci->p[6]};
-
-            // check for valid intrinsics
-            const bool calibrated = msg_ci->width && msg_ci->height &&
-                                    intrinsics[0] && intrinsics[1] && intrinsics[2] && intrinsics[3];
-
-            if(estimate_pose != nullptr && !calibrated) {
-                RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
-            }
-
-            // convert to 8bit monochrome image
-            const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
-
-            image_u8_t im{img_uint8.cols, img_uint8.rows, img_uint8.cols, img_uint8.data};
-
-            // detect tags
-            mutex.lock();
-            zarray_t* detections = apriltag_detector_detect(td, &im);
-            mutex.unlock();
-
+      locator: if(profile)
+      snippet: |2-
             if(profile)
                 timeprofile_display(td->tp);
-
-            apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
-            msg_detections.header = msg_img->header;
-
-            std::vector<geometry_msgs::msg::TransformStamped> tfs;
-
-            for(int i = 0; i < zarray_size(detections); i++) {
-                apriltag_detection_t* det;
-                zarray_get(detections, i, &det);
-
-                RCLCPP_DEBUG(get_logger(),
-                             "detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                             i, det->family->nbits, det->family->h, det->id,
-                             det->hamming, det->decision_margin);
-
-                // ignore untracked tags
-                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
-
+      explanation: Reads the current profiling state during camera processing.
+    - kind: source_code
+      path: src/AprilTagNode.cpp
+      locator: det->hamming > max_hamming
+      snippet: |2-
                 // reject detections with more corrected bits than allowed
                 if(det->hamming > max_hamming) { continue; }
-
-                // detection
-                apriltag_msgs::msg::AprilTagDetection msg_detection;
-                msg_detection.family = std::string(det->family->name);
-                msg_detection.id = det->id;
-                msg_detection.hamming = det->hamming;
-                msg_detection.decision_margin = det->decision_margin;
-                msg_detection.centre.x = det->c[0];
-                msg_detection.centre.y = det->c[1];
-                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
-                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-                msg_detections.detections.push_back(msg_detection);
-
-                // 3D orientation and position
-                if(estimate_pose != nullptr && calibrated) {
-                    geometry_msgs::msg::TransformStamped tf;
-                    tf.header = msg_img->header;
-                    // set child frame name by generic tag name or configured tag name
-                    tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-                    const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-                    tf.transform = estimate_pose(det, intrinsics, size);
-                    tfs.push_back(tf);
-                }
-            }
-
-            pub_detections->publish(msg_detections);
-
-            if(estimate_pose != nullptr)
-                tf_broadcaster.sendTransform(tfs);
-
-            apriltag_detections_destroy(detections);
-        }
-      explanation: Consumes the updated filtering and profiling state during image processing.
+      explanation: Reads the current max_hamming state while filtering detections.
 - id: M-6
   name: Installed camera demonstration launch
   description: The package provides the configurable rectified-camera demo required by FR-6.
@@ -1427,78 +351,20 @@ metrics:
     reference_evidence:
     - kind: launch
       path: launch/camera_36h11.launch.yml
-      locator: launch
+      locator: device
       snippet: |-
-        launch:
         - arg:
             name: device
             default: "0"
-
-        - node_container:
-            pkg: rclcpp_components
-            exec: component_container
-            name: apriltag_container
-            namespace: ""
-            composable_node:
-            - pkg: camera_ros
-              plugin: camera::CameraNode
-              name: camera
-              namespace: camera
-              param:
-              - name: camera
-                value: $(var device)
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-
-            - pkg: image_proc
-              plugin: image_proc::RectifyNode
-              name: rectify
-              namespace: camera
-              remap:
-              - from: image
-                to: /camera/camera/image_raw
-              - from: camera_info
-                to: /camera/camera/camera_info
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-
-            - pkg: apriltag_ros
-              plugin: AprilTagNode
-              name: apriltag
-              namespace: apriltag
-              remap:
-              - from: /apriltag/image_rect
-                to: /camera/image_rect
-              - from: /camera/camera_info
-                to: /camera/camera/camera_info
-              param:
-              - from: $(find-pkg-share apriltag_ros)/cfg/tags_36h11.yaml
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-      explanation: Declares the camera device argument and composes camera, rectification, and AprilTag
-        processing.
+      explanation: Declares the configurable camera device launch argument.
   - id: M-6-PC-2
     text: Static inspection shows the launch composes camera input, rectification, and AprilTag processing.
     evaluation: static
     reference_evidence:
     - kind: launch
       path: launch/camera_36h11.launch.yml
-      locator: launch
-      snippet: |-
-        launch:
-        - arg:
-            name: device
-            default: "0"
-
-        - node_container:
-            pkg: rclcpp_components
-            exec: component_container
-            name: apriltag_container
-            namespace: ""
-            composable_node:
+      locator: camera::CameraNode
+      snippet: |2-
             - pkg: camera_ros
               plugin: camera::CameraNode
               name: camera
@@ -1506,10 +372,11 @@ metrics:
               param:
               - name: camera
                 value: $(var device)
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-
+      explanation: Starts the camera component and passes it the selected device.
+    - kind: launch
+      path: launch/camera_36h11.launch.yml
+      locator: image_proc::RectifyNode
+      snippet: |2-
             - pkg: image_proc
               plugin: image_proc::RectifyNode
               name: rectify
@@ -1519,10 +386,11 @@ metrics:
                 to: /camera/camera/image_raw
               - from: camera_info
                 to: /camera/camera/camera_info
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-
+      explanation: Starts image rectification and remaps raw image and calibration inputs.
+    - kind: launch
+      path: launch/camera_36h11.launch.yml
+      locator: AprilTagNode
+      snippet: |2-
             - pkg: apriltag_ros
               plugin: AprilTagNode
               name: apriltag
@@ -1532,90 +400,36 @@ metrics:
                 to: /camera/image_rect
               - from: /camera/camera_info
                 to: /camera/camera/camera_info
-              param:
-              - from: $(find-pkg-share apriltag_ros)/cfg/tags_36h11.yaml
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-      explanation: Declares the camera device argument and composes camera, rectification, and AprilTag
-        processing.
+      explanation: Starts AprilTag processing and connects rectified image and CameraInfo topics.
   - id: M-6-PC-3
     text: Static inspection shows the AprilTag node receives the packaged family and tag configuration.
     evaluation: static
     reference_evidence:
     - kind: launch
       path: launch/camera_36h11.launch.yml
-      locator: launch
-      snippet: |-
-        launch:
-        - arg:
-            name: device
-            default: "0"
-
-        - node_container:
-            pkg: rclcpp_components
-            exec: component_container
-            name: apriltag_container
-            namespace: ""
-            composable_node:
-            - pkg: camera_ros
-              plugin: camera::CameraNode
-              name: camera
-              namespace: camera
-              param:
-              - name: camera
-                value: $(var device)
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-
-            - pkg: image_proc
-              plugin: image_proc::RectifyNode
-              name: rectify
-              namespace: camera
-              remap:
-              - from: image
-                to: /camera/camera/image_raw
-              - from: camera_info
-                to: /camera/camera/camera_info
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-
-            - pkg: apriltag_ros
-              plugin: AprilTagNode
-              name: apriltag
-              namespace: apriltag
-              remap:
-              - from: /apriltag/image_rect
-                to: /camera/image_rect
-              - from: /camera/camera_info
-                to: /camera/camera/camera_info
+      locator: tags_36h11.yaml
+      snippet: |2-
               param:
               - from: $(find-pkg-share apriltag_ros)/cfg/tags_36h11.yaml
-              extra_arg:
-              - name: use_intra_process_comms
-                value: "True"
-      explanation: Declares the camera device argument and composes camera, rectification, and AprilTag
-        processing.
+      explanation: Loads the packaged tags_36h11 configuration into the AprilTag component.
     - kind: config
       path: cfg/tags_36h11.yaml
-      locator: apriltag.ros__parameters
-      snippet: |-
-        /**:
-            ros__parameters:
+      locator: family
+      snippet: |2-
                 image_transport: raw    # image format
                 family: 36h11           # tag family name
                 size: 0.173             # tag edge size in meter
                 max_hamming: 0          # maximum allowed hamming distance (corrected bits)
-                qos_profile: default    # optional qos_profile, "sensor_data", "default", or "system_default"
-
-                # see "apriltag.h" 'struct apriltag_detector' for more documentation on these optional parameters
-                detector:
-                    threads: 1          # number of threads
-                    decimate: 2.0       # decimate resolution for quad detection
-                    blur: 0.0           # sigma of Gaussian blur for quad detection
-      explanation: Supplies the demo's AprilTag family and tag configuration.
+      explanation: Defines the demo image transport, tag family, default size, and Hamming threshold.
+    - kind: config
+      path: cfg/tags_36h11.yaml
+      locator: tag
+      snippet: |2-
+                tag:
+                    ids: [9, 14]            # tag ID
+                    frames: [base, object]  # optional frame name
+                    sizes: [0.162, 0.162]   # optional tag-specific edge size
+      explanation: Defines the demo's per-tag IDs, frames, and sizes.
   - id: M-6-PC-4
     text: Static inspection shows the launch and configuration directories are installed into the package
       share directory.
@@ -1623,19 +437,8 @@ metrics:
     reference_evidence:
     - kind: build
       path: CMakeLists.txt
-      locator: install
-      snippet: |2-
-            PLUGIN "AprilTagNode"
-            EXECUTABLE "apriltag_node"
-        )
-
-        ament_environment_hooks(${ament_cmake_package_templates_ENVIRONMENT_HOOK_LIBRARY_PATH})
-
-        install(TARGETS AprilTagNode
-            ARCHIVE DESTINATION lib
-            LIBRARY DESTINATION lib
-        )
-
+      locator: install(DIRECTORY cfg
+      snippet: |-
         install(DIRECTORY cfg
             DESTINATION share/${PROJECT_NAME}
         )
@@ -1643,13 +446,4 @@ metrics:
         install(DIRECTORY launch
             DESTINATION share/${PROJECT_NAME}
         )
-
-        if(BUILD_TESTING)
-          set(ament_cmake_clang_format_CONFIG_FILE "${CMAKE_SOURCE_DIR}/.clang-format")
-          find_package(ament_lint_auto REQUIRED)
-          # the following line skips the linter which checks for copyrights
-          # comment the line when a copyright and license is added to all source files
-          set(ament_cmake_copyright_FOUND TRUE)
-          # the following line skips cpplint (only works in a git repo)
-          # comment the line when this package is in a git repo and when
-      explanation: Installs both the launch and cfg directories into the package share directory.
+      explanation: Installs both cfg and launch directories into the package share directory.

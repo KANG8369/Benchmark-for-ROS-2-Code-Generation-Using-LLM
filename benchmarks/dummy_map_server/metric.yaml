@@ -18,408 +18,77 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
+      locator: create_publisher<nav_msgs::msg::OccupancyGrid>
+      snippet: |2-
           auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map",
             rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps
-        the message, and publishes it in a loop.
+      explanation: Creates a nav_msgs/msg/OccupancyGrid publisher whose topic is map.
   - id: M-1-PC-2
     text: Static inspection shows the occupancy grid uses the world frame.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
+      locator: msg.header.frame_id
+      snippet: |2-
           msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps
-        the message, and publishes it in a loop.
+      explanation: Assigns world as the occupancy-grid frame.
   - id: M-1-PC-3
     text: Static inspection shows occupancy-grid cells are initialized as unknown.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
+      locator: msg.data.push_back
+      snippet: |2-
           for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
             msg.data.push_back(-1);
           }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps
-        the message, and publishes it in a loop.
+      explanation: Fills every initial occupancy-grid cell with the unknown value -1.
   - id: M-1-PC-4
     text: Static inspection shows occupied and free cells are updated to form a moving map pattern.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
+      locator: msg.data
+      snippet: |2-
             msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
             msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
             msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
             msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
             msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
             msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps
-        the message, and publishes it in a loop.
+      explanation: Clears the previous three cells and advances a free-occupied-free pattern.
   - id: M-1-PC-5
     text: Static inspection shows each map receives a current timestamp.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
+      locator: msg.header.stamp
+      snippet: |2-
             msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps
-        the message, and publishes it in a loop.
+      explanation: Sets the outgoing map timestamp from the ROS clock.
   - id: M-1-PC-6
     text: Static inspection shows map messages are published repeatedly.
     evaluation: static
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
+      locator: while (rclcpp::ok())
+      snippet: |2-
           while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
+      explanation: Places map generation inside the node's continuous execution loop.
+    - kind: source_code
+      path: src/dummy_map_server.cpp
+      locator: map_pub->publish
+      snippet: |2-
             map_pub->publish(msg);
             executor.spin_some();
             loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps
-        the message, and publishes it in a loop.
+      explanation: Publishes the map and waits for the next loop iteration.
 - id: M-2
   name: Late-subscriber map delivery
   description: The map publisher retains the latest map for late subscribers as required by FR-2.
@@ -432,67 +101,12 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
+      locator: KeepLast(1)
+      snippet: |2-
           auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map",
             rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Creates the map publisher with KeepLast(1) and transient_local QoS.
+      explanation: Configures the map publisher with KeepLast depth one.
   - id: M-2-PC-2
     text: Static inspection shows transient-local or equivalent durability is used for late-subscriber
       delivery.
@@ -500,64 +114,9 @@ metrics:
     reference_evidence:
     - kind: source_code
       path: src/dummy_map_server.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_map_server");
-
+      locator: transient_local
+      snippet: |2-
           auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map",
             rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-
-          rclcpp::WallRate loop_rate(1);
-
-          nav_msgs::msg::OccupancyGrid msg;
-          msg.header.frame_id = "world";
-
-          msg.info.resolution = 0.1f;
-          msg.info.width = 100;
-          msg.info.height = 100;
-          msg.info.origin.position.x = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.y = -(msg.info.width * msg.info.resolution) / 2;
-          msg.info.origin.position.z = 0;
-          msg.info.origin.orientation.x = 0;
-          msg.info.origin.orientation.y = 0;
-          msg.info.origin.orientation.z = 0;
-          msg.info.origin.orientation.w = 1;
-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          int lhs = 0;
-          int center = 1;
-          int rhs = 2;
-          while (rclcpp::ok()) {
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-
-            msg.header.stamp = clock->now();
-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Creates the map publisher with KeepLast(1) and transient_local QoS.
+      explanation: Applies transient-local durability to the map publisher.
