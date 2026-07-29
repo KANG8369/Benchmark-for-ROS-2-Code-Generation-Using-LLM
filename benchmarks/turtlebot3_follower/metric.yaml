@@ -1,0 +1,82 @@
+schema_version: "1.0"
+package_name: turtlebot3_follower
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Indexed follower chain
+    description: The requested number of follower nodes is paired into a predecessor chain as required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows the executable accepts a follower count and creates one follower node for each index, pairing every follower robot with the immediately preceding robot as its leader.
+        evaluation: static
+        reference_evidence:
+          - path: src/follower.cpp
+            symbol: main
+            explanation: Parses the requested count and constructs the indexed predecessor/follower node pairs.
+          - path: src/follower.cpp
+            symbol: Follower::Follower
+            explanation: Stores the leader and follower identities and initializes each follower node.
+  - id: M-2
+    name: Leader-to-follower odometry transform
+    description: Every follower publishes the static odometry-frame relationship required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows each follower broadcasts a static transform whose parent is the leader's odom frame and whose child is the follower's odom frame.
+        evaluation: static
+        reference_evidence:
+          - path: src/follower.cpp
+            symbol: Follower::tf_publisher
+            explanation: Builds and broadcasts the leader-odom to follower-odom static transform.
+  - id: M-3
+    name: Periodic two-pose FollowPath goal
+    description: Leader pose resolution drives a two-pose FollowPath request as required by FR-3.
+    requirement_ids:
+      - FR-3
+    pass_criteria:
+      - id: M-3-PC-1
+        text: Static inspection shows a periodic callback resolves the leader base pose in the follower base frame, builds a path with exactly two poses, and sends it to the follower's nav2_msgs/action/FollowPath server.
+        evaluation: static
+        reference_evidence:
+          - path: src/follower.cpp
+            symbol: Follower::get_target_pose
+            explanation: Looks up the leader base transform in the follower base frame.
+          - path: src/follower.cpp
+            symbol: Follower::send_path
+            explanation: Builds the two-pose path goal and sends it through the follower action client.
+  - id: M-4
+    name: Unavailable action-server handling
+    description: Missing FollowPath servers are handled without sending a goal, satisfying FR-4.
+    requirement_ids:
+      - FR-4
+    pass_criteria:
+      - id: M-4-PC-1
+        text: Static inspection shows the periodic send path checks action-server availability, emits a warning when unavailable, and returns without issuing a goal.
+        evaluation: static
+        reference_evidence:
+          - path: src/follower.cpp
+            symbol: Follower::send_path
+            explanation: Waits for the FollowPath server and follows an explicit warn-and-return failure branch.
+  - id: M-5
+    name: Three managed navigation pipelines
+    description: Launch creates and lifecycle-manages three controller and velocity-smoother pipelines as required by FR-5.
+    requirement_ids:
+      - FR-5
+    pass_criteria:
+      - id: M-5-PC-1
+        text: Static inspection shows the installed launch starts three namespaced controller_server and velocity_smoother pairs, with lifecycle managers configured to autostart and manage both nodes in each namespace.
+        evaluation: static
+        reference_evidence:
+          - path: launch/turtlebot3_follower.launch.py
+            symbol: generate_launch_description
+            explanation: Iterates over three follower namespaces and creates the controller, smoother, and lifecycle-manager nodes.
+          - path: param/controll_server1.yaml
+            symbol: controller_server.ros__parameters
+            explanation: Provides controller configuration used by a launched navigation pipeline.

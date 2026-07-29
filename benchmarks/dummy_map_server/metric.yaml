@@ -1,0 +1,34 @@
+schema_version: "1.0"
+package_name: dummy_map_server
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Dynamic dummy occupancy grid
+    description: The package implements the continuously updated dummy occupancy map required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows a node that repeatedly publishes nav_msgs/msg/OccupancyGrid on map, stamps it, uses the world frame, initializes unknown cells, and updates cells to represent a moving occupied/free pattern.
+        evaluation: static
+        reference_evidence:
+          - path: src/dummy_map_server.cpp
+            symbol: main
+            explanation: Constructs the grid geometry and unknown data, updates the moving pattern, timestamps the message, and publishes it in a loop.
+  - id: M-2
+    name: Late-subscriber map delivery
+    description: The map publisher retains the latest map for late subscribers as required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows the map publisher uses a depth-one transient-local QoS policy or a semantically equivalent policy that retains the latest map for late subscribers.
+        evaluation: static
+        reference_evidence:
+          - path: src/dummy_map_server.cpp
+            symbol: main
+            explanation: Creates the map publisher with KeepLast(1) and transient_local QoS.

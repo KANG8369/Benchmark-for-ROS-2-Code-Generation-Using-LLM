@@ -1,0 +1,107 @@
+schema_version: "1.0"
+package_name: human_detector
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Lifecycle pose-detector configuration
+    description: Lifecycle configuration creates the pose detector and synchronized camera inputs required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows on_configure creates a pose-landmark detector and approximate synchronization for RGB image, aligned depth image, and camera calibration inputs.
+        evaluation: static
+        reference_evidence:
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.on_configure
+            explanation: Creates the MediaPipe pose detector and initializes synchronized camera subscribers.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.initialize_sync_subscribers
+            explanation: Subscribes to RGB, depth, and CameraInfo and registers an approximate-time synchronized callback.
+  - id: M-2
+    name: Landmark-based 3D position
+    description: Human landmarks and calibrated depth are converted into a 3D position as required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows the implementation derives a representative human image point from pose landmarks, reads the aligned depth at that point, and projects it with camera calibration to obtain a 3D position.
+        evaluation: static
+        reference_evidence:
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.get_3d_human_position
+            explanation: Combines the selected depth pixel with the calibrated projection ray to compute 3D position.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.extract_hip_midpoint
+            explanation: Derives the representative image point from detected pose landmarks.
+  - id: M-3
+    name: Active-state human transform
+    description: Active detection periodically produces the configured camera-to-human transform required by FR-3.
+    requirement_ids:
+      - FR-3
+    pass_criteria:
+      - id: M-3-PC-1
+        text: Static inspection shows lifecycle activation enables periodic TF broadcasting, and the callback sends a transform from the configured camera frame to the configured human frame only when a valid positive 3D position is available.
+        evaluation: static
+        reference_evidence:
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.on_activate
+            explanation: Enables lifecycle resources used for periodic operation.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.timer_callback
+            explanation: Checks that the detected forward position is positive before requesting TF broadcast.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.broadcast_timer_callback
+            explanation: Builds and sends the transform with the configured parent and child frame IDs.
+  - id: M-4
+    name: Optional annotated image output
+    description: Optional image publication follows the landmark and fallback behavior required by FR-4.
+    requirement_ids:
+      - FR-4
+    pass_criteria:
+      - id: M-4-PC-1
+        text: Static inspection shows image publication is parameter-controlled, draws pose landmarks when available, and otherwise republishes the unannotated RGB image.
+        evaluation: static
+        reference_evidence:
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.publish_image_with_detected_human
+            explanation: Selects annotated or original RGB output according to landmark availability.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.draw_person_pose
+            explanation: Draws the detected pose landmarks on the image.
+  - id: M-5
+    name: Invalid-input estimation guard
+    description: Missing or dimensionally inconsistent image data does not trigger estimation, satisfying FR-5.
+    requirement_ids:
+      - FR-5
+    pass_criteria:
+      - id: M-5-PC-1
+        text: Static inspection shows detection and 3D estimation are skipped when required RGB, depth, or calibration data is missing or when RGB and depth dimensions do not match.
+        evaluation: static
+        reference_evidence:
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.should_detect_human
+            explanation: Guards processing against missing synchronized data and mismatched image dimensions.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.are_rgb_image_same_size_as_depth_image
+            explanation: Implements the RGB/depth size compatibility check.
+  - id: M-6
+    name: Lifecycle timer cleanup
+    description: Periodic detection work is stopped or destroyed across lifecycle exits as required by FR-6.
+    requirement_ids:
+      - FR-6
+    pass_criteria:
+      - id: M-6-PC-1
+        text: Static inspection shows deactivation cancels the periodic timer and cleanup, shutdown, and error transitions destroy that timer.
+        evaluation: static
+        reference_evidence:
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.on_deactivate
+            explanation: Stops active lifecycle processing.
+          - path: human_detector/human_detector.py
+            symbol: HumanDetector.destroy_resources
+            explanation: Destroys the timer for cleanup, shutdown, and error paths.

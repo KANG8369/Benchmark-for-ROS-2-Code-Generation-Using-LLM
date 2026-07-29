@@ -1,0 +1,126 @@
+schema_version: "1.0"
+package_name: image_tools
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Camera or synthetic image publication
+    description: cam2image periodically publishes captured or generated images as required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows cam2image uses a timer to publish sensor_msgs/msg/Image messages from either a camera frame or the synthetic burger renderer, with a current timestamp and configured frame identifier.
+        evaluation: static
+        reference_evidence:
+          - path: src/cam2image.cpp
+            symbol: Cam2Image::timerCallback
+            explanation: Selects camera or synthetic input, constructs a ROS-compatible image container, stamps it, and publishes it.
+          - path: src/burger.cpp
+            symbol: Burger::render_burger
+            explanation: Generates the synthetic burger image used when camera input is disabled.
+  - id: M-2
+    name: Runtime horizontal flip
+    description: A true Bool command on flip_image enables horizontal flipping as required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows cam2image subscribes to flip_image using std_msgs/msg/Bool and horizontally flips subsequent images when the received value is true.
+        evaluation: static
+        reference_evidence:
+          - path: src/cam2image.cpp
+            symbol: Cam2Image::initialize
+            explanation: Creates the Bool subscription and stores each command in the flip state used by the image-processing path.
+          - path: src/cam2image.cpp
+            symbol: Cam2Image::timerCallback
+            explanation: Applies horizontal flipping according to the stored command.
+  - id: M-3
+    name: Missing-camera-frame guard
+    description: Camera mode suppresses publication when no frame is available, satisfying FR-3.
+    requirement_ids:
+      - FR-3
+    pass_criteria:
+      - id: M-3-PC-1
+        text: Static inspection shows the timer callback checks camera capture success or frame validity and returns without publishing when a frame cannot be obtained.
+        evaluation: static
+        reference_evidence:
+          - path: src/cam2image.cpp
+            symbol: Cam2Image::timerCallback
+            explanation: Guards image construction and publication when camera capture does not provide a frame.
+  - id: M-4
+    name: Explicit startup and rendering errors
+    description: Invalid camera, QoS, and burger-size configurations are surfaced explicitly as required by FR-4.
+    requirement_ids:
+      - FR-4
+    pass_criteria:
+      - id: M-4-PC-1
+        text: Static inspection shows explicit error or exception paths for camera-open failure, invalid QoS reliability or history settings, and synthetic burger dimensions that are too small.
+        evaluation: static
+        reference_evidence:
+          - path: src/cam2image.cpp
+            symbol: Cam2Image::initialize
+            explanation: Validates camera opening and initializes configured publishing resources.
+          - path: src/cam2image.cpp
+            symbol: Cam2Image::parse_parameters
+            explanation: Validates QoS-related parameter values.
+          - path: src/burger.cpp
+            symbol: Burger::render_burger
+            explanation: Throws when requested image dimensions cannot contain the rendered burger.
+  - id: M-5
+    name: Configurable image display
+    description: showimage subscribes with configured QoS and conditionally displays supported images as required by FR-5.
+    requirement_ids:
+      - FR-5
+    pass_criteria:
+      - id: M-5-PC-1
+        text: Static inspection shows showimage creates an image subscription using validated QoS settings, converts supported images, and displays them only when display is enabled.
+        evaluation: static
+        reference_evidence:
+          - path: src/showimage.cpp
+            symbol: ShowImage::initialize
+            explanation: Creates the configured image subscription.
+          - path: src/showimage.cpp
+            symbol: ShowImage::process_image
+            explanation: Converts incoming image data and conditionally displays it.
+          - path: src/showimage.cpp
+            symbol: ShowImage::parse_parameters
+            explanation: Parses and validates the requested QoS settings.
+  - id: M-6
+    name: ROS/OpenCV type adaptation
+    description: The exported ROSCvMatContainer provides the header-preserving adaptation and ownership modes required by FR-6.
+    requirement_ids:
+      - FR-6
+    pass_criteria:
+      - id: M-6-PC-1
+        text: Static inspection shows a public ROSCvMatContainer and rclcpp type adapter that convert between cv::Mat and sensor_msgs/msg/Image while preserving headers and supporting owned, referenced, and copied matrix access.
+        evaluation: static
+        reference_evidence:
+          - path: include/image_tools/cv_mat_sensor_msgs_image_type_adapter.hpp
+            symbol: image_tools::ROSCvMatContainer
+            explanation: Declares ownership-aware constructors, matrix accessors, copy operations, and the exported type adapter.
+          - path: src/cv_mat_sensor_msgs_image_type_adapter.cpp
+            symbol: image_tools::ROSCvMatContainer
+            explanation: Implements owned/reference storage and copy/access semantics.
+          - path: CMakeLists.txt
+            symbol: install
+            explanation: Installs the public headers and exports the image_tools library target.
+  - id: M-7
+    name: Adapter input validation
+    description: Unsupported OpenCV types and ROS encodings are rejected as required by FR-7.
+    requirement_ids:
+      - FR-7
+    pass_criteria:
+      - id: M-7-PC-1
+        text: Static inspection shows conversion paths throw or return explicit errors for unsupported cv::Mat element types and unsupported incoming sensor_msgs image encodings.
+        evaluation: static
+        reference_evidence:
+          - path: include/image_tools/cv_mat_sensor_msgs_image_type_adapter.hpp
+            symbol: rclcpp::TypeAdapter
+            explanation: The OpenCV-to-ROS conversion switch throws for unsupported cv::Mat element types.
+          - path: src/cv_mat_sensor_msgs_image_type_adapter.cpp
+            symbol: encoding2mat_type
+            explanation: The ROS-to-OpenCV conversion rejects incoming sensor image encodings that have no supported matrix mapping.

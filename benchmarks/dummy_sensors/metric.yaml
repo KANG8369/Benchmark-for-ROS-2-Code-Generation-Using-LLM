@@ -1,0 +1,34 @@
+schema_version: "1.0"
+package_name: dummy_sensors
+reference:
+  root: reference/
+evaluation_policy:
+  equivalence: semantic
+  exact_constants_only_when_specified: true
+metrics:
+  - id: M-1
+    name: Dummy laser scan publisher
+    description: The package implements the timestamped sinusoidally varying uniform laser scan required by FR-1.
+    requirement_ids:
+      - FR-1
+    pass_criteria:
+      - id: M-1-PC-1
+        text: Static inspection shows the dummy_laser executable repeatedly publishes sensor_msgs/msg/LaserScan on scan with frame_id single_rrbot_hokuyo_link and a current timestamp, where every range in a scan is assigned the same time-varying sinusoidal value.
+        evaluation: static
+        reference_evidence:
+          - path: src/dummy_laser.cpp
+            symbol: main
+            explanation: Configures the LaserScan, fills its ranges from an absolute sinusoid, stamps it, and publishes continuously.
+  - id: M-2
+    name: Dummy joint-state publisher
+    description: The package implements the two-joint sinusoidal joint-state stream required by FR-2.
+    requirement_ids:
+      - FR-2
+    pass_criteria:
+      - id: M-2-PC-1
+        text: Static inspection shows the dummy_joint_states executable repeatedly publishes sensor_msgs/msg/JointState on joint_states for single_rrbot_joint1 and single_rrbot_joint2, with matching sinusoidal positions and a current timestamp.
+        evaluation: static
+        reference_evidence:
+          - path: src/dummy_joint_states.cpp
+            symbol: main
+            explanation: Initializes two named joints, updates both positions from a sinusoid, stamps the message, and publishes it.
