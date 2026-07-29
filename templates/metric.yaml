@@ -3,9 +3,10 @@
 # A metric represents one package capability.
 # Each pass criterion describes one independently verifiable behavior.
 # Reference evidence identifies where the criterion was derived from in the
-# reference package. It must not be used for exact code matching.
+# reference package. The snippet must be an exact, contiguous excerpt, but it
+# is provenance for the criterion and must not be used to require code identity.
 
-schema_version: "1.0"
+schema_version: "2.0"
 
 package_name: example_package
 
@@ -30,20 +31,28 @@ metrics:
           Describe one independently verifiable package behavior.
         evaluation: static
         reference_evidence:
-          - path: src/example_node.cpp
-            symbol: ExampleNode::callback
-            code: |-
-              // Include a short excerpt demonstrating the behavior.
+          - kind: source_code
+            path: src/example_node.cpp
+            locator: ExampleNode::callback
+            snippet: |-
+              void ExampleNode::callback()
+              {
+                publisher_->publish(message_);
+              }
             explanation: >-
               Explain how this reference code demonstrates the criterion.
 
       - id: M-1-PC-2
         text: >-
           Describe another independently verifiable package behavior.
-        evaluation: dynamic
+        evaluation: static
         reference_evidence:
-          - path: launch/example.launch.py
-            symbol: generate_launch_description
+          - kind: launch
+            path: launch/example.launch.py
+            locator: generate_launch_description
+            snippet: |-
+              def generate_launch_description():
+                  return LaunchDescription([example_node])
             explanation: >-
               Explain how the launch configuration supports this behavior.
 
@@ -58,9 +67,14 @@ metrics:
       - id: M-2-PC-1
         text: >-
           Describe one behavior required to satisfy this capability.
-        evaluation: hybrid
+        evaluation: static
         reference_evidence:
-          - path: config/example.yaml
-            symbol: example_node.ros__parameters
+          - kind: config
+            path: config/example.yaml
+            locator: example_node.ros__parameters
+            snippet: |-
+              example_node:
+                ros__parameters:
+                  enabled: true
             explanation: >-
               Explain how this configuration contributes to the behavior.

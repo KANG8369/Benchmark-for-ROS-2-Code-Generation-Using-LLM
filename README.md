@@ -145,13 +145,28 @@ A metric file has three levels:
 1. **Metric**: A major package capability to evaluate.
 2. **Pass criterion**: One independently verifiable behavior required by the
    capability.
-3. **Reference evidence**: Source code, launch files, or configuration files
-   showing where the criterion was derived from in the reference package.
+3. **Reference evidence**: A typed, traceable excerpt showing where the
+   criterion was derived from in the reference package.
 
 Reference evidence documents the origin of each criterion. Generated packages
 are evaluated by semantic equivalence and are not required to reproduce the
 same source code, programming language, file structure, node decomposition, or
 implementation technique.
+
+Metric schema `2.0` represents each `reference_evidence` item with:
+
+- `kind`: Evidence category. Supported values are `source_code`, `launch`,
+  `config`, `build`, `manifest`, and `resource`.
+- `path`: File path relative to the case's `reference/` directory.
+- `locator`: A symbol, function, class, configuration key, or other searchable
+  location within the referenced file.
+- `snippet`: A short, exact, contiguous excerpt from the referenced file.
+- `explanation`: The behavior demonstrated by that excerpt and its relevance to
+  the pass criterion.
+
+The excerpt is authoring and evaluation provenance, not a string-matching
+requirement for generated code. Evaluators must inspect the generated package
+for semantically equivalent behavior.
 
 Each pass criterion declares an evaluation method:
 

@@ -17,6 +17,18 @@ except ImportError as exc:
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARKS_ROOT = REPO_ROOT / "benchmarks"
 EVALUATION_METHODS = {"static", "dynamic", "hybrid"}
+EVIDENCE_KINDS = {
+    "source_code",
+    "launch",
+    "config",
+    "build",
+    "manifest",
+    "resource",
+}
+
+
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def read_yaml(path: Path) -> dict:
@@ -64,8 +76,8 @@ def validate_case(case_root: Path, static_only: bool) -> tuple[int, int, int]:
             f"metric={metric_package!r}, reference={manifest_package!r}"
         )
 
-    if metric_document.get("schema_version") != "1.0":
-        raise ValueError(f"{package_name}: metric schema_version must be '1.0'")
+    if metric_document.get("schema_version") != "2.0":
+        raise ValueError(f"{package_name}: metric schema_version must be '2.0'")
     if metric_document.get("reference") != {"root": "reference/"}:
         raise ValueError(f"{package_name}: reference.root must be 'reference/'")
     if metric_document.get("evaluation_policy") != {
@@ -145,37 +157,68 @@ def validate_case(case_root: Path, static_only: bool) -> tuple[int, int, int]:
 
             for evidence in evidence_items:
                 evidence_count += 1
-                evidence_path = (reference_root / evidence["path"]).resolve()
+                kind = evidence.get("kind")
+                if kind not in EVIDENCE_KINDS:
+                    raise ValueError(
+                        f"{package_name}: {criterion_id} evidence has invalid kind "
+                        f"{kind!r}"
+                    )
+
+                relative_path = evidence.get("path")
+                if not isinstance(relative_path, str) or not relative_path:
+                    raise ValueError(
+                        f"{package_name}: {criterion_id} evidence has no path"
+                    )
+                evidence_path = (reference_root / relative_path).resolve()
                 if (
                     evidence_path != resolved_reference_root
                     and resolved_reference_root not in evidence_path.parents
                 ):
                     raise ValueError(
                         f"{package_name}: evidence escapes reference root: "
-                        f"{evidence['path']}"
+                        f"{relative_path}"
                     )
                 if not evidence_path.is_file():
                     raise ValueError(
-                        f"{package_name}: missing evidence path {evidence['path']}"
+                        f"{package_name}: missing evidence path {relative_path}"
                     )
 
-                symbol = evidence.get("symbol")
-                if not isinstance(symbol, str) or not symbol:
+                locator = evidence.get("locator")
+                if not isinstance(locator, str) or not locator:
                     raise ValueError(
-                        f"{package_name}: evidence {evidence['path']} has no symbol"
+                        f"{package_name}: evidence {relative_path} has no locator"
                     )
-                locator = symbol.split("::")[-1].split(".")[-1]
-                source_text = evidence_path.read_text(
-                    encoding="utf-8", errors="ignore"
+                source_text = normalize_newlines(
+                    evidence_path.read_text(encoding="utf-8", errors="ignore")
                 )
-                if locator not in source_text:
+                locator_candidates = {
+                    locator,
+                    locator.split("::")[-1],
+                    locator.split(".")[-1],
+                }
+                if not any(
+                    candidate in source_text for candidate in locator_candidates
+                ):
                     raise ValueError(
-                        f"{package_name}: symbol locator {locator!r} was not found "
-                        f"in {evidence['path']}"
+                        f"{package_name}: {criterion_id} locator {locator!r} was not found "
+                        f"in {relative_path}"
                     )
+
+                snippet = evidence.get("snippet")
+                if not isinstance(snippet, str) or not snippet.strip():
+                    raise ValueError(
+                        f"{package_name}: evidence {relative_path} has no snippet"
+                    )
+                normalized_snippet = normalize_newlines(snippet)
+                if normalized_snippet not in source_text:
+                    raise ValueError(
+                        f"{package_name}: {criterion_id} evidence snippet is not an "
+                        f"exact contiguous excerpt of {relative_path}"
+                    )
+
                 if not evidence.get("explanation"):
                     raise ValueError(
-                        f"{package_name}: evidence {evidence['path']} has no explanation"
+                        f"{package_name}: evidence {relative_path} has no explanation"
                     )
 
     if covered_requirement_ids != expected_requirement_ids:
