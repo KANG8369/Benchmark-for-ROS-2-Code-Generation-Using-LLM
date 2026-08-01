@@ -14,8 +14,6 @@
 # items instead of expanding one snippet across unrelated code.
 # Include a controlling condition when an if/else branch is part of the behavior.
 
-schema_version: "2.1"
-
 package_name: example_package
 
 reference:

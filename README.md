@@ -161,11 +161,12 @@ generated package for an equivalent implementation. Generated packages are not
 required to reproduce the same source code, programming language, file
 structure, node decomposition, or implementation technique.
 
-Metric schema `2.1` represents each `reference_evidence` item with:
+Each `reference_evidence` item contains:
 
 - `path`: File path relative to the case's `reference/` directory.
 - `anchor`: A symbol, function, class, configuration key, or other searchable
-  location within the referenced file.
+  location within the referenced file. It is a navigation and provenance hint,
+  not an evaluation requirement or semantic constraint.
 - `snippet`: A short, exact, contiguous excerpt from the referenced file.
 - `explanation`: The behavior demonstrated by that excerpt and its relevance to
   the pass criterion.

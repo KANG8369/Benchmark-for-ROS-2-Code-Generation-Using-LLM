@@ -1,4 +1,3 @@
-schema_version: "2.1"
 package_name: apriltag_ros
 reference:
   root: reference/
