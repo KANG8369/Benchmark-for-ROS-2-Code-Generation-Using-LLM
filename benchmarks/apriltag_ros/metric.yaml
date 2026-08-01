@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: apriltag_ros
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: AprilTag detection publication
@@ -13,24 +10,40 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows synchronized image and CameraInfo inputs are consumed by the camera
+    text: Synchronized image and CameraInfo inputs are consumed by the camera
       callback.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: AprilTagNode::onCamera
+    - path: src/AprilTagNode.cpp
+      anchor: image_transport::CameraSubscriber sub_cam
+      snippet: |2-
+            const image_transport::CameraSubscriber sub_cam;
+      explanation: Stores the input as an image_transport CameraSubscriber, which pairs image and CameraInfo delivery.
+    - path: src/AprilTagNode.cpp
+      anchor: std::bind(&AprilTagNode::onCamera
+      snippet: |2-
+            sub_cam{
+        #ifdef image_transport_NODE_INTERFACE
+                image_transport::RequiredInterfaces{*this},
+        #else
+                this,
+        #endif
+                this->get_node_topics_interface()->resolve_topic_name("image_rect"),
+                std::bind(&AprilTagNode::onCamera, this, std::placeholders::_1, std::placeholders::_2),
+                declare_parameter("image_transport", "raw", descr({}, true)),
+      explanation: Binds both CameraSubscriber message arguments to the onCamera callback on image_rect.
+    - path: src/AprilTagNode.cpp
+      anchor: AprilTagNode::onCamera
       snippet: |-
         void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_img,
                                     const sensor_msgs::msg::CameraInfo::ConstSharedPtr& msg_ci)
       explanation: The camera callback receives synchronized Image and CameraInfo messages.
   - id: M-1-PC-2
-    text: Static inspection shows camera images are passed through the configured AprilTag detector.
+    text: Camera images are passed through the configured AprilTag detector.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: apriltag_detector_detect
+    - path: src/AprilTagNode.cpp
+      anchor: apriltag_detector_detect
       snippet: |2-
             // convert to 8bit monochrome image
             const cv::Mat img_uint8 = cv_bridge::toCvShare(msg_img, "mono8")->image;
@@ -42,12 +55,11 @@ metrics:
             zarray_t* detections = apriltag_detector_detect(td, &im);
       explanation: Converts the incoming image to mono8 and passes it to the AprilTag detector.
   - id: M-1-PC-3
-    text: Static inspection shows accepted detections are converted into AprilTag detection messages.
+    text: Accepted detections are converted into AprilTag detection messages.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: AprilTagDetection
+    - path: src/AprilTagNode.cpp
+      anchor: AprilTagDetection
       snippet: |2-
                 // detection
                 apriltag_msgs::msg::AprilTagDetection msg_detection;
@@ -63,19 +75,38 @@ metrics:
       explanation: Copies the accepted detector result into an AprilTagDetection message and appends it
         to the array.
   - id: M-1-PC-4
-    text: Static inspection shows an AprilTagDetectionArray containing accepted detections is published.
+    text: An AprilTagDetectionArray containing accepted detections is published.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: AprilTagDetectionArray
+    - path: src/AprilTagNode.cpp
+      anchor: AprilTagDetectionArray
       snippet: |2-
             apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
             msg_detections.header = msg_img->header;
       explanation: Creates the detection-array message and preserves the image header.
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: pub_detections->publish
+    - path: src/AprilTagNode.cpp
+      anchor: tag_frames.empty
+      snippet: |2-
+                // ignore untracked tags
+                if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
+
+                // reject detections with more corrected bits than allowed
+                if(det->hamming > max_hamming) { continue; }
+
+                // detection
+                apriltag_msgs::msg::AprilTagDetection msg_detection;
+                msg_detection.family = std::string(det->family->name);
+                msg_detection.id = det->id;
+                msg_detection.hamming = det->hamming;
+                msg_detection.decision_margin = det->decision_margin;
+                msg_detection.centre.x = det->c[0];
+                msg_detection.centre.y = det->c[1];
+                std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
+                std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
+                msg_detections.detections.push_back(msg_detection);
+      explanation: Appends a detection to the array only after configured-ID and Hamming filters accept it.
+    - path: src/AprilTagNode.cpp
+      anchor: pub_detections->publish
       snippet: |2-
             pub_detections->publish(msg_detections);
       explanation: Publishes the completed AprilTagDetectionArray.
@@ -87,12 +118,11 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows pose estimation is gated by its enable state and valid camera intrinsics.
+    text: Pose estimation is gated by its enable state and valid camera intrinsics.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: estimate_pose
+    - path: src/AprilTagNode.cpp
+      anchor: estimate_pose
       snippet: |2-
             // check for valid intrinsics
             const bool calibrated = msg_ci->width && msg_ci->height &&
@@ -101,20 +131,18 @@ metrics:
             if(estimate_pose != nullptr && !calibrated) {
                 RCLCPP_WARN_STREAM(get_logger(), "The camera is not calibrated! Set 'pose_estimation_method' to \"\" (empty) to disable pose estimation and this warning.");
       explanation: Computes camera-calibration validity and warns when enabled pose estimation lacks calibration.
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: estimate_pose != nullptr && calibrated
+    - path: src/AprilTagNode.cpp
+      anchor: estimate_pose != nullptr && calibrated
       snippet: |2-
                 if(estimate_pose != nullptr && calibrated) {
       explanation: Executes pose generation only when an estimator is enabled and calibration is valid.
   - id: M-2-PC-2
-    text: Static inspection shows tag pose is estimated from detection corners, camera intrinsics, and
+    text: Tag pose is estimated from detection corners, camera intrinsics, and
       tag size.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/pose_estimation.cpp
-      locator: objectPoints
+    - path: src/pose_estimation.cpp
+      anchor: objectPoints
       snippet: |2-
             const std::vector<cv::Point3d> objectPoints{
                 {-tagsize / 2, -tagsize / 2, 0},
@@ -123,9 +151,8 @@ metrics:
                 {-tagsize / 2, +tagsize / 2, 0},
             };
       explanation: Constructs tag object corners from the configured physical tag size.
-    - kind: source_code
-      path: src/pose_estimation.cpp
-      locator: imagePoints
+    - path: src/pose_estimation.cpp
+      anchor: imagePoints
       snippet: |2-
             const std::vector<cv::Point2d> imagePoints{
                 {detection->p[0][0], detection->p[0][1]},
@@ -134,9 +161,8 @@ metrics:
                 {detection->p[3][0], detection->p[3][1]},
             };
       explanation: Uses the detected tag corners as image points.
-    - kind: source_code
-      path: src/pose_estimation.cpp
-      locator: cv::solvePnP
+    - path: src/pose_estimation.cpp
+      anchor: cv::solvePnP
       snippet: |2-
             cv::Matx33d cameraMatrix;
             cameraMatrix(0, 0) = intr[0];// fx
@@ -148,13 +174,12 @@ metrics:
             cv::solvePnP(objectPoints, imagePoints, cameraMatrix, {}, rvec, tvec);
       explanation: Builds the camera matrix from intrinsics and estimates pose with solvePnP.
   - id: M-2-PC-3
-    text: Static inspection shows each transform uses the image frame as parent and a configured or derived
+    text: Each transform uses the image frame as parent and a configured or derived
       tag frame as child.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: tf.child_frame_id
+    - path: src/AprilTagNode.cpp
+      anchor: tf.child_frame_id
       snippet: |2-
                     geometry_msgs::msg::TransformStamped tf;
                     tf.header = msg_img->header;
@@ -164,12 +189,11 @@ metrics:
       explanation: Copies the image header as the parent frame and chooses a configured or derived tag
         child frame.
   - id: M-2-PC-4
-    text: Static inspection shows the resulting tag transforms are broadcast through TF.
+    text: The resulting tag transforms are broadcast through TF.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: tf_broadcaster.sendTransform
+    - path: src/AprilTagNode.cpp
+      anchor: tf_broadcaster.sendTransform
       snippet: |2-
             if(estimate_pose != nullptr)
                 tf_broadcaster.sendTransform(tfs);
@@ -181,49 +205,45 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows detections whose tag IDs are not configured are rejected when an ID
+    text: Detections whose tag IDs are not configured are rejected when an ID
       filter is present.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: tag_frames.count
+    - path: src/AprilTagNode.cpp
+      anchor: tag_frames.count
       snippet: |2-
                 // ignore untracked tags
                 if(!tag_frames.empty() && !tag_frames.count(det->id)) { continue; }
       explanation: Skips detections whose IDs are absent from a configured ID/frame map.
   - id: M-3-PC-2
-    text: Static inspection shows detections exceeding the maximum Hamming correction are rejected.
+    text: Detections exceeding the maximum Hamming correction are rejected.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: det->hamming > max_hamming
+    - path: src/AprilTagNode.cpp
+      anchor: det->hamming > max_hamming
       snippet: |2-
                 // reject detections with more corrected bits than allowed
                 if(det->hamming > max_hamming) { continue; }
       explanation: Skips detections whose corrected-bit count exceeds max_hamming.
   - id: M-3-PC-3
-    text: Static inspection shows a configured per-ID frame is used for accepted tags.
+    text: A configured per-ID frame is selected when the detected tag ID has a frame override.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: tf.child_frame_id
+    - path: src/AprilTagNode.cpp
+      anchor: tf.child_frame_id
       snippet: |2-
                     // set child frame name by generic tag name or configured tag name
                     tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
-      explanation: Uses the per-ID configured frame when one exists.
+      explanation: Selects the configured frame for a matching tag ID and otherwise derives a family-and-ID frame name.
   - id: M-3-PC-4
-    text: Static inspection shows a configured per-ID tag size is used for accepted tags.
+    text: A configured per-ID tag size is selected when the detected tag ID has a size override.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: tag_sizes.count
+    - path: src/AprilTagNode.cpp
+      anchor: tag_sizes.count
       snippet: |2-
                     const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
-      explanation: Uses the per-ID configured size when one exists.
+      explanation: Selects the configured size for a matching tag ID and otherwise uses the default tag edge size.
 - id: M-4
   name: Configuration validation
   description: Invalid tag-family and list configurations are rejected as required by FR-4.
@@ -231,12 +251,11 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows startup rejects mismatched tag ID and frame-list lengths.
+    text: Startup rejects mismatched tag ID and frame-list lengths.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: ids.size() != frames.size()
+    - path: src/AprilTagNode.cpp
+      anchor: ids.size() != frames.size()
       snippet: |2-
             if(!frames.empty()) {
                 if(ids.size() != frames.size()) {
@@ -246,12 +265,11 @@ metrics:
             }
       explanation: Throws an explicit error when nonempty frame and ID lists have different lengths.
   - id: M-4-PC-2
-    text: Static inspection shows startup rejects mismatched tag ID and size-list lengths.
+    text: Startup rejects mismatched tag ID and size-list lengths.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: ids.size() != sizes.size()
+    - path: src/AprilTagNode.cpp
+      anchor: ids.size() != sizes.size()
       snippet: |2-
             if(!sizes.empty()) {
                 // use tag specific size
@@ -262,12 +280,11 @@ metrics:
             }
       explanation: Throws an explicit error when nonempty size and ID lists have different lengths.
   - id: M-4-PC-3
-    text: Static inspection shows startup rejects unsupported tag families with an explicit error.
+    text: Startup rejects unsupported tag families with an explicit error.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: Unsupported tag family
+    - path: src/AprilTagNode.cpp
+      anchor: Unsupported tag family
       snippet: |2-
             if(tag_fun.count(tag_family)) {
                 tf = tag_fun.at(tag_family).first();
@@ -284,12 +301,39 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows an on-set-parameters callback applies supported detector tuning updates.
+    text: An on-set-parameters callback applies supported detector tuning updates.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: detector.threads
+    - path: src/AprilTagNode.cpp
+      anchor: '#define IF'
+      snippet: |2-
+        #define IF(N, V) \
+            if(assign_check(parameter, N, V)) continue;
+
+        template<typename T>
+        void assign(const rclcpp::Parameter& parameter, T& var)
+        {
+            var = parameter.get_value<T>();
+        }
+
+        template<typename T>
+        void assign(const rclcpp::Parameter& parameter, std::atomic<T>& var)
+        {
+            var = parameter.get_value<T>();
+        }
+
+        template<typename T>
+        bool assign_check(const rclcpp::Parameter& parameter, const std::string& name, T& var)
+        {
+            if(parameter.get_name() == name) {
+                assign(parameter, var);
+                return true;
+            }
+            return false;
+        }
+      explanation: Defines IF as a name check that assigns the incoming parameter value to the referenced live field.
+    - path: src/AprilTagNode.cpp
+      anchor: detector.threads
       snippet: |2-
             for(const rclcpp::Parameter& parameter : parameters) {
                 RCLCPP_DEBUG_STREAM(get_logger(), "setting: " << parameter);
@@ -302,39 +346,91 @@ metrics:
                 IF("detector.debug", td->debug)
       explanation: Maps supported detector parameters to the live detector fields in the parameter callback.
   - id: M-5-PC-2
-    text: Static inspection shows runtime updates change the maximum Hamming correction.
+    text: Runtime updates change the maximum Hamming correction.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: IF("max_hamming"
+    - path: src/AprilTagNode.cpp
+      anchor: '#define IF'
+      snippet: |2-
+        #define IF(N, V) \
+            if(assign_check(parameter, N, V)) continue;
+
+        template<typename T>
+        void assign(const rclcpp::Parameter& parameter, T& var)
+        {
+            var = parameter.get_value<T>();
+        }
+
+        template<typename T>
+        void assign(const rclcpp::Parameter& parameter, std::atomic<T>& var)
+        {
+            var = parameter.get_value<T>();
+        }
+
+        template<typename T>
+        bool assign_check(const rclcpp::Parameter& parameter, const std::string& name, T& var)
+        {
+            if(parameter.get_name() == name) {
+                assign(parameter, var);
+                return true;
+            }
+            return false;
+        }
+      explanation: Defines IF as a name check that assigns the incoming parameter value to the referenced live field.
+    - path: src/AprilTagNode.cpp
+      anchor: IF("max_hamming"
       snippet: |2-
                 IF("max_hamming", max_hamming)
       explanation: Maps a max_hamming parameter update to the filtering state.
   - id: M-5-PC-3
-    text: Static inspection shows runtime updates change detector profiling state.
+    text: Runtime updates change detector profiling state.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: IF("profile"
+    - path: src/AprilTagNode.cpp
+      anchor: '#define IF'
+      snippet: |2-
+        #define IF(N, V) \
+            if(assign_check(parameter, N, V)) continue;
+
+        template<typename T>
+        void assign(const rclcpp::Parameter& parameter, T& var)
+        {
+            var = parameter.get_value<T>();
+        }
+
+        template<typename T>
+        void assign(const rclcpp::Parameter& parameter, std::atomic<T>& var)
+        {
+            var = parameter.get_value<T>();
+        }
+
+        template<typename T>
+        bool assign_check(const rclcpp::Parameter& parameter, const std::string& name, T& var)
+        {
+            if(parameter.get_name() == name) {
+                assign(parameter, var);
+                return true;
+            }
+            return false;
+        }
+      explanation: Defines IF as a name check that assigns the incoming parameter value to the referenced live field.
+    - path: src/AprilTagNode.cpp
+      anchor: IF("profile"
       snippet: |2-
                 IF("profile", profile)
       explanation: Maps a profile parameter update to the profiling state.
   - id: M-5-PC-4
-    text: Static inspection shows the camera callback consumes the updated filtering and profiling state.
+    text: The camera callback consumes the current filtering and profiling state.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: if(profile)
+    - path: src/AprilTagNode.cpp
+      anchor: if(profile)
       snippet: |2-
             if(profile)
                 timeprofile_display(td->tp);
       explanation: Reads the current profiling state during camera processing.
-    - kind: source_code
-      path: src/AprilTagNode.cpp
-      locator: det->hamming > max_hamming
+    - path: src/AprilTagNode.cpp
+      anchor: det->hamming > max_hamming
       snippet: |2-
                 // reject detections with more corrected bits than allowed
                 if(det->hamming > max_hamming) { continue; }
@@ -346,24 +442,22 @@ metrics:
   - FR-6
   pass_criteria:
   - id: M-6-PC-1
-    text: Static inspection shows the demonstration launch declares a configurable camera device argument.
+    text: The demonstration launch declares a configurable camera device argument.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/camera_36h11.launch.yml
-      locator: device
+    - path: launch/camera_36h11.launch.yml
+      anchor: device
       snippet: |-
         - arg:
             name: device
             default: "0"
       explanation: Declares the configurable camera device launch argument.
   - id: M-6-PC-2
-    text: Static inspection shows the launch composes camera input, rectification, and AprilTag processing.
+    text: The launch composes camera input, rectification, and AprilTag processing.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/camera_36h11.launch.yml
-      locator: camera::CameraNode
+    - path: launch/camera_36h11.launch.yml
+      anchor: camera::CameraNode
       snippet: |2-
             - pkg: camera_ros
               plugin: camera::CameraNode
@@ -373,9 +467,8 @@ metrics:
               - name: camera
                 value: $(var device)
       explanation: Starts the camera component and passes it the selected device.
-    - kind: launch
-      path: launch/camera_36h11.launch.yml
-      locator: image_proc::RectifyNode
+    - path: launch/camera_36h11.launch.yml
+      anchor: image_proc::RectifyNode
       snippet: |2-
             - pkg: image_proc
               plugin: image_proc::RectifyNode
@@ -387,9 +480,8 @@ metrics:
               - from: camera_info
                 to: /camera/camera/camera_info
       explanation: Starts image rectification and remaps raw image and calibration inputs.
-    - kind: launch
-      path: launch/camera_36h11.launch.yml
-      locator: AprilTagNode
+    - path: launch/camera_36h11.launch.yml
+      anchor: AprilTagNode
       snippet: |2-
             - pkg: apriltag_ros
               plugin: AprilTagNode
@@ -402,28 +494,25 @@ metrics:
                 to: /camera/camera/camera_info
       explanation: Starts AprilTag processing and connects rectified image and CameraInfo topics.
   - id: M-6-PC-3
-    text: Static inspection shows the AprilTag node receives the packaged family and tag configuration.
+    text: The AprilTag node receives the packaged family and tag configuration.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/camera_36h11.launch.yml
-      locator: tags_36h11.yaml
+    - path: launch/camera_36h11.launch.yml
+      anchor: tags_36h11.yaml
       snippet: |2-
               param:
               - from: $(find-pkg-share apriltag_ros)/cfg/tags_36h11.yaml
       explanation: Loads the packaged tags_36h11 configuration into the AprilTag component.
-    - kind: config
-      path: cfg/tags_36h11.yaml
-      locator: family
+    - path: cfg/tags_36h11.yaml
+      anchor: family
       snippet: |2-
                 image_transport: raw    # image format
                 family: 36h11           # tag family name
                 size: 0.173             # tag edge size in meter
                 max_hamming: 0          # maximum allowed hamming distance (corrected bits)
       explanation: Defines the demo image transport, tag family, default size, and Hamming threshold.
-    - kind: config
-      path: cfg/tags_36h11.yaml
-      locator: tag
+    - path: cfg/tags_36h11.yaml
+      anchor: tag
       snippet: |2-
                 tag:
                     ids: [9, 14]            # tag ID
@@ -431,13 +520,12 @@ metrics:
                     sizes: [0.162, 0.162]   # optional tag-specific edge size
       explanation: Defines the demo's per-tag IDs, frames, and sizes.
   - id: M-6-PC-4
-    text: Static inspection shows the launch and configuration directories are installed into the package
+    text: The launch and configuration directories are installed into the package
       share directory.
     evaluation: static
     reference_evidence:
-    - kind: build
-      path: CMakeLists.txt
-      locator: install(DIRECTORY cfg
+    - path: CMakeLists.txt
+      anchor: install(DIRECTORY cfg
       snippet: |-
         install(DIRECTORY cfg
             DESTINATION share/${PROJECT_NAME}

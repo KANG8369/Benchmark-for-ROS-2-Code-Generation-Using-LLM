@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: image_proc
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Configurable composable image pipeline
@@ -14,12 +11,11 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows the launch description accepts a configurable namespace input.
+    text: The launch description accepts a configurable namespace input.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: arg_namespace
+    - path: launch/image_proc.launch.py
+      anchor: arg_namespace
       snippet: |2-
             arg_namespace = DeclareLaunchArgument(
                 name='namespace', default_value='',
@@ -27,12 +23,11 @@ metrics:
             )
       explanation: Declares the namespace launch input and its default value.
   - id: M-1-PC-2
-    text: Static inspection shows the launch description accepts a configurable component-container input.
+    text: The launch description accepts a configurable component-container input.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: arg_container
+    - path: launch/image_proc.launch.py
+      anchor: arg_container
       snippet: |2-
             arg_container = DeclareLaunchArgument(
                 name='container', default_value='',
@@ -43,12 +38,11 @@ metrics:
             )
       explanation: Declares the component-container launch input and its default value.
   - id: M-1-PC-3
-    text: Static inspection shows debayer, mono rectify, and color rectify composable nodes are defined.
+    text: Debayer, mono rectify, and color rectify composable nodes are defined.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: image_proc::DebayerNode
+    - path: launch/image_proc.launch.py
+      anchor: image_proc::DebayerNode
       snippet: |2-
                 ComposableNode(
                     package='image_proc',
@@ -57,9 +51,8 @@ metrics:
                     namespace=LaunchConfiguration('namespace'),
                 ),
       explanation: Defines the Debayer composable node.
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: rectify_mono_node
+    - path: launch/image_proc.launch.py
+      anchor: rectify_mono_node
       snippet: |2-
                 ComposableNode(
                     package='image_proc',
@@ -73,9 +66,8 @@ metrics:
                     ],
                 ),
       explanation: Defines the mono Rectify composable node and its remappings.
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: rectify_color_node
+    - path: launch/image_proc.launch.py
+      anchor: rectify_color_node
       snippet: |2-
                 ComposableNode(
                     package='image_proc',
@@ -90,12 +82,11 @@ metrics:
                 )
       explanation: Defines the color Rectify composable node and its remappings.
   - id: M-1-PC-4
-    text: Static inspection shows the components can be started in a new component container.
+    text: The components can be started in a new component container.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: image_processing_container
+    - path: launch/image_proc.launch.py
+      anchor: image_processing_container
       snippet: |2-
             # If an existing container is not provided, start a container and load nodes into it
             image_processing_container = ComposableNodeContainer(
@@ -109,12 +100,11 @@ metrics:
             )
       explanation: Starts the three components in a newly created component container.
   - id: M-1-PC-5
-    text: Static inspection shows the components can instead be loaded into an existing container.
+    text: The components can instead be loaded into an existing container.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/image_proc.launch.py
-      locator: load_composable_nodes
+    - path: launch/image_proc.launch.py
+      anchor: load_composable_nodes
       snippet: |2-
             # If an existing container name is provided, load composable nodes into it
             # This will block until a container with the provided name is available and nodes are loaded
@@ -125,12 +115,11 @@ metrics:
             )
       explanation: Loads the same components into the container selected by the launch input.
   - id: M-1-PC-6
-    text: Static inspection shows the launch directory is installed into the package share directory.
+    text: The launch directory is installed into the package share directory.
     evaluation: static
     reference_evidence:
-    - kind: build
-      path: CMakeLists.txt
-      locator: ament_auto_package
+    - path: CMakeLists.txt
+      anchor: ament_auto_package
       snippet: |-
         ament_auto_package(INSTALL_TO_SHARE launch)
       explanation: Installs the launch directory into the package share through ament_auto_package.
@@ -142,13 +131,12 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows a public Processor API exposes processing flags, output storage, and
+    text: A public Processor API exposes processing flags, output storage, and
       a process operation.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: include/image_proc/processor.hpp
-      locator: ImageSet
+    - path: include/image_proc/processor.hpp
+      anchor: ImageSet
       snippet: |-
         struct ImageSet
         {
@@ -159,9 +147,8 @@ metrics:
           cv::Mat rect_color;
         };
       explanation: Exposes the output image storage used by the processing API.
-    - kind: source_code
-      path: include/image_proc/processor.hpp
-      locator: process(
+    - path: include/image_proc/processor.hpp
+      anchor: process(
       snippet: |2-
           enum
           {
@@ -178,12 +165,11 @@ metrics:
             ImageSet & output, int flags = ALL) const;
       explanation: Exposes processing flags and the public process operation.
   - id: M-2-PC-2
-    text: Static inspection shows supported mono, color, and Bayer raw encodings are accepted.
+    text: Supported mono, color, and Bayer raw encodings are accepted.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: raw_encoding
+    - path: src/image_proc/processor.cpp
+      anchor: raw_encoding
       snippet: |2-
           // Check if raw_image is color
           const std::string & raw_encoding = raw_image->encoding;
@@ -195,9 +181,8 @@ metrics:
             output.color_encoding = raw_encoding;
           }
       explanation: Recognizes supported BGR and RGB color encodings.
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: BAYER_RGGB8
+    - path: src/image_proc/processor.cpp
+      anchor: BAYER_RGGB8
       snippet: |2-
           // Bayer case
           if (raw_encoding.find("bayer") != std::string::npos) {
@@ -219,9 +204,8 @@ metrics:
             }
             cv::cvtColor(raw, output.color, code);
       explanation: Maps the supported Bayer encodings to OpenCV conversion codes.
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: MONO8
+    - path: src/image_proc/processor.cpp
+      anchor: MONO8
       snippet: |2-
           } else if (raw_encoding == sensor_msgs::image_encodings::MONO8) {  // Mono case
             output.mono = raw;
@@ -231,20 +215,18 @@ metrics:
             }
       explanation: Handles supported mono input and can derive a color output.
   - id: M-2-PC-3
-    text: Static inspection shows a requested mono output product is constructed.
+    text: A requested mono output product is constructed.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: cv::COLOR_BGR2GRAY
+    - path: src/image_proc/processor.cpp
+      anchor: cv::COLOR_BGR2GRAY
       snippet: |2-
             if (flags & MONO_EITHER) {
               cv::cvtColor(output.color, output.mono, cv::COLOR_BGR2GRAY);
             }
       explanation: Constructs mono output from Bayer input when requested.
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: COLOR_BGR2GRAY
+    - path: src/image_proc/processor.cpp
+      anchor: COLOR_BGR2GRAY
       snippet: |2-
             if (flags & MONO_EITHER) {
               int code =
@@ -253,34 +235,48 @@ metrics:
               cv::cvtColor(output.color, output.mono, code);
             }
       explanation: Constructs mono output from color input when requested.
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: output.mono = raw
+    - path: src/image_proc/processor.cpp
+      anchor: output.mono = raw
       snippet: |2-
           } else if (raw_encoding == sensor_msgs::image_encodings::MONO8) {  // Mono case
             output.mono = raw;
       explanation: Uses mono input directly as the requested mono product.
   - id: M-2-PC-4
-    text: Static inspection shows a requested color output product is constructed.
+    text: A requested color output product is constructed.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: cv::cvtColor(raw, output.color
+    - path: src/image_proc/processor.cpp
+      anchor: raw_encoding.find("bayer")
       snippet: |2-
+          // Bayer case
+          if (raw_encoding.find("bayer") != std::string::npos) {
+            // Convert to color BGR
+            // TODO(unknown): Faster to convert directly to mono when color is not requested,
+            //                but OpenCV doesn't support
+            int code = 0;
+            if (raw_encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              code = cv::COLOR_BayerBG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              code = cv::COLOR_BayerRG2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              code = cv::COLOR_BayerGR2BGR;
+            } else if (raw_encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              code = cv::COLOR_BayerGB2BGR;
+            } else {
+              RCUTILS_LOG_ERROR("[image_proc] Unsupported encoding '%s'", raw_encoding.c_str());
+              return false;
+            }
             cv::cvtColor(raw, output.color, code);
             output.color_encoding = sensor_msgs::image_encodings::BGR8;
-      explanation: Constructs color output from Bayer input when requested.
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: output.color = raw
+      explanation: Selects a conversion for supported Bayer input and constructs a BGR color product.
+    - path: src/image_proc/processor.cpp
+      anchor: output.color = raw
       snippet: |2-
           } else if (raw_type == CV_8UC3) {  // Color case
             output.color = raw;
       explanation: Uses color input directly as the requested color product.
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: output.color = raw
+    - path: src/image_proc/processor.cpp
+      anchor: output.color = raw
       snippet: |2-
             if (flags & COLOR_EITHER) {
               output.color_encoding = sensor_msgs::image_encodings::MONO8;
@@ -288,12 +284,11 @@ metrics:
             }
       explanation: Constructs color output from mono input when requested.
   - id: M-2-PC-5
-    text: Static inspection shows requested output products can be rectified using camera calibration.
+    text: Requested output products can be rectified using camera calibration.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/image_proc/processor.cpp
-      locator: rectifyImage
+    - path: src/image_proc/processor.cpp
+      anchor: rectifyImage
       snippet: |2-
           if (flags & RECT) {
             model.rectifyImage(output.mono, output.rect, interpolation_);
@@ -309,18 +304,16 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows a public edge-aware Bayer demosaicing utility is declared and implemented.
+    text: A public edge-aware Bayer demosaicing utility is declared and implemented.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: include/image_proc/edge_aware.hpp
-      locator: debayerEdgeAware
+    - path: include/image_proc/edge_aware.hpp
+      anchor: debayerEdgeAware
       snippet: |-
         void debayerEdgeAware(const cv::Mat & bayer, cv::Mat & color);
       explanation: Publicly declares the edge-aware Bayer demosaicing utility.
-    - kind: source_code
-      path: src/edge_aware.cpp
-      locator: debayerEdgeAware(
+    - path: src/edge_aware.cpp
+      anchor: debayerEdgeAware(
       snippet: |-
         void debayerEdgeAware(const cv::Mat & bayer, cv::Mat & color)
         {
@@ -337,9 +330,8 @@ metrics:
 
           int dh, dv;
       explanation: Implements the declared edge-aware utility and validates its image inputs.
-    - kind: source_code
-      path: src/edge_aware.cpp
-      locator: dh > dv
+    - path: src/edge_aware.cpp
+      anchor: dh > dv
       snippet: |2-
               dh = std::abs(bayer_pixel[0] - bayer_pixel[2]);
               dv = std::abs(bayer_pixel[-bayer_line_step + 1] - bayer_pixel[bayer_line_step + 1]);
@@ -354,19 +346,17 @@ metrics:
                   bayer_pixel[0], bayer_pixel[2]);
       explanation: Implements edge-direction-dependent green-channel interpolation.
   - id: M-3-PC-2
-    text: Static inspection shows a public weighted edge-aware Bayer demosaicing utility is declared and
+    text: A public weighted edge-aware Bayer demosaicing utility is declared and
       implemented.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: include/image_proc/edge_aware.hpp
-      locator: debayerEdgeAwareWeighted
+    - path: include/image_proc/edge_aware.hpp
+      anchor: debayerEdgeAwareWeighted
       snippet: |-
         void debayerEdgeAwareWeighted(const cv::Mat & bayer, cv::Mat & color);
       explanation: Publicly declares the weighted edge-aware Bayer demosaicing utility.
-    - kind: source_code
-      path: src/edge_aware.cpp
-      locator: debayerEdgeAwareWeighted(
+    - path: src/edge_aware.cpp
+      anchor: debayerEdgeAwareWeighted(
       snippet: |-
         void debayerEdgeAwareWeighted(const cv::Mat & bayer, cv::Mat & color)
         {
@@ -383,9 +373,8 @@ metrics:
 
           int dh, dv;
       explanation: Implements the declared weighted utility and validates its image inputs.
-    - kind: source_code
-      path: src/edge_aware.cpp
-      locator: wavg4
+    - path: src/edge_aware.cpp
+      anchor: wavg4
       snippet: |2-
               dh = std::abs(bayer_pixel[0] - bayer_pixel[2]);
               dv = std::abs(bayer_pixel[-bayer_line_step + 1] - bayer_pixel[bayer_line_step + 1]);
@@ -408,23 +397,28 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows SensorDataQoS is returned when no publisher is discovered.
+    text: SensorDataQoS is returned when no publisher is discovered.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: include/image_proc/utils.hpp
-      locator: SensorDataQoS
+    - path: include/image_proc/utils.hpp
+      anchor: get_publishers_info_by_topic
       snippet: |2-
+          auto topics_info = node->get_publishers_info_by_topic(topic_resolved);
+          if (topics_info.size()) {
+            auto profile = topics_info[0].qos_profile();
+            profile.history(rclcpp::SensorDataQoS().history());
+            profile.keep_last(rclcpp::SensorDataQoS().depth());
+            return profile;
           } else {
             return rclcpp::SensorDataQoS();
-      explanation: Falls back to SensorDataQoS when no publisher endpoint is available.
+          }
+      explanation: Queries publisher endpoints and returns SensorDataQoS only when none are discovered.
   - id: M-4-PC-2
-    text: Static inspection shows input reliability is derived to be compatible with the discovered publisher.
+    text: Input reliability is derived to be compatible with the discovered publisher.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: include/image_proc/utils.hpp
-      locator: qos_profile
+    - path: include/image_proc/utils.hpp
+      anchor: qos_profile
       snippet: |2-
           if (topics_info.size()) {
             auto profile = topics_info[0].qos_profile();
@@ -434,12 +428,11 @@ metrics:
       explanation: Starts from the discovered publisher profile, preserving its reliability while overriding
         only history and depth.
   - id: M-4-PC-3
-    text: Static inspection shows input durability is derived to be compatible with the discovered publisher.
+    text: Input durability is derived to be compatible with the discovered publisher.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: include/image_proc/utils.hpp
-      locator: qos_profile
+    - path: include/image_proc/utils.hpp
+      anchor: qos_profile
       snippet: |2-
           if (topics_info.size()) {
             auto profile = topics_info[0].qos_profile();
@@ -455,13 +448,12 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows supported Bayer input is converted and published as a requested color
+    text: Supported Bayer input is converted and published as a requested color
       product.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: debayerEdgeAware
+    - path: src/debayer.cpp
+      anchor: debayerEdgeAware
       snippet: |2-
                   if (algorithm == debayer_edgeaware_) {
                     debayerEdgeAware(bayer, color);
@@ -469,9 +461,8 @@ metrics:
                     debayerEdgeAwareWeighted(bayer, color);
                   }
       explanation: Selects edge-aware conversion implementations for supported Bayer input.
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: cv::cvtColor
+    - path: src/debayer.cpp
+      anchor: cv::cvtColor
       snippet: |2-
                 if (algorithm == debayer_vng_) {
                   code += cv::COLOR_BayerBG2BGR_VNG - cv::COLOR_BayerBG2BGR;
@@ -479,28 +470,25 @@ metrics:
 
                 cv::cvtColor(bayer, color, code);
       explanation: Converts supported Bayer input into the requested color image.
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: pub_color_.publish
+    - path: src/debayer.cpp
+      anchor: pub_color_.publish
       snippet: |2-
             pub_color_.publish(std::move(color_msg));
       explanation: Publishes the converted color product.
   - id: M-5-PC-2
-    text: Static inspection shows a requested mono product is published directly or through cv_bridge
+    text: A requested mono product is published directly or through cv_bridge
       conversion.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: pub_mono_.publish
+    - path: src/debayer.cpp
+      anchor: pub_mono_.publish
       snippet: |2-
           if (pub_mono_.getNumSubscribers()) {
             if (sensor_msgs::image_encodings::isMono(raw_msg->encoding)) {
               pub_mono_.publish(std::move(raw_msg));
       explanation: Publishes native mono input directly when a mono product is requested.
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: toCvCopy
+    - path: src/debayer.cpp
+      anchor: toCvCopy
       snippet: |2-
                 try {
                   if (bit_depth == 8) {
@@ -516,12 +504,11 @@ metrics:
                   pub_mono_.publish(std::move(gray_msg));
       explanation: Converts non-mono input through cv_bridge and publishes the requested mono product.
   - id: M-5-PC-3
-    text: Static inspection shows malformed Bayer input is rejected before OpenCV image construction.
+    text: Malformed Bayer input is rejected before OpenCV image construction.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: Received malformed Bayer image
+    - path: src/debayer.cpp
+      anchor: Received malformed Bayer image
       snippet: |2-
           } else if (sensor_msgs::image_encodings::isBayer(raw_msg->encoding)) {
             if (raw_msg->width == 0 || raw_msg->height == 0 || raw_msg->data.empty()) {
@@ -535,12 +522,11 @@ metrics:
       explanation: Rejects malformed Bayer input with zero dimensions or empty image data before OpenCV
         construction.
   - id: M-5-PC-4
-    text: Static inspection shows ambiguous 8UC3 input is reported explicitly.
+    text: Ambiguous 8UC3 input is reported explicitly.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: 8UC3
+    - path: src/debayer.cpp
+      anchor: 8UC3
       snippet: |2-
           } else if (raw_msg->encoding == sensor_msgs::image_encodings::TYPE_8UC3) {
             // 8UC3 does not specify a color encoding. Is it BGR, RGB, HSV, XYZ, LUV...?
@@ -551,33 +537,48 @@ metrics:
               sub_raw_.getTopic().c_str());
       explanation: Reports that ambiguous 8UC3 input requires an explicit color encoding.
   - id: M-5-PC-5
-    text: Static inspection shows unsupported input encodings are reported explicitly.
+    text: Unsupported input encodings are reported explicitly.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: unsupported encoding
+    - path: src/debayer.cpp
+      anchor: pub_color_.publish(std::move(color_msg))
       snippet: |2-
+            pub_color_.publish(std::move(color_msg));
+          } else if (raw_msg->encoding == sensor_msgs::image_encodings::YUV422 ||  // NOLINT
+            raw_msg->encoding == sensor_msgs::image_encodings::YUV422_YUY2)
+          {
+            // Use cv_bridge to convert to BGR8
+            auto color_msg = std::make_unique<sensor_msgs::msg::Image>();
+
+            try {
+              auto cv_image = cv_bridge::toCvCopy(raw_msg, sensor_msgs::image_encodings::BGR8);
+              cv_image->toImageMsg(*color_msg);
+              pub_color_.publish(std::move(color_msg));
+            } catch (const cv_bridge::Exception & e) {
+              RCLCPP_WARN(this->get_logger(), "cv_bridge conversion error: '%s'", e.what());
+            }
+          } else if (raw_msg->encoding == sensor_msgs::image_encodings::TYPE_8UC3) {
+            // 8UC3 does not specify a color encoding. Is it BGR, RGB, HSV, XYZ, LUV...?
+            RCLCPP_WARN(
+              this->get_logger(),
+              "Raw image topic '%s' has ambiguous encoding '8UC3'. The "
+              "source should set the encoding to 'bgr8' or 'rgb8'.",
+              sub_raw_.getTopic().c_str());
           } else {
             RCLCPP_WARN(
               this->get_logger(), "Raw image topic '%s' has unsupported encoding '%s'",
               sub_raw_.getTopic().c_str(), raw_msg->encoding.c_str());
-      explanation: Reports every other unsupported image encoding explicitly.
+          }
+      explanation: After the supported Bayer and YUV paths and the explicit ambiguous-8UC3 case, the final fallback reports the actual encoding as unsupported.
   - id: M-5-PC-6
-    text: Static inspection shows raw-image subscription is created or shut down according to output demand.
+    text: Raw-image subscription is created or shut down according to output demand.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: shutdown
+    - path: src/debayer.cpp
+      anchor: pub_mono_.getNumSubscribers() == 0
       snippet: |2-
               if (pub_mono_.getNumSubscribers() == 0 && pub_color_.getNumSubscribers() == 0) {
                 sub_raw_.shutdown();
-      explanation: Shuts down the raw-image subscription when neither output has demand.
-    - kind: source_code
-      path: src/debayer.cpp
-      locator: create_subscription
-      snippet: |2-
               } else if (!sub_raw_) {
                 // Create subscriber with QoS matched to subscribed topic publisher
                 auto qos_profile = getQosProfile(this, image_topic_);
@@ -586,7 +587,8 @@ metrics:
                   *this, image_topic_,
                   [this](const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg) {imageCb(raw_msg);},
                   hints.getTransport(), qos_profile);
-      explanation: Creates the raw-image subscription when an output first gains demand.
+              }
+      explanation: Shuts down raw input with no output demand; otherwise creates it when demand exists and no subscription is active.
 - id: M-6
   name: Calibrated lazy rectification
   description: Rectify processing follows the demand and calibration behavior required by FR-6.
@@ -594,21 +596,15 @@ metrics:
   - FR-6
   pass_criteria:
   - id: M-6-PC-1
-    text: Static inspection shows the camera subscription is managed lazily according to rectified-output
+    text: The camera subscription is managed lazily according to rectified-output
       demand.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: shutdown
+    - path: src/rectify.cpp
+      anchor: pub_rect_.getNumSubscribers() == 0
       snippet: |2-
               if (pub_rect_.getNumSubscribers() == 0) {
                 sub_camera_.shutdown();
-      explanation: Shuts down the camera subscription when rectified output has no demand.
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: sub_camera_.subscribe
-      snippet: |2-
               } else if (!sub_camera_) {
                 // Create subscriber with QoS matched to subscribed topic publisher
                 auto qos_profile = getQosProfile(this, image_topic_);
@@ -620,14 +616,14 @@ metrics:
                     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
                     imageCb(image_msg, info_msg);
                   }, hints.getTransport(), qos_profile);
-      explanation: Creates the camera subscription when rectified output gains demand.
+              }
+      explanation: Shuts down camera input with no rectified-output demand; otherwise creates it when demand exists and no subscription is active.
   - id: M-6-PC-2
-    text: Static inspection shows rectified output is suppressed for uncalibrated input.
+    text: Rectified output is suppressed for uncalibrated input.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: uncalibrated
+    - path: src/rectify.cpp
+      anchor: uncalibrated
       snippet: |2-
           // Verify camera is actually calibrated
           if (info_msg->k[0] == 0.0) {
@@ -643,12 +639,11 @@ metrics:
           }
       explanation: Detects uncalibrated input and returns before producing rectified output.
   - id: M-6-PC-3
-    text: Static inspection shows zero-distortion input is passed through without remapping.
+    text: Zero-distortion input is passed through without remapping.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: zero_distortion
+    - path: src/rectify.cpp
+      anchor: zero_distortion
       snippet: |2-
           // If zero distortion, just pass the message along
           bool zero_distortion = true;
@@ -660,9 +655,8 @@ metrics:
             }
           }
       explanation: Detects whether every distortion coefficient is zero.
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: pub_rect_.publish
+    - path: src/rectify.cpp
+      anchor: pub_rect_.publish
       snippet: |2-
           // This will be true if D is empty/zero sized
           if (zero_distortion) {
@@ -676,12 +670,11 @@ metrics:
           }
       explanation: Publishes the original image directly when distortion is zero.
   - id: M-6-PC-4
-    text: Static inspection shows nonzero-distortion input is rectified with camera calibration and published.
+    text: Nonzero-distortion input is rectified with camera calibration and published.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: rectifyImage
+    - path: src/rectify.cpp
+      anchor: rectifyImage
       snippet: |2-
           // Update the camera model
           model_.fromCameraInfo(info_msg);
@@ -693,9 +686,8 @@ metrics:
           // Rectify and publish
           model_.rectifyImage(image, rect, interpolation_);
       explanation: Initializes the camera model and remaps nonzero-distortion input.
-    - kind: source_code
-      path: src/rectify.cpp
-      locator: pub_rect_.publish
+    - path: src/rectify.cpp
+      anchor: pub_rect_.publish
       snippet: |2-
           // Allocate new rectified image message
           auto rect_msg = std::make_unique<sensor_msgs::msg::Image>();
@@ -710,12 +702,11 @@ metrics:
   - FR-7
   pass_criteria:
   - id: M-7-PC-1
-    text: Static inspection shows the requested image crop is applied.
+    text: The requested image crop is applied.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: cv::Rect
+    - path: src/crop_decimate.cpp
+      anchor: cv::Rect
       snippet: |2-
           // Except in Bayer downsampling case, output has same encoding as the input
           CvImage output(source->header, source->encoding);
@@ -723,20 +714,18 @@ metrics:
           output.image = source->image(cv::Rect(offset_x_, offset_y_, width, height));
       explanation: Creates the requested rectangular crop from the input image.
   - id: M-7-PC-2
-    text: Static inspection shows the cropped image is downsampled according to the requested decimation.
+    text: The cropped image is downsampled according to the requested decimation.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: decimation_x > 1
+    - path: src/crop_decimate.cpp
+      anchor: decimation_x > 1
       snippet: |2-
           // Apply further downsampling, if necessary
           if (decimation_x > 1 || decimation_y > 1) {
             cv::Mat decimated;
       explanation: Skips downsampling only when both requested decimation factors equal one.
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: CropDecimate_NN
+    - path: src/crop_decimate.cpp
+      anchor: CropDecimate_NN
       snippet: |2-
             if (interpolation_ == image_proc::CropDecimateModes::CropDecimate_NN) {
               // Use optimized method instead of OpenCV's more general NN resize
@@ -748,26 +737,21 @@ metrics:
                   decimate<1>(output.image, decimated, decimation_x, decimation_y);
                   break;
       explanation: Applies the requested decimation factors through the optimized nearest-neighbor path.
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: cv::resize
+    - path: src/crop_decimate.cpp
+      anchor: cv::resize
       snippet: |2-
-            } else {
               // Linear, cubic, area, ...
               cv::Size size(output.image.cols / decimation_x, output.image.rows / decimation_y);
               cv::resize(output.image, decimated, size, 0.0, 0.0, static_cast<int>(interpolation_));
-            }
-
-            output.image = decimated;
-      explanation: Resizes the crop to dimensions determined by the requested decimation factors.
+      explanation: Calls OpenCV resize with dimensions derived from both requested decimation factors and the configured interpolation mode.
   - id: M-7-PC-3
-    text: Static inspection shows unsupported Bayer decimation returns without output.
+    text: Unsupported Bayer decimation returns without output.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: Odd decimation
+    - path: src/crop_decimate.cpp
+      anchor: is_bayer &&
       snippet: |2-
+          // Special case: when decimating Bayer images, we first do a 2x2 decimation to BGR
           if (is_bayer && (decimation_x > 1 || decimation_y > 1)) {
             if (decimation_x % 2 != 0 || decimation_y % 2 != 0) {
               RCLCPP_ERROR(
@@ -775,26 +759,39 @@ metrics:
                 "Odd decimation not supported for Bayer images");
               return;
             }
-      explanation: Returns without output when Bayer data is requested with odd decimation.
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: Unrecognized Bayer encoding
-      snippet: |2-
+
+            cv::Mat bgr;
+            int step = output.image.step1();
+            if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_RGGB8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, 0, 1, step, step + 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_BGGR8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, step + 1, 1, step, 0);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GBRG8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, step, 0, step + 1, 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GRBG8) {
+              debayer2x2toBGR<uint8_t>(output.image, bgr, 1, 0, step + 1, step);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_RGGB16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, 0, 1, step, step + 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_BGGR16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, step + 1, 1, step, 0);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GBRG16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, step, 0, step + 1, 1);
+            } else if (image_msg->encoding == sensor_msgs::image_encodings::BAYER_GRBG16) {
+              debayer2x2toBGR<uint16_t>(output.image, bgr, 1, 0, step + 1, step);
             } else {
               RCLCPP_ERROR(
                 get_logger(), "Unrecognized Bayer encoding '%s'",
                 image_msg->encoding.c_str());
               return;
             }
-      explanation: Returns without output when Bayer encoding cannot be transformed safely.
+      explanation: Bayer downsampling returns for odd decimation and also returns from the final fallback for an encoding outside the recognized 8-bit and 16-bit patterns.
   - id: M-7-PC-4
-    text: Static inspection shows crop offsets outside the input image cause processing to return without
+    text: Crop offsets outside the input image cause processing to return without
       output.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: max_width <= 0
+    - path: src/crop_decimate.cpp
+      anchor: max_width <= 0
       snippet: |2-
           int max_width = image_msg->width - offset_x_;
 
@@ -806,9 +803,8 @@ metrics:
             return;
           }
       explanation: Returns when the requested horizontal crop offset lies outside the image.
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: max_height <= 0
+    - path: src/crop_decimate.cpp
+      anchor: max_height <= 0
       snippet: |2-
           int max_height = image_msg->height - offset_y_;
 
@@ -821,12 +817,11 @@ metrics:
           }
       explanation: Returns when the requested vertical crop offset lies outside the image.
   - id: M-7-PC-5
-    text: Static inspection shows CameraInfo binning fields are updated for the transformed image.
+    text: CameraInfo binning fields are updated for the transformed image.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: binning_x
+    - path: src/crop_decimate.cpp
+      anchor: binning_x
       snippet: |2-
           // Create updated CameraInfo message
           auto out_info = std::make_unique<sensor_msgs::msg::CameraInfo>(*info_msg);
@@ -836,12 +831,11 @@ metrics:
           out_info->binning_y = binning_y * decimation_y_;
       explanation: Updates both CameraInfo binning fields for the decimated image.
   - id: M-7-PC-6
-    text: Static inspection shows CameraInfo ROI fields are updated for the transformed image.
+    text: CameraInfo ROI fields are updated for the transformed image.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: roi.x_offset
+    - path: src/crop_decimate.cpp
+      anchor: roi.x_offset
       snippet: |2-
           out_info->roi.x_offset += offset_x_ * binning_x;
           out_info->roi.y_offset += offset_y_ * binning_y;
@@ -856,20 +850,14 @@ metrics:
           }
       explanation: Updates CameraInfo ROI offsets and dimensions for the transformed image.
   - id: M-7-PC-7
-    text: Static inspection shows the camera subscription is managed lazily according to output demand.
+    text: The camera subscription is managed lazily according to output demand.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: shutdown
+    - path: src/crop_decimate.cpp
+      anchor: pub_.getNumSubscribers() == 0
       snippet: |2-
               if (pub_.getNumSubscribers() == 0) {
                 sub_.shutdown();
-      explanation: Shuts down the camera subscription when transformed output has no demand.
-    - kind: source_code
-      path: src/crop_decimate.cpp
-      locator: sub_.subscribe
-      snippet: |2-
               } else if (!sub_) {
                 // Create subscriber with QoS matched to subscribed topic publisher
                 auto qos_profile = getQosProfile(this, image_topic_);
@@ -881,7 +869,8 @@ metrics:
                     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
                     imageCb(image_msg, info_msg);
                   }, hints.getTransport(), qos_profile);
-      explanation: Creates the camera subscription when transformed output gains demand.
+              }
+      explanation: Shuts down camera input with no transformed-output demand; otherwise creates it when demand exists and no subscription is active.
 - id: M-8
   name: Nonzero-region cropping
   description: CropNonZero publishes the largest valid nonzero region and skips unsuitable input as required
@@ -890,21 +879,15 @@ metrics:
   - FR-8
   pass_criteria:
   - id: M-8-PC-1
-    text: Static inspection shows the input subscription is managed lazily according to cropped-output
+    text: The input subscription is managed lazily according to cropped-output
       demand.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: shutdown
+    - path: src/crop_non_zero.cpp
+      anchor: pub_.getNumSubscribers() == 0
       snippet: |2-
               if (pub_.getNumSubscribers() == 0) {
                 sub_raw_.shutdown();
-      explanation: Shuts down the input subscription when cropped output has no demand.
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: create_subscription
-      snippet: |2-
               } else if (!sub_raw_) {
                 // Create subscriber with QoS matched to subscribed topic publisher
                 auto qos_profile = getQosProfile(this, image_topic_);
@@ -913,14 +896,14 @@ metrics:
                   *this, image_topic_,
                   [this](const sensor_msgs::msg::Image::ConstSharedPtr & raw_msg) {imageCb(raw_msg);},
                   hints.getTransport(), qos_profile);
-      explanation: Creates the input subscription when cropped output gains demand.
+              }
+      explanation: Shuts down input with no cropped-output demand; otherwise creates it when demand exists and no subscription is active.
   - id: M-8-PC-2
-    text: Static inspection shows unsupported channel layouts are rejected without output.
+    text: Unsupported channel layouts are rejected without output.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: Only grayscale image is acceptable
+    - path: src/crop_non_zero.cpp
+      anchor: Only grayscale image is acceptable
       snippet: |2-
           // Check the number of channels
           if (sensor_msgs::image_encodings::numChannels(raw_msg->encoding) != 1) {
@@ -931,18 +914,16 @@ metrics:
           }
       explanation: Rejects unsupported channel layouts and returns without output.
   - id: M-8-PC-3
-    text: Static inspection shows the largest external nonzero region is selected.
+    text: The largest external nonzero region is selected.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: RETR_EXTERNAL
+    - path: src/crop_non_zero.cpp
+      anchor: RETR_EXTERNAL
       snippet: |2-
           cv::findContours(m, cnt, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
       explanation: Restricts contour detection to external nonzero regions.
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: max_element
+    - path: src/crop_non_zero.cpp
+      anchor: max_element
       snippet: |2-
           // search the largest area
           std::vector<std::vector<cv::Point>>::iterator it =
@@ -955,12 +936,11 @@ metrics:
           cv::Rect r = cv::boundingRect(cnt[std::distance(cnt.begin(), it)]);
       explanation: Selects the largest detected region and derives its bounding rectangle.
   - id: M-8-PC-4
-    text: Static inspection shows the bounding crop of the selected region is published.
+    text: The bounding crop of the selected region is published.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: boundingRect
+    - path: src/crop_non_zero.cpp
+      anchor: boundingRect
       snippet: |2-
           cv::Rect r = cv::boundingRect(cnt[std::distance(cnt.begin(), it)]);
 
@@ -975,12 +955,11 @@ metrics:
           pub_.publish(std::move(out_image));
       explanation: Crops to the selected bounding rectangle and publishes the result.
   - id: M-8-PC-5
-    text: Static inspection shows all-zero input returns without publishing a crop.
+    text: All-zero input returns without publishing a crop.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/crop_non_zero.cpp
-      locator: contours.empty
+    - path: src/crop_non_zero.cpp
+      anchor: cnt.empty()
       snippet: |2-
           if (cnt.empty()) {
             RCLCPP_WARN(
@@ -997,21 +976,15 @@ metrics:
   - FR-9
   pass_criteria:
   - id: M-9-PC-1
-    text: Static inspection shows the camera subscription is managed lazily according to resized-output
+    text: The camera subscription is managed lazily according to resized-output
       demand.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/resize.cpp
-      locator: shutdown
+    - path: src/resize.cpp
+      anchor: pub_image_.getNumSubscribers() == 0
       snippet: |2-
               if (pub_image_.getNumSubscribers() == 0) {
                 sub_image_.shutdown();
-      explanation: Shuts down the camera subscription when resized output has no demand.
-    - kind: source_code
-      path: src/resize.cpp
-      locator: sub_image_.subscribe
-      snippet: |2-
               } else if (!sub_image_) {
                 // Create subscriber with QoS matched to subscribed topic publisher
                 auto qos_profile = getQosProfile(this, image_topic_);
@@ -1023,14 +996,14 @@ metrics:
                     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg) {
                     imageCb(image_msg, info_msg);
                   }, hints.getTransport(), qos_profile);
-      explanation: Creates the camera subscription when resized output gains demand.
+              }
+      explanation: Shuts down camera input with no resized-output demand; otherwise creates it when demand exists and no subscription is active.
   - id: M-9-PC-2
-    text: Static inspection shows output dimensions can be resolved from configured scale factors.
+    text: Output dimensions can be resolved from configured scale factors.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/resize.cpp
-      locator: scale_width_
+    - path: src/resize.cpp
+      anchor: scale_width_
       snippet: |2-
           if (use_scale_) {
             cv::resize(
@@ -1038,48 +1011,45 @@ metrics:
               scale_height_, interpolation_);
       explanation: Resolves output width and height from configured scale factors.
   - id: M-9-PC-3
-    text: Static inspection shows explicit output dimensions override scale-derived dimensions when configured.
+    text: Explicit output dimensions override scale-derived dimensions when configured.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/resize.cpp
-      locator: height_ == -1
-      snippet: |2-
-          } else {
-            int height = height_ == -1 ? image_msg->height : height_;
-            int width = width_ == -1 ? image_msg->width : width_;
-            cv::resize(cv_ptr->image, scaled_cv_.image, cv::Size(width, height), 0, 0, interpolation_);
-          }
-      explanation: Overrides scale-derived dimensions with explicit positive dimensions.
-  - id: M-9-PC-4
-    text: Static inspection shows the input image is resized to the resolved dimensions.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: src/resize.cpp
-      locator: cv::resize
+    - path: src/resize.cpp
+      anchor: if (use_scale_)
       snippet: |2-
           if (use_scale_) {
             cv::resize(
               cv_ptr->image, scaled_cv_.image, cv::Size(0, 0), scale_width_,
               scale_height_, interpolation_);
-      explanation: Resizes the input image with the configured scale factors.
-    - kind: source_code
-      path: src/resize.cpp
-      locator: cv::resize
-      snippet: |2-
           } else {
             int height = height_ == -1 ? image_msg->height : height_;
             int width = width_ == -1 ? image_msg->width : width_;
             cv::resize(cv_ptr->image, scaled_cv_.image, cv::Size(width, height), 0, 0, interpolation_);
-      explanation: Resizes the input image to the resolved explicit dimensions.
-  - id: M-9-PC-5
-    text: Static inspection shows camera intrinsics, projection values, and ROI fields are scaled consistently.
+          }
+      explanation: When scale mode is disabled, resolves each configured dimension and resizes to those explicit values.
+  - id: M-9-PC-4
+    text: The input image is resized to the resolved dimensions.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/resize.cpp
-      locator: scale_x
+    - path: src/resize.cpp
+      anchor: if (use_scale_)
+      snippet: |2-
+          if (use_scale_) {
+            cv::resize(
+              cv_ptr->image, scaled_cv_.image, cv::Size(0, 0), scale_width_,
+              scale_height_, interpolation_);
+          } else {
+            int height = height_ == -1 ? image_msg->height : height_;
+            int width = width_ == -1 ? image_msg->width : width_;
+            cv::resize(cv_ptr->image, scaled_cv_.image, cv::Size(width, height), 0, 0, interpolation_);
+          }
+      explanation: Resizes with scale factors in scale mode and with resolved width and height otherwise.
+  - id: M-9-PC-5
+    text: Camera intrinsics, projection values, and ROI fields are scaled consistently.
+    evaluation: static
+    reference_evidence:
+    - path: src/resize.cpp
+      anchor: scale_x
       snippet: |2-
           if (use_scale_) {
             scale_y = scale_height_;
@@ -1093,18 +1063,16 @@ metrics:
             dst_info_msg->width = width_;
           }
       explanation: Computes actual scale ratios and initializes the output CameraInfo dimensions.
-    - kind: source_code
-      path: src/resize.cpp
-      locator: dst_info_msg->k
+    - path: src/resize.cpp
+      anchor: dst_info_msg->k
       snippet: |2-
           dst_info_msg->k[0] = dst_info_msg->k[0] * scale_x;  // fx
           dst_info_msg->k[2] = dst_info_msg->k[2] * scale_x;  // cx
           dst_info_msg->k[4] = dst_info_msg->k[4] * scale_y;  // fy
           dst_info_msg->k[5] = dst_info_msg->k[5] * scale_y;  // cy
       explanation: Scales the intrinsic calibration matrix.
-    - kind: source_code
-      path: src/resize.cpp
-      locator: dst_info_msg->p
+    - path: src/resize.cpp
+      anchor: dst_info_msg->p
       snippet: |2-
           dst_info_msg->p[0] = dst_info_msg->p[0] * scale_x;  // fx
           dst_info_msg->p[2] = dst_info_msg->p[2] * scale_x;  // cx
@@ -1112,9 +1080,8 @@ metrics:
           dst_info_msg->p[5] = dst_info_msg->p[5] * scale_y;  // fy
           dst_info_msg->p[6] = dst_info_msg->p[6] * scale_y;  // cy
       explanation: Scales the projection matrix values.
-    - kind: source_code
-      path: src/resize.cpp
-      locator: dst_info_msg->roi
+    - path: src/resize.cpp
+      anchor: dst_info_msg->roi
       snippet: |2-
           dst_info_msg->roi.x_offset = static_cast<int>(dst_info_msg->roi.x_offset * scale_x);
           dst_info_msg->roi.y_offset = static_cast<int>(dst_info_msg->roi.y_offset * scale_y);
@@ -1128,12 +1095,11 @@ metrics:
   - FR-10
   pass_criteria:
   - id: M-10-PC-1
-    text: Static inspection shows dictionary, marker ID, and marker size configuration is declared.
+    text: Dictionary, marker ID, and marker size configuration is declared.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: declare_parameter
+    - path: src/track_marker.cpp
+      anchor: declare_parameter
       snippet: |2-
           // Declare parameters before we setup any publishers or subscribers
           marker_id_ = this->declare_parameter("marker_id", 0);
@@ -1153,21 +1119,15 @@ metrics:
           dictionary_ = cv::aruco::getPredefinedDictionary(dict_id);
       explanation: Declares marker size, marker ID, and dictionary configuration and resolves the dictionary.
   - id: M-10-PC-2
-    text: Static inspection shows synchronized camera subscription is managed lazily according to pose-output
+    text: Synchronized camera subscription is managed lazily according to pose-output
       demand.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: shutdown
+    - path: src/track_marker.cpp
+      anchor: pub_->get_subscription_count() == 0
       snippet: |2-
               if (pub_->get_subscription_count() == 0) {
                 sub_camera_.shutdown();
-      explanation: Shuts down synchronized camera input when pose output has no demand.
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: sub_camera_.subscribe
-      snippet: |2-
               } else if (!sub_camera_) {
                 // Create subscriber with QoS matched to subscribed topic publisher
                 auto qos_profile = getQosProfile(this, image_topic_);
@@ -1180,14 +1140,14 @@ metrics:
                     imageCb(image_msg, info_msg);
                   },
                   hints.getTransport(), qos_profile);
-      explanation: Creates synchronized camera input when pose output gains demand.
+              }
+      explanation: Shuts down synchronized camera input with no pose-output demand; otherwise creates it when demand exists and no subscription is active.
   - id: M-10-PC-3
-    text: Static inspection shows the configured ArUco marker is detected and its calibrated pose is estimated.
+    text: The configured ArUco marker is detected and its calibrated pose is estimated.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: detectMarkers
+    - path: src/track_marker.cpp
+      anchor: detectMarkers
       snippet: |2-
           std::vector<int> marker_ids;
           std::vector<std::vector<cv::Point2f>> marker_corners;
@@ -1199,9 +1159,8 @@ metrics:
               std::vector<std::vector<cv::Point2f>> corners;
               corners.push_back(marker_corners[i]);
       explanation: Detects markers and selects the configured marker ID.
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: estimatePoseSingleMarkers
+    - path: src/track_marker.cpp
+      anchor: estimatePoseSingleMarkers
       snippet: |2-
               // Copy the matrices since they are const and OpenCV functions are not
               auto k = info_msg->k;
@@ -1217,12 +1176,11 @@ metrics:
                 corners, marker_size_, intrinsics, dist_coeffs, rvecs, tvecs);
       explanation: Uses camera calibration and configured marker size to estimate pose.
   - id: M-10-PC-4
-    text: Static inspection shows the estimated marker pose is published as geometry_msgs/msg/PoseStamped.
+    text: The estimated marker pose is published as geometry_msgs/msg/PoseStamped.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: PoseStamped
+    - path: src/track_marker.cpp
+      anchor: PoseStamped
       snippet: |2-
               // Publish pose of marker
               geometry_msgs::msg::PoseStamped pose;
@@ -1236,9 +1194,8 @@ metrics:
               const tf2::Quaternion q(rvec.normalized(), rvec.length());
               tf2::convert(q, pose.pose.orientation);
       explanation: Builds a PoseStamped from the estimated translation and rotation.
-    - kind: source_code
-      path: src/track_marker.cpp
-      locator: pub_->publish
+    - path: src/track_marker.cpp
+      anchor: pub_->publish
       snippet: |2-
               pub_->publish(pose);
       explanation: Publishes the estimated marker pose.

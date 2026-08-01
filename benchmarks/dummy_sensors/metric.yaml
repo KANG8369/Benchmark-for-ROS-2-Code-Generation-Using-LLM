@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: dummy_sensors
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Dummy laser scan publisher
@@ -14,71 +11,64 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows the dummy_laser executable publishes sensor_msgs/msg/LaserScan on scan.
+    text: The dummy_laser executable publishes sensor_msgs/msg/LaserScan on scan.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: create_publisher<sensor_msgs::msg::LaserScan>
+    - path: src/dummy_laser.cpp
+      anchor: create_publisher<sensor_msgs::msg::LaserScan>
       snippet: |2-
           auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", 10);
       explanation: Creates a LaserScan publisher on the scan topic.
   - id: M-1-PC-2
-    text: Static inspection shows each scan uses frame_id single_rrbot_hokuyo_link.
+    text: Each scan uses frame_id single_rrbot_hokuyo_link.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: msg.header.frame_id
+    - path: src/dummy_laser.cpp
+      anchor: msg.header.frame_id
       snippet: |2-
           msg.header.frame_id = "single_rrbot_hokuyo_link";
       explanation: Sets the scan frame to single_rrbot_hokuyo_link.
   - id: M-1-PC-3
-    text: Static inspection shows each scan receives a current timestamp.
+    text: Each scan receives a current timestamp.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: msg.header.stamp
+    - path: src/dummy_laser.cpp
+      anchor: msg.header.stamp
       snippet: |2-
             msg.header.stamp = clock->now();
       explanation: Stamps each outgoing scan from the ROS clock.
   - id: M-1-PC-4
-    text: Static inspection shows every range in one scan is assigned the same value.
+    text: Every range in one scan is assigned the same value.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: msg.ranges[i]
+    - path: src/dummy_laser.cpp
+      anchor: msg.ranges[i]
       snippet: |2-
             for (size_t i = 0; i < msg.ranges.size(); ++i) {
               msg.ranges[i] = distance;
             }
       explanation: Assigns the same computed distance to every range element.
   - id: M-1-PC-5
-    text: Static inspection shows the range value varies sinusoidally over time.
+    text: The range value varies sinusoidally over time.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: std::sin(counter)
+    - path: src/dummy_laser.cpp
+      anchor: std::sin(counter)
       snippet: |2-
             counter += 0.1;
             distance = static_cast<float>(std::abs(amplitude * std::sin(counter)));
       explanation: Computes the distance from the absolute value of a sinusoid.
   - id: M-1-PC-6
-    text: Static inspection shows scan messages are published repeatedly.
+    text: Scan messages are published repeatedly.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: while (rclcpp::ok())
+    - path: src/dummy_laser.cpp
+      anchor: while (rclcpp::ok())
       snippet: |2-
           while (rclcpp::ok()) {
       explanation: Runs scan generation continuously while ROS is active.
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: laser_pub->publish
+    - path: src/dummy_laser.cpp
+      anchor: laser_pub->publish
       snippet: |2-
             laser_pub->publish(msg);
             executor.spin_some();
@@ -91,34 +81,31 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows the dummy_joint_states executable publishes sensor_msgs/msg/JointState
+    text: The dummy_joint_states executable publishes sensor_msgs/msg/JointState
       on joint_states.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: create_publisher<sensor_msgs::msg::JointState>
+    - path: src/dummy_joint_states.cpp
+      anchor: create_publisher<sensor_msgs::msg::JointState>
       snippet: |2-
           auto joint_state_pub = node->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
       explanation: Creates a JointState publisher on joint_states.
   - id: M-2-PC-2
-    text: Static inspection shows each message names single_rrbot_joint1 and single_rrbot_joint2.
+    text: Each message names single_rrbot_joint1 and single_rrbot_joint2.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: msg.name.push_back
+    - path: src/dummy_joint_states.cpp
+      anchor: msg.name.push_back
       snippet: |2-
           msg.name.push_back("single_rrbot_joint1");
           msg.name.push_back("single_rrbot_joint2");
       explanation: Adds the two required single_rrbot joint names.
   - id: M-2-PC-3
-    text: Static inspection shows both joints receive matching sinusoidal positions.
+    text: Both joints receive matching sinusoidal positions.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: joint_value = std::sin
+    - path: src/dummy_joint_states.cpp
+      anchor: joint_value = std::sin
       snippet: |2-
             counter += 0.1;
             joint_value = std::sin(counter);
@@ -128,28 +115,25 @@ metrics:
             }
       explanation: Computes one sinusoidal value and assigns it to every named joint.
   - id: M-2-PC-4
-    text: Static inspection shows each joint-state message receives a current timestamp.
+    text: Each joint-state message receives a current timestamp.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: msg.header.stamp
+    - path: src/dummy_joint_states.cpp
+      anchor: msg.header.stamp
       snippet: |2-
             msg.header.stamp = clock->now();
       explanation: Stamps each outgoing joint-state message from the ROS clock.
   - id: M-2-PC-5
-    text: Static inspection shows joint-state messages are published repeatedly.
+    text: Joint-state messages are published repeatedly.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: while (rclcpp::ok())
+    - path: src/dummy_joint_states.cpp
+      anchor: while (rclcpp::ok())
       snippet: |2-
           while (rclcpp::ok()) {
       explanation: Runs joint-state generation continuously while ROS is active.
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: joint_state_pub->publish
+    - path: src/dummy_joint_states.cpp
+      anchor: joint_state_pub->publish
       snippet: |2-
             joint_state_pub->publish(msg);
             executor.spin_some();

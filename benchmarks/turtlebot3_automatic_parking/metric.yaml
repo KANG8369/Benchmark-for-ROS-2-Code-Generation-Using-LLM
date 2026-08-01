@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: turtlebot3_automatic_parking
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Reflective-spot parking state machine
@@ -14,13 +11,12 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows reflective LaserScan regions are identified and converted into parking-spot
+    text: Reflective LaserScan regions are identified and converted into parking-spot
       geometry.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: self.scan is not None
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: self.scan is not None
       snippet: |2-
                 if self.scan is not None:
                     for i in range(len(self.scan.ranges)):
@@ -34,9 +30,8 @@ metrics:
                         else:
                             intensity_index.append(0)
       explanation: Thresholds reflective LaserScan samples within the configured scan region.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: spot_angle_index
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: spot_angle_index
       snippet: |2-
                     for i in index_count:
                         if abs(i - index_count[int(len(index_count) / 2)]) < 20:
@@ -47,9 +42,8 @@ metrics:
                                 self.start_angle = spot_angle_index[2]
                                 self.end_angle = spot_angle_index[-3]
       explanation: Derives start, center, and end angles from the clustered reflective samples.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: start_angle_distance
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: start_angle_distance
       snippet: |2-
             def _finding_spot_position(self):
                 self.get_logger().info('scan parking spot done!')
@@ -67,9 +61,8 @@ metrics:
                     self.center_point = self._get_point(center_angle_distance)
                     self.end_point = self._get_point(end_angle_distance)
       explanation: Converts the detected angles and ranges into parking points.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: np.arctan2
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: np.arctan2
       snippet: |2-
                     self.theta = np.arctan2(
                         self.start_point[1] - self.end_point[1],
@@ -77,27 +70,24 @@ metrics:
                     return True
       explanation: Derives the parking orientation from the detected endpoint geometry.
   - id: M-1-PC-2
-    text: Static inspection shows scan and odometry state feed a staged parking controller.
+    text: Scan and odometry state feed a staged parking controller.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _scan_callback
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: _scan_callback
       snippet: |2-
             def _scan_callback(self, msg):
                 self.scan = msg
       explanation: Stores each received scan for the controller.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _odom_callback
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: _odom_callback
       snippet: |2-
             def _odom_callback(self, msg):
                 self.odom = msg
                 self.is_odom_received = True
       explanation: Stores odometry and marks it available to the controller.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: parking_sequence
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence
       snippet: |2-
             def _run(self):
                 if self.is_scan_received and self.is_odom_received:
@@ -110,13 +100,12 @@ metrics:
                         if self._scan_parking_spot():
       explanation: Runs the staged parking controller only after scan and odometry input are available.
   - id: M-1-PC-3
-    text: Static inspection shows sensed parking geometry and robot pose are used to maneuver toward the
+    text: Sensed parking geometry and robot pose are used to maneuver toward the
       spot.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: self.start_point
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: self.start_point
       snippet: |2-
                     self.get_logger().info('calibration......')
                     self.start_point = self._get_point(start_angle_distance)
@@ -126,9 +115,8 @@ metrics:
                         self.start_point[1] - self.end_point[1],
                         self.start_point[0] - self.end_point[0])
       explanation: Derives the spot points and approach angle from sensed scan geometry.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: rotation_point
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: rotation_point
       snippet: |2-
                     elif self.parking_sequence == 3:
                         if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
@@ -146,12 +134,11 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows each LaserScan callback copies the incoming scan fields.
+    text: Each LaserScan callback copies the incoming scan fields.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: scan_spot = LaserScan
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: scan_spot = LaserScan
       snippet: |2-
                 scan_spot = LaserScan()
                 scan_spot.header = msg.header
@@ -165,23 +152,21 @@ metrics:
                 scan_spot.ranges = msg.ranges
       explanation: Creates a LaserScan and copies the incoming scan metadata and ranges.
   - id: M-2-PC-2
-    text: Static inspection shows the copied scan is published on /scan_spot.
+    text: The copied scan is published on /scan_spot.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: scan_spot_publisher.publish
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: scan_spot_publisher.publish
       snippet: |2-
                 self.scan_spot_publisher.publish(scan_spot)
       explanation: Publishes the copied scan on the configured /scan_spot publisher.
   - id: M-2-PC-3
-    text: Static inspection shows the detected spot start, center, and end are marked in the intensity
+    text: The detected spot start, center, and end are marked in the intensity
       array.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: msg.intensities[i] + 10000
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: msg.intensities[i] + 10000
       snippet: |2-
                 if (
                     self.start_angle is not None and
@@ -196,25 +181,25 @@ metrics:
       explanation: Marks detected start, center, and end indices by increasing their copied intensity
         values.
   - id: M-2-PC-4
-    text: Static inspection shows scans are still republished when no parking spot is available.
+    text: Scans are still republished when no parking spot is available.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: self.start_angle is not None
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: self.start_angle is not None
       snippet: |2-
+                scan_spot.ranges = msg.ranges
                 if (
                     self.start_angle is not None and
                     self.center_angle is not None and
                     self.end_angle is not None
                 ):
-      explanation: Makes intensity annotation conditional on an available parking spot.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: scan_spot_publisher.publish
-      snippet: |2-
+                    for i in range(len(msg.intensities)):
+                        if i == self.start_angle or i == self.center_angle or i == self.end_angle:
+                            scan_spot.intensities.append(msg.intensities[i] + 10000)
+                        else:
+                            scan_spot.intensities.append(msg.intensities[i])
                 self.scan_spot_publisher.publish(scan_spot)
-      explanation: Republishes the copied scan unconditionally after the optional annotation block.
+      explanation: Copies scan ranges, annotates intensities only when spot indices exist, and publishes outside that conditional block.
 - id: M-3
   name: Staged velocity commands
   description: Parking stages publish the required translational and rotational commands, satisfying FR-3.
@@ -222,21 +207,19 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows rotation stages produce angular geometry_msgs/msg/Twist commands.
+    text: Rotation stages produce angular geometry_msgs/msg/Twist commands.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: cmd_vel.angular.z = 0.2
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.angular.z = 0.2
       snippet: |2-
                         if self.theta > 0:
                             if self.theta - self.init_yaw > 0.1:
                                 cmd_vel.linear.x = 0.0
                                 cmd_vel.angular.z = 0.2
       explanation: Produces positive angular Twist motion in a rotation stage.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: cmd_vel.angular.z = -0.2
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.angular.z = -0.2
       snippet: |2-
                     elif self.parking_sequence == 4:
                         if yaw - self.init_yaw > -pi / 2:
@@ -244,12 +227,11 @@ metrics:
                             cmd_vel.angular.z = -0.2
       explanation: Produces negative angular Twist motion in a later rotation stage.
   - id: M-3-PC-2
-    text: Static inspection shows translation stages produce linear geometry_msgs/msg/Twist commands.
+    text: Translation stages produce linear geometry_msgs/msg/Twist commands.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: cmd_vel.linear.x = -0.05
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.linear.x = -0.05
       snippet: |2-
                     elif self.parking_sequence == 3:
                         if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
@@ -260,9 +242,8 @@ metrics:
                                 cmd_vel.linear.x = 0.05
                                 cmd_vel.angular.z = 0.0
       explanation: Produces forward or reverse linear Twist motion from the position error.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: cmd_vel.linear.x = -0.04
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.linear.x = -0.04
       snippet: |2-
                     elif self.parking_sequence == 5:
                         ranges = []
@@ -274,144 +255,19 @@ metrics:
                             cmd_vel.angular.z = 0.0
       explanation: Produces linear approach motion in the final translation stage.
   - id: M-3-PC-3
-    text: Static inspection shows each selected stage command is published on /cmd_vel.
+    text: Each non-terminal controller iteration publishes the Twist selected by its current stage on /cmd_vel.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: cmd_vel_publisher.publish
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: def _run
       snippet: |2-
-                    self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: Publishes the command selected by the current controller stage.
-- id: M-4
-  name: Stop and odometry reset
-  description: Defined reset points issue both a stop command and reset notification as required by FR-4.
-  requirement_ids:
-  - FR-4
-  pass_criteria:
-  - id: M-4-PC-1
-    text: Static inspection shows the shared reset operation publishes a zero linear and angular Twist.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _stop_and_reset
-      snippet: |2-
-            def _stop_and_reset(self):
-                cmd_vel = Twist()
-                reset = Empty()
-                cmd_vel.linear.x = 0.0
-                cmd_vel.angular.z = 0.0
-                self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: The shared reset operation publishes a Twist with zero linear and angular velocity.
-  - id: M-4-PC-2
-    text: Static inspection shows the shared reset operation publishes a std_msgs/msg/Empty reset notification.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: reset_publisher.publish
-      snippet: |2-
-                reset = Empty()
-                cmd_vel.linear.x = 0.0
-                cmd_vel.angular.z = 0.0
-                self.cmd_vel_publisher.publish(cmd_vel)
-                time.sleep(1)
-                self.reset_publisher.publish(reset)
-      explanation: The shared reset operation constructs and publishes an Empty reset notification.
-  - id: M-4-PC-3
-    text: Static inspection shows maneuver transitions and completion points invoke the shared stop/reset
-      operation.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _stop_and_reset
-      snippet: |2-
-                                self._stop_and_reset()
-      explanation: Invokes the shared stop/reset operation at one rotation transition.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _stop_and_reset
-      snippet: |2-
-                                self._stop_and_reset()
-      explanation: Invokes the shared stop/reset operation at the opposite rotation transition.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _stop_and_reset
-      snippet: |2-
-                            self._stop_and_reset()
-      explanation: Invokes the shared stop/reset operation at successful completion.
-- id: M-5
-  name: Recoverable failed search
-  description: Repeated unsuccessful searches are reported without terminating the search, satisfying
-    FR-5.
-  requirement_ids:
-  - FR-5
-  pass_criteria:
-  - id: M-5-PC-1
-    text: Static inspection shows repeated parking-spot search failures are counted.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: search_count +=
-      snippet: |2-
-                        else:
-                            self.search_count += 1
-                            if self.search_count > 100:
-      explanation: Counts unsuccessful parking-spot searches and detects a repeated-failure threshold.
-  - id: M-5-PC-2
-    text: Static inspection shows the repeated-search failure condition is logged.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: Fail to finding parking spot
-      snippet: |2-
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-      explanation: Logs an explicit error when the repeated-search threshold is exceeded.
-  - id: M-5-PC-3
-    text: Static inspection shows the search counter is reset after the recoverable failure.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: search_count = 0
-      snippet: |2-
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-                                self.search_count = 0
-      explanation: Resets the search counter after reporting the recoverable failure.
-  - id: M-5-PC-4
-    text: Static inspection shows scanning continues after the recoverable failure instead of terminating
-      the node.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: self.search_count > 100
-      snippet: |2
-                        else:
-                            self.search_count += 1
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-                                self.search_count = 0
-      explanation: Handles repeated failure by logging and resetting state without exiting the controller.
-- id: M-6
-  name: Successful completion
-  description: The controller reaches a terminal success path after final stop/reset as required by FR-6.
-  requirement_ids:
-  - FR-6
-  pass_criteria:
-  - id: M-6-PC-1
-    text: Static inspection shows the final parking position is detected by the last controller stage.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: parking_sequence == 5
+            def _run(self):
+                if self.is_scan_received and self.is_odom_received:
+                    yaw = self._get_yaw()
+                    cmd_vel = Twist()
+      explanation: Initializes one shared Twist before selecting the current controller stage.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
       snippet: |2-
                     elif self.parking_sequence == 5:
                         ranges = []
@@ -422,41 +278,242 @@ metrics:
                             cmd_vel.linear.x = -0.04
                             cmd_vel.angular.z = 0.0
                         else:
-      explanation: The final stage detects completion when the measured parking distance reaches its threshold.
-  - id: M-6-PC-2
-    text: Static inspection shows successful parking completion is reported.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: Auto parking Done
-      snippet: |2-
-                        else:
-                            self.get_logger().info('Auto parking Done.')
-      explanation: Reports successful automatic-parking completion.
-  - id: M-6-PC-3
-    text: Static inspection shows the robot is stopped and odometry is reset at completion.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: _stop_and_reset
-      snippet: |2-
-                            self.get_logger().info('Auto parking Done.')
-                            self._stop_and_reset()
-      explanation: Calls the shared stop and odometry-reset operation at completion.
-  - id: M-6-PC-4
-    text: Static inspection shows completion transitions the controller out of continued maneuver execution.
-    evaluation: static
-    reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: sys.exit
-      snippet: |2-
                             self.get_logger().info('Auto parking Done.')
                             self._stop_and_reset()
                             sys.exit()
-      explanation: Exits continued maneuver execution immediately after successful completion.
+
+                    self.cmd_vel_publisher.publish(cmd_vel)
+      explanation: The common publish is outside the stage chain and is reached by non-terminal stage iterations; successful completion exits first.
+- id: M-4
+  name: Stop and odometry reset
+  description: Defined reset points issue both a stop command and reset notification as required by FR-4.
+  requirement_ids:
+  - FR-4
+  pass_criteria:
+  - id: M-4-PC-1
+    text: The shared reset operation publishes a zero linear and angular Twist.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: _stop_and_reset
+      snippet: |2-
+            def _stop_and_reset(self):
+                cmd_vel = Twist()
+                reset = Empty()
+                cmd_vel.linear.x = 0.0
+                cmd_vel.angular.z = 0.0
+                self.cmd_vel_publisher.publish(cmd_vel)
+      explanation: The shared reset operation publishes a Twist with zero linear and angular velocity.
+  - id: M-4-PC-2
+    text: The shared reset operation publishes a std_msgs/msg/Empty reset notification.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: reset_publisher.publish
+      snippet: |2-
+                reset = Empty()
+                cmd_vel.linear.x = 0.0
+                cmd_vel.angular.z = 0.0
+                self.cmd_vel_publisher.publish(cmd_vel)
+                time.sleep(1)
+                self.reset_publisher.publish(reset)
+      explanation: The shared reset operation constructs and publishes an Empty reset notification.
+  - id: M-4-PC-3
+    text: Maneuver transitions and completion points invoke the shared stop/reset
+      operation.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: if self.theta > 0
+      snippet: |2-
+                        if self.theta > 0:
+                            if self.theta - self.init_yaw > 0.1:
+                                cmd_vel.linear.x = 0.0
+                                cmd_vel.angular.z = 0.2
+                            else:
+                                self._stop_and_reset()
+                                self._rotate_origin_only(self.init_yaw)
+                                self.parking_sequence += 1
+                                self.get_logger().info('Go to parking spot!')
+                        else:
+                            if self.theta - self.init_yaw < -0.1:
+                                cmd_vel.linear.x = 0.0
+                                cmd_vel.angular.z = -0.2
+                            else:
+                                self._stop_and_reset()
+                                self._rotate_origin_only(self.init_yaw)
+                                self.parking_sequence += 1
+                                self.get_logger().info('Go to parking spot!')
+      explanation: The positive- and negative-theta rotation branches each invoke the shared stop/reset operation when their threshold is reached.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: Auto parking Done
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Invokes the shared stop/reset operation in the final-stage completion branch.
+- id: M-5
+  name: Recoverable failed search
+  description: Repeated unsuccessful searches are reported without terminating the search, satisfying
+    FR-5.
+  requirement_ids:
+  - FR-5
+  pass_criteria:
+  - id: M-5-PC-1
+    text: Repeated parking-spot search failures are counted.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 1
+      snippet: |2-
+                    elif self.parking_sequence == 1:
+                        if self._scan_parking_spot():
+                            if self._finding_spot_position():
+                                self._print_parking_log()
+                                self.parking_sequence += 1
+                                self.get_logger().info('Rotation!')
+                        else:
+                            self.search_count += 1
+                            if self.search_count > 100:
+      explanation: In the stage-1 failed-scan branch, increments the search counter and checks its repeated-failure threshold.
+  - id: M-5-PC-2
+    text: The repeated-search failure condition is logged.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: Fail to finding parking spot
+      snippet: |2-
+                            if self.search_count > 100:
+                                self.get_logger().error('Fail to finding parking spot.')
+      explanation: Logs an explicit error when the repeated-search threshold is exceeded.
+  - id: M-5-PC-3
+    text: The search counter is reset after the recoverable failure.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: search_count = 0
+      snippet: |2-
+                            if self.search_count > 100:
+                                self.get_logger().error('Fail to finding parking spot.')
+                                self.search_count = 0
+      explanation: Resets the search counter after reporting the recoverable failure.
+  - id: M-5-PC-4
+    text: Scanning continues after the recoverable failure instead of terminating
+      the node.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 1
+      snippet: |2
+                    elif self.parking_sequence == 1:
+                        if self._scan_parking_spot():
+                            if self._finding_spot_position():
+                                self._print_parking_log()
+                                self.parking_sequence += 1
+                                self.get_logger().info('Rotation!')
+                        else:
+                            self.search_count += 1
+                            if self.search_count > 100:
+                                self.get_logger().error('Fail to finding parking spot.')
+                                self.search_count = 0
+
+                    elif self.parking_sequence == 2:
+      explanation: Handles failed stage-1 scans by logging and resetting only the counter, without changing stage or exiting the controller.
+- id: M-6
+  name: Successful completion
+  description: The controller reaches a terminal success path after final stop/reset as required by FR-6.
+  requirement_ids:
+  - FR-6
+  pass_criteria:
+  - id: M-6-PC-1
+    text: The final parking position is detected by the last controller stage.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: The final stage enters its completion branch when the measured parking distance is at or below the threshold.
+  - id: M-6-PC-2
+    text: Successful parking completion is reported.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Reports successful automatic-parking completion in the final-stage distance-threshold branch.
+  - id: M-6-PC-3
+    text: The robot is stopped and odometry is reset at completion.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Calls the shared stop and odometry-reset operation in the final-stage completion branch.
+  - id: M-6-PC-4
+    text: Completion transitions the controller out of continued maneuver execution.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Exits continued maneuver execution only after the final-stage completion actions.
 - id: M-7
   name: LDS-02 startup rejection
   description: Startup rejects the unsupported LDS-02 model as required by FR-7.
@@ -464,22 +521,20 @@ metrics:
   - FR-7
   pass_criteria:
   - id: M-7-PC-1
-    text: Static inspection shows node initialization reads the LDS_MODEL environment setting.
+    text: Node initialization reads the LDS_MODEL environment setting.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: os.environ['LDS_MODEL']
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: os.environ['LDS_MODEL']
       snippet: |2-
                 if os.environ['LDS_MODEL'] == 'LDS-02':
       explanation: Reads the LDS_MODEL environment setting during node initialization.
   - id: M-7-PC-2
-    text: Static inspection shows initialization fails explicitly when LDS_MODEL identifies LDS-02.
+    text: Initialization fails explicitly when LDS_MODEL identifies LDS-02.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: LDS-02 is not supported
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: LDS-02 is not supported
       snippet: |2-
                 if os.environ['LDS_MODEL'] == 'LDS-02':
                     self.get_logger().error('LDS-02 is not supported')

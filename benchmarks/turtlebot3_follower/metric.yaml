@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: turtlebot3_follower
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Indexed follower chain
@@ -14,12 +11,11 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows the executable accepts a requested follower count.
+    text: The executable accepts a requested follower count.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: std::stoi
+    - path: src/follower.cpp
+      anchor: std::stoi
       snippet: |2-
           int number = 0;
           if (argc > 1) {
@@ -32,12 +28,11 @@ metrics:
           }
       explanation: Parses the requested follower count from the executable argument.
   - id: M-1-PC-2
-    text: Static inspection shows one follower node is constructed for each requested index.
+    text: One follower node is constructed for each requested index.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: std::make_shared<Follower>
+    - path: src/follower.cpp
+      anchor: std::make_shared<Follower>
       snippet: |2-
           std::vector<std::shared_ptr<Follower>> followers;
           for (int i = 1; i <= number; ++i) {
@@ -48,13 +43,12 @@ metrics:
           }
       explanation: Constructs and stores one follower node for each requested index.
   - id: M-1-PC-3
-    text: Static inspection shows each follower is paired with the immediately preceding robot as leader
+    text: Each follower is paired with the immediately preceding robot as leader
       and stores both identities.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: leader_name_
+    - path: src/follower.cpp
+      anchor: leader_name_
       snippet: |-
         Follower::Follower(const std::string & follower_name, const std::string & leader_name)
         : Node(follower_name + "_follower_node"),
@@ -63,9 +57,8 @@ metrics:
           leader_name_(leader_name),
           follower_name_(follower_name)
       explanation: Stores the supplied leader and follower identities in each node.
-    - kind: source_code
-      path: src/follower.cpp
-      locator: TB3_
+    - path: src/follower.cpp
+      anchor: TB3_
       snippet: |2-
           for (int i = 1; i <= number; ++i) {
             auto node = std::make_shared<Follower>(
@@ -79,12 +72,11 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows each follower broadcasts an odometry-frame static transform.
+    text: Each follower broadcasts an odometry-frame static transform.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: StaticTransformBroadcaster
+    - path: src/follower.cpp
+      anchor: StaticTransformBroadcaster
       snippet: |2-
           tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
           nav2_action_client_ = rclcpp_action::create_client<nav2_msgs::action::FollowPath>(
@@ -93,20 +85,18 @@ metrics:
 
           tf_publisher();
       explanation: Creates the static transform broadcaster and invokes transform publication.
-    - kind: source_code
-      path: src/follower.cpp
-      locator: sendTransform
+    - path: src/follower.cpp
+      anchor: sendTransform
       snippet: |2-
           RCLCPP_INFO(this->get_logger(), "tf publish");
           this->tf_broadcaster_->sendTransform(tf_msg);
       explanation: Broadcasts the prepared odometry-frame transform.
   - id: M-2-PC-2
-    text: Static inspection shows the transform parent is the leader robot's odom frame.
+    text: The transform parent is the leader robot's odom frame.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: header.frame_id
+    - path: src/follower.cpp
+      anchor: header.frame_id
       snippet: |2-
           geometry_msgs::msg::TransformStamped tf_msg;
           tf_msg.header.stamp = this->get_clock()->now();
@@ -114,12 +104,11 @@ metrics:
           tf_msg.child_frame_id = this->follower_name_ + "/odom";
       explanation: Sets the transform parent to the leader robot's odom frame.
   - id: M-2-PC-3
-    text: Static inspection shows the transform child is the follower robot's odom frame.
+    text: The transform child is the follower robot's odom frame.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: child_frame_id
+    - path: src/follower.cpp
+      anchor: child_frame_id
       snippet: |2-
           geometry_msgs::msg::TransformStamped tf_msg;
           tf_msg.header.stamp = this->get_clock()->now();
@@ -133,13 +122,12 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows the periodic callback looks up the leader base pose in the follower
+    text: The periodic callback looks up the leader base pose in the follower
       base frame.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: lookupTransform
+    - path: src/follower.cpp
+      anchor: lookupTransform
       snippet: |-
         void Follower::get_target_pose()
         {
@@ -149,21 +137,19 @@ metrics:
               this->leader_name_ + "/base_link",
               tf2::TimePointZero);
       explanation: Looks up the leader base pose in the follower base frame.
-    - kind: source_code
-      path: src/follower.cpp
-      locator: create_wall_timer
+    - path: src/follower.cpp
+      anchor: create_wall_timer
       snippet: |2-
           send_path_timer_ = this->create_wall_timer(
             std::chrono::milliseconds(100),
             std::bind(&Follower::send_path, this));
       explanation: Invokes path sending, which performs the lookup, from a periodic timer.
   - id: M-3-PC-2
-    text: Static inspection shows the navigation path contains exactly two poses.
+    text: The navigation path contains exactly two poses.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: path.poses.push_back
+    - path: src/follower.cpp
+      anchor: path.poses.push_back
       snippet: |2-
           geometry_msgs::msg::PoseStamped first_target_pose;
           first_target_pose.header.stamp = this->get_clock()->now();
@@ -182,32 +168,29 @@ metrics:
           path.poses.push_back(second_target_pose);
       explanation: Constructs the navigation path by pushing exactly the first and second target poses.
   - id: M-3-PC-3
-    text: Static inspection shows the two-pose path is wrapped in a nav2_msgs/action/FollowPath goal.
+    text: The two-pose path is wrapped in a nav2_msgs/action/FollowPath goal.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: FollowPath::Goal
+    - path: src/follower.cpp
+      anchor: FollowPath::Goal
       snippet: |2-
           auto goal_msg = nav2_msgs::action::FollowPath::Goal();
           goal_msg.path = path;
       explanation: Wraps the two-pose path in a FollowPath action goal.
   - id: M-3-PC-4
-    text: Static inspection shows the goal is sent to the follower-specific FollowPath action server.
+    text: The goal is sent to the follower-specific FollowPath action server.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: follower_name_ + "/follow_path"
+    - path: src/follower.cpp
+      anchor: follower_name_ + "/follow_path"
       snippet: |2-
           tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
           nav2_action_client_ = rclcpp_action::create_client<nav2_msgs::action::FollowPath>(
             this,
             follower_name_ + "/follow_path");
       explanation: Creates the FollowPath action client for the follower-specific server name.
-    - kind: source_code
-      path: src/follower.cpp
-      locator: async_send_goal
+    - path: src/follower.cpp
+      anchor: async_send_goal
       snippet: |2-
           this->nav2_action_client_->async_send_goal(goal_msg);
       explanation: Sends the constructed goal through that follower-specific action client.
@@ -218,33 +201,30 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows the send path checks whether the FollowPath action server is available.
+    text: The send path checks whether the FollowPath action server is available.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: wait_for_action_server
+    - path: src/follower.cpp
+      anchor: wait_for_action_server
       snippet: |2-
           if (!this->nav2_action_client_->wait_for_action_server(std::chrono::seconds(1))) {
       explanation: Checks action-server availability before attempting to send the goal.
   - id: M-4-PC-2
-    text: Static inspection shows an unavailable server produces an explicit warning.
+    text: An unavailable server produces an explicit warning.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: Action server not available
+    - path: src/follower.cpp
+      anchor: Action server not available
       snippet: |2-
           if (!this->nav2_action_client_->wait_for_action_server(std::chrono::seconds(1))) {
             RCLCPP_WARN(this->get_logger(), "Action server not available");
       explanation: Logs an explicit warning when the FollowPath server is unavailable.
   - id: M-4-PC-3
-    text: Static inspection shows the unavailable-server branch returns without sending a goal.
+    text: The unavailable-server branch returns without sending a goal.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/follower.cpp
-      locator: return
+    - path: src/follower.cpp
+      anchor: return
       snippet: |2-
           if (!this->nav2_action_client_->wait_for_action_server(std::chrono::seconds(1))) {
             RCLCPP_WARN(this->get_logger(), "Action server not available");
@@ -259,29 +239,26 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows the launch iterates over three follower namespaces.
+    text: The launch iterates over three follower namespaces.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: number_of_follower = 3
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: number_of_follower = 3
       snippet: |2-
             number_of_follower = 3
       explanation: Configures three followers.
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: for i in range(number_of_follower)
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: for i in range(number_of_follower)
       snippet: |2-
             for i in range(number_of_follower):
                 namespace = f'TB3_{i+2}'
       explanation: Iterates over the three configured follower namespaces.
   - id: M-5-PC-2
-    text: Static inspection shows each namespace starts a controller_server and velocity_smoother pair.
+    text: Each namespace starts a controller_server and velocity_smoother pair.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: controller_server
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: controller_server
       snippet: |2-
                 ctrl_node = Node(
                     package='nav2_controller',
@@ -296,9 +273,8 @@ metrics:
                         (f'/{namespace}/cmd_vel', f'/{namespace}/cmd_vel_not_smoothed')]
                 )
       explanation: Defines a controller_server in each follower namespace.
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: velocity_smoother
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: velocity_smoother
       snippet: |2-
                 velocity_smoother_node = Node(
                     package='nav2_velocity_smoother',
@@ -313,13 +289,12 @@ metrics:
                 )
       explanation: Defines a velocity_smoother in each follower namespace.
   - id: M-5-PC-3
-    text: Static inspection shows each namespace starts an autostart lifecycle manager that manages both
+    text: Each namespace starts an autostart lifecycle manager that manages both
       navigation nodes.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: nav2_lifecycle_manager
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: nav2_lifecycle_manager
       snippet: |2-
                 lifecycle_node = Node(
                     package='nav2_lifecycle_manager',
@@ -333,13 +308,12 @@ metrics:
                         {'node_names': ['controller_server', 'velocity_smoother']}],
       explanation: Starts an autostart lifecycle manager that manages controller_server and velocity_smoother.
   - id: M-5-PC-4
-    text: Static inspection shows packaged controller configuration is supplied to the launched navigation
+    text: Packaged controller configuration is supplied to the launched navigation
       pipeline.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: ctrl_yaml_path
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: ctrl_yaml_path
       snippet: |2-
                 ctrl_yaml_path = os.path.join(
                     get_package_share_directory('turtlebot3_follower'),
@@ -347,9 +321,8 @@ metrics:
                     f'controll_server{i+1}.yaml'
                 )
       explanation: Resolves the packaged controller configuration for each follower.
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: parameters=[
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: parameters=[
       snippet: |2-
                 ctrl_node = Node(
                     package='nav2_controller',
@@ -361,9 +334,8 @@ metrics:
                         ctrl_yaml_path,
                         {'use_sim_time': use_sim_time}],
       explanation: Supplies the resolved packaged configuration to controller_server.
-    - kind: launch
-      path: launch/turtlebot3_follower.launch.py
-      locator: parameters=[ctrl_yaml_path]
+    - path: launch/turtlebot3_follower.launch.py
+      anchor: parameters=[ctrl_yaml_path]
       snippet: |2-
                 velocity_smoother_node = Node(
                     package='nav2_velocity_smoother',

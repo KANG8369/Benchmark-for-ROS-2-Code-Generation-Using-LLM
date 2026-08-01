@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: dummy_robot_bringup
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Complete dummy robot bringup
@@ -13,13 +10,12 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows the Python bringup launch starts the map server, robot_state_publisher,
+    text: The Python bringup launch starts the map server, robot_state_publisher,
       joint-state publisher, and laser publisher.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.py
-      locator: LaunchDescription
+    - path: launch/dummy_robot_bringup_launch.py
+      anchor: LaunchDescription
       snippet: |2-
             return LaunchDescription([
                 Node(package='dummy_map_server', executable='dummy_map_server', output='screen'),
@@ -29,12 +25,11 @@ metrics:
                 Node(package='dummy_sensors', executable='dummy_laser', output='screen'),
       explanation: The Python launch description lists the four required non-RViz nodes.
   - id: M-1-PC-2
-    text: Static inspection shows the XML bringup launch starts the same four required nodes.
+    text: The XML bringup launch starts the same four required nodes.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.xml
-      locator: launch
+    - path: launch/dummy_robot_bringup_launch.xml
+      anchor: launch
       snippet: |2-
           <node pkg="dummy_map_server" exec="dummy_map_server" output="screen" />
           <node pkg="robot_state_publisher" exec="robot_state_publisher" output="screen" >
@@ -44,12 +39,11 @@ metrics:
           <node pkg="dummy_sensors" exec="dummy_laser" output="screen"/>
       explanation: The XML launch description declares the four required nodes.
   - id: M-1-PC-3
-    text: Static inspection shows the YAML bringup launch starts the same four required nodes.
+    text: The YAML bringup launch starts the same four required nodes.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.yaml
-      locator: launch
+    - path: launch/dummy_robot_bringup_launch.yaml
+      anchor: launch
       snippet: |-
         - node:
             pkg: dummy_map_server
@@ -72,12 +66,11 @@ metrics:
             output: screen
       explanation: The YAML launch description declares the four required nodes.
   - id: M-1-PC-4
-    text: Static inspection shows the launch directory is installed into the package share directory.
+    text: The launch directory is installed into the package share directory.
     evaluation: static
     reference_evidence:
-    - kind: build
-      path: CMakeLists.txt
-      locator: install
+    - path: CMakeLists.txt
+      anchor: install
       snippet: |-
         install(DIRECTORY launch rviz
           DESTINATION share/${PROJECT_NAME})
@@ -90,12 +83,11 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows the Python launch loads single_rrbot.urdf and passes it as robot_description.
+    text: The Python launch loads single_rrbot.urdf and passes it as robot_description.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.py
-      locator: robot_description
+    - path: launch/dummy_robot_bringup_launch.py
+      anchor: robot_description
       snippet: |2-
             urdf_file = os.path.join(pkg_share, 'launch', 'single_rrbot.urdf')
             robot_desc = FileContent(urdf_file)
@@ -107,24 +99,22 @@ metrics:
                      output='screen', parameters=[rsp_params]),
       explanation: Loads single_rrbot.urdf and passes its contents to robot_state_publisher.
   - id: M-2-PC-2
-    text: Static inspection shows the XML launch loads single_rrbot.urdf and passes it as robot_description.
+    text: The XML launch loads single_rrbot.urdf and passes it as robot_description.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.xml
-      locator: robot_description
+    - path: launch/dummy_robot_bringup_launch.xml
+      anchor: robot_description
       snippet: |2-
           <node pkg="robot_state_publisher" exec="robot_state_publisher" output="screen" >
             <param name="robot_description" value="$(file-content '$(find-pkg-share dummy_robot_bringup)/launch/single_rrbot.urdf')"/>
           </node>
       explanation: Loads the packaged URDF into robot_description for the XML launch.
   - id: M-2-PC-3
-    text: Static inspection shows the YAML launch loads single_rrbot.urdf and passes it as robot_description.
+    text: The YAML launch loads single_rrbot.urdf and passes it as robot_description.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.yaml
-      locator: robot_description
+    - path: launch/dummy_robot_bringup_launch.yaml
+      anchor: robot_description
       snippet: |-
         - node:
             pkg: robot_state_publisher
@@ -135,23 +125,21 @@ metrics:
                 value: $(file-content '$(find-pkg-share dummy_robot_bringup)/launch/single_rrbot.urdf')
       explanation: Loads the packaged URDF into robot_description for the YAML launch.
   - id: M-2-PC-4
-    text: Static inspection shows the package provides a single_rrbot robot model.
+    text: The package provides a single_rrbot robot model.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/single_rrbot.urdf
-      locator: single_rrbot
+    - path: launch/single_rrbot.urdf
+      anchor: single_rrbot
       snippet: |-
         <robot name="single_rrbot" xmlns:xacro="http://www.ros.org/wiki/xacro">
       explanation: Declares the packaged robot model with name single_rrbot.
   - id: M-2-PC-5
-    text: Static inspection shows the directory containing the URDF is installed into the package share
+    text: The directory containing the URDF is installed into the package share
       directory.
     evaluation: static
     reference_evidence:
-    - kind: build
-      path: CMakeLists.txt
-      locator: install
+    - path: CMakeLists.txt
+      anchor: install
       snippet: |-
         install(DIRECTORY launch rviz
           DESTINATION share/${PROJECT_NAME})
@@ -163,41 +151,37 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows the Python bringup launch starts an rviz2 node.
+    text: The Python bringup launch starts an rviz2 node.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.py
-      locator: rviz2
+    - path: launch/dummy_robot_bringup_launch.py
+      anchor: rviz2
       snippet: |2-
                 Node(package='rviz2', executable='rviz2', name='rviz2', output='screen',
                      arguments=['-d', default_rviz_config_path])
       explanation: Starts the rviz2 executable from the Python launch.
   - id: M-3-PC-2
-    text: Static inspection shows rviz2 receives the path to the package-provided RViz configuration.
+    text: Rviz2 receives the path to the package-provided RViz configuration.
     evaluation: static
     reference_evidence:
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.py
-      locator: default_rviz_config_path
+    - path: launch/dummy_robot_bringup_launch.py
+      anchor: default_rviz_config_path
       snippet: |2-
             default_rviz_config_path = os.path.join(pkg_share, 'rviz/dummy_robot.rviz')
       explanation: Resolves the RViz configuration from the package share directory.
-    - kind: launch
-      path: launch/dummy_robot_bringup_launch.py
-      locator: arguments=['-d'
+    - path: launch/dummy_robot_bringup_launch.py
+      anchor: arguments=['-d'
       snippet: |2-
                 Node(package='rviz2', executable='rviz2', name='rviz2', output='screen',
                      arguments=['-d', default_rviz_config_path])
       explanation: Passes the resolved configuration path to rviz2 with -d.
   - id: M-3-PC-3
-    text: Static inspection shows the RViz configuration directory is installed into the package share
+    text: The RViz configuration directory is installed into the package share
       directory.
     evaluation: static
     reference_evidence:
-    - kind: build
-      path: CMakeLists.txt
-      locator: install
+    - path: CMakeLists.txt
+      anchor: install
       snippet: |-
         install(DIRECTORY launch rviz
           DESTINATION share/${PROJECT_NAME})

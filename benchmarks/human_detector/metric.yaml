@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: human_detector
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Lifecycle pose-detector configuration
@@ -14,12 +11,11 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows lifecycle configuration creates the pose-landmark detector.
+    text: Lifecycle configuration creates the pose-landmark detector.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: mp.solutions.pose.Pose
+    - path: human_detector/human_detector.py
+      anchor: mp.solutions.pose.Pose
       snippet: |2-
                 self.person_pose_estimator = mp.solutions.pose.Pose(
                     min_detection_confidence=self.parameters.min_detection_confidence,
@@ -27,12 +23,11 @@ metrics:
                 )
       explanation: Creates the MediaPipe pose estimator from configured detection and tracking confidence.
   - id: M-1-PC-2
-    text: Static inspection shows RGB, aligned depth, and CameraInfo subscribers are initialized.
+    text: RGB, aligned depth, and CameraInfo subscribers are initialized.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: /camera/color/image_raw
+    - path: human_detector/human_detector.py
+      anchor: /camera/color/image_raw
       snippet: |2-
                 sync_topics = [
                     Subscriber(
@@ -43,9 +38,8 @@ metrics:
                         qos_overriding_options=QoSOverridingOptions.with_default_policies(),
                     ),
       explanation: Creates the synchronized RGB Image subscriber.
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: /camera/depth/image_rect_raw
+    - path: human_detector/human_detector.py
+      anchor: /camera/depth/image_rect_raw
       snippet: |2-
                     Subscriber(
                         self,
@@ -55,9 +49,8 @@ metrics:
                         qos_overriding_options=QoSOverridingOptions.with_default_policies(),
                     ),
       explanation: Creates the synchronized aligned-depth Image subscriber.
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: /camera/depth/camera_info
+    - path: human_detector/human_detector.py
+      anchor: /camera/depth/camera_info
       snippet: |2-
                     Subscriber(
                         self,
@@ -68,12 +61,11 @@ metrics:
                     ),
       explanation: Creates the synchronized CameraInfo subscriber.
   - id: M-1-PC-3
-    text: Static inspection shows the three camera inputs are connected through approximate-time synchronization.
+    text: The three camera inputs are connected through approximate-time synchronization.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: ApproximateTimeSynchronizer
+    - path: human_detector/human_detector.py
+      anchor: ApproximateTimeSynchronizer
       snippet: |2-
                 self.image_approx_time_sync = ApproximateTimeSynchronizer(
                     sync_topics,
@@ -90,12 +82,11 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows a representative human image point is derived from detected pose landmarks.
+    text: A representative human image point is derived from detected pose landmarks.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: LEFT_HIP
+    - path: human_detector/human_detector.py
+      anchor: LEFT_HIP
       snippet: |2-
                 if self.detected_landmarks:
                     landmarks = mp.solutions.pose.PoseLandmark
@@ -103,9 +94,8 @@ metrics:
                     right_hip_landmark = self.detected_landmarks.landmark[landmarks.RIGHT_HIP]
                     x, y = self.extract_hip_midpoint(left_hip_landmark, right_hip_landmark)
       explanation: Selects left and right hip landmarks from the detected pose.
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: extract_hip_midpoint
+    - path: human_detector/human_detector.py
+      anchor: extract_hip_midpoint
       snippet: |2-
             def extract_hip_midpoint(self, left_hip_landmark, right_hip_landmark):
                 height, width, _ = self.image.shape
@@ -114,22 +104,31 @@ metrics:
                 return x, y
       explanation: Computes and bounds the midpoint of the two hip landmarks in image coordinates.
   - id: M-2-PC-2
-    text: Static inspection shows aligned depth is read at the selected human image point.
+    text: Aligned depth is read at the selected human image point.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: depth_of_given_pixel
+    - path: human_detector/human_detector.py
+      anchor: get_position_of_human_in_the_image
       snippet: |2-
+                self.detected_landmarks = self.person_pose_estimator.process(self.image).pose_landmarks
+                x_pos_of_detected_person, y_pos_of_detected_person = self.get_position_of_human_in_the_image(
+                    self.detected_landmarks
+                )
+
+                self.get_3d_human_position(x_pos_of_detected_person, y_pos_of_detected_person)
+
+            def get_3d_human_position(self, x_pos_of_detected_person, y_pos_of_detected_person):
+                if x_pos_of_detected_person <= 0 or y_pos_of_detected_person <= 0:
+                    return
+
                 depth_of_given_pixel = self.depth_image[y_pos_of_detected_person, x_pos_of_detected_person]
-      explanation: Reads aligned depth at the selected human image coordinate.
+      explanation: Derives detected-person image coordinates, passes them into 3D projection, rejects invalid coordinates, and indexes aligned depth at that point.
   - id: M-2-PC-3
-    text: Static inspection shows the depth and calibrated projection ray are combined into a 3D position.
+    text: The depth and calibrated projection ray are combined into a 3D position.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: projectPixelTo3dRay
+    - path: human_detector/human_detector.py
+      anchor: projectPixelTo3dRay
       snippet: |2-
                 ray = self.model.projectPixelTo3dRay((x_pos_of_detected_person, y_pos_of_detected_person))
                 ray_3d = [ray_element / ray[2] for ray_element in ray]
@@ -145,12 +144,11 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows lifecycle activation enables resources used for periodic transform publication.
+    text: Lifecycle activation enables resources used for periodic transform publication.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: on_activate
+    - path: human_detector/human_detector.py
+      anchor: on_activate
       snippet: |2-
             def on_activate(self, previous_state: LifecycleState):
                 self.get_logger().info("IN on_activate")
@@ -158,25 +156,23 @@ metrics:
                 return super().on_activate(previous_state)
       explanation: Resets the periodic timer when the lifecycle node activates.
   - id: M-3-PC-2
-    text: Static inspection shows transform publication is skipped unless a valid positive 3D position
+    text: Transform publication is skipped unless a valid positive 3D position
       is available.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: detected_human_position_world
+    - path: human_detector/human_detector.py
+      anchor: detected_human_position_world
       snippet: |2-
             def timer_callback(self):
                 if self.detected_human_position_world["x"] > 0.0:
                     self.broadcast_timer_callback()
       explanation: Calls TF broadcasting only when the detected forward position is positive.
   - id: M-3-PC-3
-    text: Static inspection shows transforms use the configured camera frame and human frame.
+    text: Transforms use the configured camera frame and human frame.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: transform.header.frame_id
+    - path: human_detector/human_detector.py
+      anchor: transform.header.frame_id
       snippet: |2-
                 transform = TransformStamped()
                 transform.header.stamp = self.image_time_stamp.to_msg()
@@ -184,12 +180,11 @@ metrics:
                 transform.child_frame_id = self.parameters.detected_human_frame_id
       explanation: Assigns the configured camera and detected-human frames to the transform.
   - id: M-3-PC-4
-    text: Static inspection shows valid human transforms are sent through the TF broadcaster.
+    text: Valid human transforms are sent through the TF broadcaster.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: sendTransform
+    - path: human_detector/human_detector.py
+      anchor: sendTransform
       snippet: |2-
                 self.tf_broadcaster.sendTransform(transform)
       explanation: Sends the populated human transform through the TF broadcaster.
@@ -200,25 +195,23 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows annotated-image publication is controlled by the configured publication
+    text: Annotated-image publication is controlled by the configured publication
       setting.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: publish_image_with_detected
+    - path: human_detector/human_detector.py
+      anchor: publish_image_with_detected
       snippet: |2-
             def publish_image_with_detected_human(self):
                 if not self.parameters.publish_image_with_detected:
                     return
       explanation: Returns without image publication when annotated-image output is disabled.
   - id: M-4-PC-2
-    text: Static inspection shows detected pose landmarks are drawn on the output image when available.
+    text: Detected pose landmarks are drawn on the output image when available.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: draw_landmarks
+    - path: human_detector/human_detector.py
+      anchor: draw_landmarks
       snippet: |2-
             def draw_person_pose(self, image):
                 mp_drawing = mp.solutions.drawing_utils
@@ -230,26 +223,27 @@ metrics:
                 )
                 return image
       explanation: Draws the detected pose landmarks and connections on the image.
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: modified_image_msg
+    - path: human_detector/human_detector.py
+      anchor: modified_image_msg
       snippet: |2-
                 if self.detected_landmarks is not None:
                     modified_image_msg = self.cv_bridge.cv2_to_imgmsg(self.draw_person_pose(self.image.copy()))
                     self.image_with_detected_human_pub.publish(modified_image_msg)
       explanation: Publishes the image produced by the landmark-drawing path.
   - id: M-4-PC-3
-    text: Static inspection shows the original RGB image is published when landmarks are unavailable.
+    text: The original RGB image is published when landmarks are unavailable.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: elif self.image is not None
+    - path: human_detector/human_detector.py
+      anchor: if self.detected_landmarks is not None
       snippet: |2-
+                if self.detected_landmarks is not None:
+                    modified_image_msg = self.cv_bridge.cv2_to_imgmsg(self.draw_person_pose(self.image.copy()))
+                    self.image_with_detected_human_pub.publish(modified_image_msg)
                 elif self.image is not None:
                     image_msg = self.cv_bridge.cv2_to_imgmsg(self.image)
                     self.image_with_detected_human_pub.publish(image_msg)
-      explanation: Publishes the original RGB image when no landmarks are available.
+      explanation: Publishes the annotated image when landmarks exist, and otherwise falls back to the original RGB image when available.
 - id: M-5
   name: Invalid-input estimation guard
   description: Missing or dimensionally inconsistent image data does not trigger estimation, satisfying
@@ -258,13 +252,12 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows detection is skipped when required RGB, depth, or CameraInfo data is
+    text: Detection is skipped when required RGB, depth, or CameraInfo data is
       missing.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: camera_info is None
+    - path: human_detector/human_detector.py
+      anchor: camera_info is None
       snippet: |2-
             def should_detect_human(self):
                 if self.camera_info is None or self.image is None or self.depth_image is None:
@@ -274,12 +267,11 @@ metrics:
                     return False
       explanation: Rejects processing when CameraInfo, RGB, or depth data is absent.
   - id: M-5-PC-2
-    text: Static inspection shows RGB and depth image dimensions are checked for compatibility.
+    text: RGB and depth image dimensions are checked for compatibility.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: are_rgb_image_same_size_as_depth_image
+    - path: human_detector/human_detector.py
+      anchor: are_rgb_image_same_size_as_depth_image
       snippet: |2-
             def are_rgb_image_same_size_as_depth_image(self):
                 rgb_image_height, rgb_image_width, _ = self.image.shape
@@ -288,12 +280,11 @@ metrics:
                 return rgb_image_height == depth_image_height and rgb_image_width == depth_image_width
       explanation: Compares RGB and depth image height and width.
   - id: M-5-PC-3
-    text: Static inspection shows mismatched RGB and depth dimensions prevent 3D estimation.
+    text: Mismatched RGB and depth dimensions prevent 3D estimation.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: not self.are_rgb_image_same_size_as_depth_image
+    - path: human_detector/human_detector.py
+      anchor: not self.are_rgb_image_same_size_as_depth_image
       snippet: |2-
                 if not self.are_rgb_image_same_size_as_depth_image():
                     self.get_logger().error(
@@ -308,12 +299,11 @@ metrics:
   - FR-6
   pass_criteria:
   - id: M-6-PC-1
-    text: Static inspection shows lifecycle deactivation cancels active periodic processing.
+    text: Lifecycle deactivation cancels active periodic processing.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: on_deactivate
+    - path: human_detector/human_detector.py
+      anchor: on_deactivate
       snippet: |2-
             def on_deactivate(self, previous_state: LifecycleState):
                 self.get_logger().info("IN on_deactivate")
@@ -321,12 +311,11 @@ metrics:
                 return super().on_deactivate(previous_state)
       explanation: Cancels the periodic timer during lifecycle deactivation.
   - id: M-6-PC-2
-    text: Static inspection shows cleanup, shutdown, and error transitions destroy the periodic timer.
+    text: Cleanup, shutdown, and error transitions destroy the periodic timer.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: destroy_resources
+    - path: human_detector/human_detector.py
+      anchor: destroy_resources
       snippet: |2-
             def on_cleanup(self, previous_state: LifecycleState):
                 self.get_logger().info("IN on_cleanup")
@@ -343,9 +332,8 @@ metrics:
                 self.destroy_resources()
                 return TransitionCallbackReturn.SUCCESS
       explanation: Routes cleanup, shutdown, and error transitions through shared resource destruction.
-    - kind: source_code
-      path: human_detector/human_detector.py
-      locator: destroy_timer
+    - path: human_detector/human_detector.py
+      anchor: destroy_timer
       snippet: |2-
             def destroy_resources(self):
                 self.destroy_timer(self.timer)

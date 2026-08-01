@@ -1,10 +1,7 @@
-schema_version: '2.0'
+schema_version: "2.1"
 package_name: dummy_map_server
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Dynamic dummy occupancy grid
@@ -13,46 +10,42 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows a nav_msgs/msg/OccupancyGrid publisher on the map topic.
+    text: A nav_msgs/msg/OccupancyGrid publisher on the map topic.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: create_publisher<nav_msgs::msg::OccupancyGrid>
+    - path: src/dummy_map_server.cpp
+      anchor: create_publisher<nav_msgs::msg::OccupancyGrid>
       snippet: |2-
           auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map",
             rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
       explanation: Creates a nav_msgs/msg/OccupancyGrid publisher whose topic is map.
   - id: M-1-PC-2
-    text: Static inspection shows the occupancy grid uses the world frame.
+    text: The occupancy grid uses the world frame.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: msg.header.frame_id
+    - path: src/dummy_map_server.cpp
+      anchor: msg.header.frame_id
       snippet: |2-
           msg.header.frame_id = "world";
       explanation: Assigns world as the occupancy-grid frame.
   - id: M-1-PC-3
-    text: Static inspection shows occupancy-grid cells are initialized as unknown.
+    text: Occupancy-grid cells are initialized as unknown.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: msg.data.push_back
+    - path: src/dummy_map_server.cpp
+      anchor: msg.data.push_back
       snippet: |2-
           for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
             msg.data.push_back(-1);
           }
       explanation: Fills every initial occupancy-grid cell with the unknown value -1.
   - id: M-1-PC-4
-    text: Static inspection shows occupied and free cells are updated to form a moving map pattern.
+    text: Occupied and free cells are updated to form a moving map pattern.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: msg.data
+    - path: src/dummy_map_server.cpp
+      anchor: msg.data
       snippet: |2-
             msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
             msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
@@ -62,28 +55,25 @@ metrics:
             msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
       explanation: Clears the previous three cells and advances a free-occupied-free pattern.
   - id: M-1-PC-5
-    text: Static inspection shows each map receives a current timestamp.
+    text: Each map receives a current timestamp.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: msg.header.stamp
+    - path: src/dummy_map_server.cpp
+      anchor: msg.header.stamp
       snippet: |2-
             msg.header.stamp = clock->now();
       explanation: Sets the outgoing map timestamp from the ROS clock.
   - id: M-1-PC-6
-    text: Static inspection shows map messages are published repeatedly.
+    text: Map messages are published repeatedly.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: while (rclcpp::ok())
+    - path: src/dummy_map_server.cpp
+      anchor: while (rclcpp::ok())
       snippet: |2-
           while (rclcpp::ok()) {
       explanation: Places map generation inside the node's continuous execution loop.
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: map_pub->publish
+    - path: src/dummy_map_server.cpp
+      anchor: map_pub->publish
       snippet: |2-
             map_pub->publish(msg);
             executor.spin_some();
@@ -96,25 +86,23 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows the map publisher retains only the latest sample with depth one.
+    text: The map publisher retains only the latest sample with depth one.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: KeepLast(1)
+    - path: src/dummy_map_server.cpp
+      anchor: KeepLast(1)
       snippet: |2-
           auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map",
             rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
       explanation: Configures the map publisher with KeepLast depth one.
   - id: M-2-PC-2
-    text: Static inspection shows transient-local or equivalent durability is used for late-subscriber
+    text: Transient-local or equivalent durability is used for late-subscriber
       delivery.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_map_server.cpp
-      locator: transient_local
+    - path: src/dummy_map_server.cpp
+      anchor: transient_local
       snippet: |2-
           auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
             "map",
