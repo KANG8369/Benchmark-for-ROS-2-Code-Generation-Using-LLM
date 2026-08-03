@@ -1,379 +1,146 @@
 intent:
   package_name: turtlebot3_follower
-  summary: Coordinates a chain of TurtleBot3 followers by transforming each leader
-    pose into a short local path and submitting it to that follower's Nav2 FollowPath
-    controller.
-  scope: Provides the follower executable and launch orchestration for three configured
-    follower robots; external robot systems provide TF, laser scans, odometry, and
-    execution of velocity commands.
+  summary: >-
+    Coordinates a chain of TurtleBot3 followers by transforming each leader
+    pose into a short local path and submitting it to that follower's Nav2
+    FollowPath controller.
+  scope: >-
+    Provides the follower executable and launch orchestration for three
+    configured follower robots; external robot systems provide TF, laser
+    scans, odometry, and execution of velocity commands.
+
 functional_requirements:
-- id: FR-1
-  text: The follower executable creates one follower node for each requested follower
-    index, pairing each follower robot with the preceding robot as its leader.
-- id: FR-2
-  text: Each follower node broadcasts a static transform from its leader odometry
-    frame to its own odometry frame.
-- id: FR-3
-  text: Each follower node repeatedly resolves the leader base pose in the follower
-    base frame and submits a two-pose FollowPath goal to the corresponding controller.
-- id: FR-4
-  text: A follower node warns and skips a path-goal submission whenever its FollowPath
-    action server is unavailable.
-- id: FR-5
-  text: The provided launch configuration starts and lifecycle-manages three controller
-    and velocity-smoothing pipelines configured for the three follower robots.
+  - id: FR-1
+    text: >-
+      The follower executable accepts a requested follower count and creates
+      one follower node for each index, pairing follower TB3_<i+1> with leader
+      TB3_<i>.
+
+  - id: FR-2
+    text: >-
+      Each follower node broadcasts a static transform from its leader
+      odometry frame to its own odometry frame.
+
+  - id: FR-3
+    text: >-
+      Each follower node repeatedly resolves the leader base pose in the
+      follower base frame and submits a two-pose FollowPath goal to the
+      corresponding controller.
+
+  - id: FR-4
+    text: >-
+      A follower node warns and skips path-goal submission whenever its
+      FollowPath action server is unavailable.
+
+  - id: FR-5
+    text: >-
+      The provided launch configuration starts and lifecycle-manages
+      controller and velocity-smoothing pipelines for TB3_2, TB3_3, and
+      TB3_4, using follower-specific scan and velocity-command bindings.
+
 interfaces:
   nodes:
-  - name: <follower_name>_follower_node
-    responsibility: Broadcasts a leader-to-follower odometry transform and sends paths
-      that make a follower robot track its preceding leader.
-    actions:
-    - name: <follower_name>/follow_path
-      type: nav2_msgs/action/FollowPath
-      role: client
-      purpose: Sends the generated follower path to the corresponding Nav2 controller.
-    tf:
-    - source_frame: <leader_name>/odom
-      target_frame: <follower_name>/odom
-      purpose: Broadcasts the static odometry-frame relationship between a leader
-        and its follower.
-    - source_frame: <leader_name>/base_link
-      target_frame: <follower_name>/base_link
-      purpose: Looks up the leader pose expressed in the follower base frame for path
-        generation.
-    parameters:
-    - name: use_sim_time
-      type: bool
-      purpose: Selects simulated time and the corresponding static odometry transform
-        offset.
+    - name: TB3_<follower_index>_follower_node
+      responsibility: >-
+        Broadcasts the leader-to-follower odometry transform and sends paths
+        that make the follower track the immediately preceding robot.
+
+      actions:
+        - name: /TB3_<follower_index>/follow_path
+          type: nav2_msgs/action/FollowPath
+          role: client
+          purpose: >-
+            Sends a two-pose follower path to the corresponding Nav2
+            controller.
+
+      tf:
+        - source_frame: TB3_<leader_index>/odom
+          target_frame: TB3_<follower_index>/odom
+          purpose: >-
+            Broadcasts the static odometry-frame relationship between the
+            leader and follower.
+
+        - source_frame: TB3_<leader_index>/base_link
+          target_frame: TB3_<follower_index>/base_link
+          purpose: >-
+            Looks up the leader pose expressed in the follower base frame.
+
+      parameters:
+        - name: use_sim_time
+          type: bool
+          purpose: >-
+            Selects simulated time and the corresponding static odometry
+            transform offset.
+
   launch_arguments:
-  - name: use_sim_time
-    purpose: Selects simulation time for the follower executable, controller servers,
-      and lifecycle managers.
+    - name: use_sim_time
+      purpose: >-
+        Selects simulated ROS time for the follower nodes, controller servers,
+        and lifecycle managers.
+
   external_nodes:
-  - name: <follower_namespace>/controller_server
-    package: nav2_controller
-    executable: controller_server
-    purpose: Executes FollowPath goals using a DWB local planner and an obstacle-aware
-      local costmap for one follower robot.
-    topics:
-    - name: /<follower_namespace>/cmd_vel_not_smoothed
-      type: geometry_msgs/msg/Twist
-      direction: publish
-      purpose: Publishes raw controller velocity commands through the launch remapping.
-    - name: /<follower_namespace>/scan
-      type: sensor_msgs/msg/LaserScan
-      direction: subscribe
-      purpose: Supplies obstacle observations to the configured local costmap.
-    actions:
-    - name: <follower_namespace>/follow_path
-      type: nav2_msgs/action/FollowPath
-      role: server
-      purpose: Receives follower path goals from the turtlebot3_follower node.
-    parameters:
-    - name: use_sim_time
-      type: bool
-      purpose: Enables simulation time.
-    - name: controller_frequency
-      type: double
-      purpose: Sets the controller update frequency.
-    - name: min_x_velocity_threshold
-      type: double
-      purpose: Sets the minimum linear x velocity threshold.
-    - name: min_y_velocity_threshold
-      type: double
-      purpose: Sets the minimum linear y velocity threshold.
-    - name: min_theta_velocity_threshold
-      type: double
-      purpose: Sets the minimum angular velocity threshold.
-    - name: progress_checker_plugins
-      type: string_array
-      purpose: Selects configured progress-checker plugins.
-    - name: goal_checker_plugins
-      type: string_array
-      purpose: Selects configured goal-checker plugins.
-    - name: controller_plugins
-      type: string_array
-      purpose: Selects configured controller plugins.
-    - name: progress_checker.plugin
-      type: string
-      purpose: Selects the progress checker implementation.
-    - name: progress_checker.required_movement_radius
-      type: double
-      purpose: Sets the movement distance required to demonstrate progress.
-    - name: progress_checker.movement_time_allowance
-      type: double
-      purpose: Sets the time allowed for required progress.
-    - name: goal_checker.plugin
-      type: string
-      purpose: Selects the goal checker implementation.
-    - name: goal_checker.xy_goal_tolerance
-      type: double
-      purpose: Sets positional goal tolerance.
-    - name: goal_checker.yaw_goal_tolerance
-      type: double
-      purpose: Sets angular goal tolerance.
-    - name: goal_checker.stateful
-      type: bool
-      purpose: Retains goal-checker state.
-    - name: FollowPath.plugin
-      type: string
-      purpose: Selects the DWB local planner for FollowPath goals.
-    - name: FollowPath.debug_trajectory_details
-      type: bool
-      purpose: Enables detailed trajectory diagnostics.
-    - name: FollowPath.min_vel_x
-      type: double
-      purpose: Sets the minimum x velocity.
-    - name: FollowPath.min_vel_y
-      type: double
-      purpose: Sets the minimum y velocity.
-    - name: FollowPath.max_vel_x
-      type: double
-      purpose: Sets the maximum x velocity.
-    - name: FollowPath.max_vel_y
-      type: double
-      purpose: Sets the maximum y velocity.
-    - name: FollowPath.max_vel_theta
-      type: double
-      purpose: Sets the maximum angular velocity.
-    - name: FollowPath.min_speed_xy
-      type: double
-      purpose: Sets the minimum translational speed.
-    - name: FollowPath.max_speed_xy
-      type: double
-      purpose: Sets the maximum translational speed.
-    - name: FollowPath.min_speed_theta
-      type: double
-      purpose: Sets the minimum angular speed.
-    - name: FollowPath.acc_lim_x
-      type: double
-      purpose: Sets x acceleration limit.
-    - name: FollowPath.acc_lim_y
-      type: double
-      purpose: Sets y acceleration limit.
-    - name: FollowPath.acc_lim_theta
-      type: double
-      purpose: Sets angular acceleration limit.
-    - name: FollowPath.decel_lim_x
-      type: double
-      purpose: Sets x deceleration limit.
-    - name: FollowPath.decel_lim_y
-      type: double
-      purpose: Sets y deceleration limit.
-    - name: FollowPath.decel_lim_theta
-      type: double
-      purpose: Sets angular deceleration limit.
-    - name: FollowPath.vx_samples
-      type: integer
-      purpose: Sets the number of sampled x velocities.
-    - name: FollowPath.vy_samples
-      type: integer
-      purpose: Sets the number of sampled y velocities.
-    - name: FollowPath.vtheta_samples
-      type: integer
-      purpose: Sets the number of sampled angular velocities.
-    - name: FollowPath.sim_time
-      type: double
-      purpose: Sets the forward trajectory simulation duration.
-    - name: FollowPath.linear_granularity
-      type: double
-      purpose: Sets linear trajectory discretization.
-    - name: FollowPath.angular_granularity
-      type: double
-      purpose: Sets angular trajectory discretization.
-    - name: FollowPath.transform_tolerance
-      type: double
-      purpose: Sets TF transform tolerance for trajectory evaluation.
-    - name: FollowPath.xy_goal_tolerance
-      type: double
-      purpose: Sets planner positional goal tolerance.
-    - name: FollowPath.trans_stopped_velocity
-      type: double
-      purpose: Sets the translational stopped-velocity threshold.
-    - name: FollowPath.short_circuit_trajectory_evaluation
-      type: bool
-      purpose: Enables early termination of trajectory evaluation.
-    - name: FollowPath.limit_vel_cmd_in_traj
-      type: bool
-      purpose: Controls velocity-command limiting during trajectory evaluation.
-    - name: FollowPath.stateful
-      type: bool
-      purpose: Retains local planner state.
-    - name: FollowPath.critics
-      type: string_array
-      purpose: Selects DWB trajectory critics.
-    - name: FollowPath.BaseObstacle.scale
-      type: double
-      purpose: Weights obstacle costs.
-    - name: FollowPath.PathAlign.scale
-      type: double
-      purpose: Weights path-alignment costs.
-    - name: FollowPath.GoalAlign.scale
-      type: double
-      purpose: Weights goal-alignment costs.
-    - name: FollowPath.PathAlign.forward_point_distance
-      type: double
-      purpose: Sets the path-alignment forward evaluation distance.
-    - name: FollowPath.GoalAlign.forward_point_distance
-      type: double
-      purpose: Sets the goal-alignment forward evaluation distance.
-    - name: FollowPath.PathDist.scale
-      type: double
-      purpose: Weights path-distance costs.
-    - name: FollowPath.GoalDist.scale
-      type: double
-      purpose: Weights goal-distance costs.
-    - name: FollowPath.RotateToGoal.scale
-      type: double
-      purpose: Weights rotate-to-goal costs.
-    - name: FollowPath.RotateToGoal.slowing_factor
-      type: double
-      purpose: Sets rotation slowing behavior near the goal.
-    - name: FollowPath.RotateToGoal.lookahead_time
-      type: double
-      purpose: Sets rotation lookahead time.
-    - name: FollowPath.ObstacleFootprintCritic.scale
-      type: double
-      purpose: Weights footprint-obstacle costs.
-    - name: FollowPath.ObstacleFootprintCritic.threshold
-      type: double
-      purpose: Sets the obstacle footprint threshold.
-    - name: FollowPath.ObstacleFootprintCritic.include_dynamic_obstacles
-      type: bool
-      purpose: Enables dynamic-obstacle consideration.
-    - name: FollowPath.ObstacleFootprintCritic.collision_penalty
-      type: double
-      purpose: Sets collision penalty.
-    - name: FollowPath.ObstacleFootprintCritic.footprint_cost_mode
-      type: integer
-      purpose: Selects footprint cost mode.
-    - name: local_costmap.local_costmap.global_frame
-      type: string
-      purpose: Sets the local costmap global frame.
-    - name: local_costmap.local_costmap.robot_base_frame
-      type: string
-      purpose: Sets the follower robot base frame.
-    - name: local_costmap.local_costmap.update_frequency
-      type: double
-      purpose: Sets local costmap update frequency.
-    - name: local_costmap.local_costmap.resolution
-      type: double
-      purpose: Sets local costmap resolution.
-    - name: local_costmap.local_costmap.width
-      type: integer
-      purpose: Sets local costmap width.
-    - name: local_costmap.local_costmap.height
-      type: integer
-      purpose: Sets local costmap height.
-    - name: local_costmap.local_costmap.obstacle_range
-      type: double
-      purpose: Sets obstacle marking range.
-    - name: local_costmap.local_costmap.raytrace_range
-      type: double
-      purpose: Sets obstacle clearing raytrace range.
-    - name: local_costmap.local_costmap.rolling_window
-      type: bool
-      purpose: Enables a rolling local costmap window.
-    - name: local_costmap.local_costmap.plugins
-      type: string_array
-      purpose: Selects local costmap plugins.
-    - name: local_costmap.local_costmap.obstacle_layer.plugin
-      type: string
-      purpose: Selects the obstacle-layer implementation.
-    - name: local_costmap.local_costmap.obstacle_layer.enabled
-      type: bool
-      purpose: Enables the obstacle layer.
-    - name: local_costmap.local_costmap.obstacle_layer.observation_sources
-      type: string
-      purpose: Selects the scan obstacle observation source.
-    - name: local_costmap.local_costmap.obstacle_layer.scan.topic
-      type: string
-      purpose: Selects the follower robot laser scan topic.
-    - name: local_costmap.local_costmap.obstacle_layer.scan.max_obstacle_height
-      type: double
-      purpose: Sets the maximum obstacle height accepted from scans.
-    - name: local_costmap.local_costmap.obstacle_layer.scan.clearing
-      type: bool
-      purpose: Enables scan-based obstacle clearing.
-    - name: local_costmap.local_costmap.obstacle_layer.scan.marking
-      type: bool
-      purpose: Enables scan-based obstacle marking.
-    - name: local_costmap.local_costmap.obstacle_layer.scan.data_type
-      type: string
-      purpose: Selects LaserScan obstacle observations.
-  - name: <follower_namespace>/lifecycle_manager_controller
-    package: nav2_lifecycle_manager
-    executable: lifecycle_manager
-    purpose: Automatically configures and activates the follower controller server
-      and velocity smoother.
-    parameters:
-    - name: autostart
-      type: bool
-      purpose: Automatically starts managed lifecycle nodes.
-    - name: use_sim_time
-      type: bool
-      purpose: Enables simulation time.
-    - name: node_names
-      type: string_array
-      purpose: Lists the controller server and velocity smoother managed by this lifecycle
-        manager.
-  - name: <follower_namespace>/velocity_smoother
-    package: nav2_velocity_smoother
-    executable: velocity_smoother
-    purpose: Limits and smooths controller velocity commands before sending them to
-      a follower robot.
-    topics:
-    - name: /<follower_namespace>/cmd_vel_not_smoothed
-      type: geometry_msgs/msg/Twist
-      direction: subscribe
-      purpose: Receives raw controller velocity commands through the launch remapping.
-    - name: /<follower_namespace>/cmd_vel
-      type: geometry_msgs/msg/Twist
-      direction: publish
-      purpose: Publishes smoothed velocity commands to the follower robot.
-    - name: /<follower_namespace>/odom
-      type: nav_msgs/msg/Odometry
-      direction: subscribe
-      purpose: Supplies configured follower odometry when velocity feedback requires
-        it.
-    parameters:
-    - name: smoothing_frequency
-      type: double
-      purpose: Sets velocity smoothing frequency.
-    - name: scale_velocities
-      type: bool
-      purpose: Controls proportional velocity scaling.
-    - name: feedback
-      type: string
-      purpose: Selects open-loop velocity feedback.
-    - name: max_velocity
-      type: double_array
-      purpose: Sets maximum linear and angular velocities.
-    - name: min_velocity
-      type: double_array
-      purpose: Sets minimum linear and angular velocities.
-    - name: deadband_velocity
-      type: double_array
-      purpose: Sets velocity deadbands.
-    - name: velocity_timeout
-      type: double
-      purpose: Sets the timeout for incoming velocity commands.
-    - name: max_accel
-      type: double_array
-      purpose: Sets maximum accelerations.
-    - name: max_decel
-      type: double_array
-      purpose: Sets maximum decelerations.
-    - name: odom_topic
-      type: string
-      purpose: Selects the follower robot odometry topic.
-    - name: odom_duration
-      type: double
-      purpose: Sets the odometry averaging duration.
-    - name: use_realtime_priority
-      type: bool
-      purpose: Controls realtime scheduling priority use.
-    - name: enable_stamped_cmd_vel
-      type: bool
-      purpose: Selects unstamped Twist velocity commands.
+    - name: /TB3_<follower_index>/controller_server
+      package: nav2_controller
+      executable: controller_server
+      purpose: >-
+        Executes FollowPath goals using follower-specific transforms and
+        laser-scan obstacle observations.
+
+      topics:
+        - name: /TB3_<follower_index>/cmd_vel_not_smoothed
+          type: geometry_msgs/msg/Twist
+          direction: publish
+          purpose: Publishes raw controller velocity commands.
+
+        - name: /TB3_<follower_index>/scan
+          type: sensor_msgs/msg/LaserScan
+          direction: subscribe
+          purpose: Supplies follower-specific obstacle observations.
+
+      actions:
+        - name: /TB3_<follower_index>/follow_path
+          type: nav2_msgs/action/FollowPath
+          role: server
+          purpose: Receives paths from the follower node.
+
+      parameters:
+        - name: use_sim_time
+          type: bool
+          purpose: Enables simulation time.
+
+    - name: /TB3_<follower_index>/lifecycle_manager_controller
+      package: nav2_lifecycle_manager
+      executable: lifecycle_manager
+      purpose: >-
+        Configures and activates the controller server and velocity smoother.
+
+      parameters:
+        - name: autostart
+          type: bool
+          purpose: Automatically activates the managed nodes.
+
+        - name: use_sim_time
+          type: bool
+          purpose: Enables simulation time.
+
+        - name: node_names
+          type: string_array
+          purpose: Manages controller_server and velocity_smoother.
+
+    - name: /TB3_<follower_index>/velocity_smoother
+      package: nav2_velocity_smoother
+      executable: velocity_smoother
+      purpose: >-
+        Limits and smooths controller velocity commands before forwarding
+        them to the follower robot.
+
+      topics:
+        - name: /TB3_<follower_index>/cmd_vel_not_smoothed
+          type: geometry_msgs/msg/Twist
+          direction: subscribe
+          purpose: Receives raw controller velocity commands.
+
+        - name: /TB3_<follower_index>/cmd_vel
+          type: geometry_msgs/msg/Twist
+          direction: publish
+          purpose: Publishes smoothed velocity commands.
