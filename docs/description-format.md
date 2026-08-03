@@ -187,12 +187,21 @@ Service types must use canonical `package/srv/Type` syntax.
   purpose: Configures the output update frequency.
 ```
 
-- Include every verified user-configurable parameter declared or read by the
-  node.
+- Include a parameter only when its name and type are part of the public
+  generator-facing contract or are necessary to satisfy a functional
+  requirement.
+- For an external node, omit dependency-internal tuning parameters unless the
+  generated package must reproduce that exact setting for required observable
+  behavior or interoperability. Summarize non-essential tuning in the node
+  purpose instead of inventorying its configuration file.
 - Use the actual finite parameter key whenever it is known.
 - A pattern such as `topics.<source>.priority` is allowed only when code accepts
   an arbitrary key at that exact segment.
 - Environment variables are not ROS parameters.
+
+Use the canonical ROS 2 parameter type names `bool`, `integer`, `double`,
+`string`, `byte_array`, `bool_array`, `integer_array`, `double_array`, and
+`string_array`.
 
 ## Launch Arguments
 
@@ -287,6 +296,8 @@ ROS conventions.
    names.
 6. Use one verified dynamic pattern for repeated equivalent instances rather
    than duplicating the same node contract.
+7. Treat `interfaces` as an interoperability contract, not as a complete dump
+   of every reachable configuration value.
 
 ## Omission and Validation Rules
 

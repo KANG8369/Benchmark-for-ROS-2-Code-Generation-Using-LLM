@@ -49,6 +49,8 @@ interfaces:
           target_frame: base_link
           purpose: Looks up sensor observations in the robot base frame.
       parameters:
+        # Include only public or behavior-critical parameters. Do not copy all
+        # tuning parameters from an implementation or dependency config file.
         - name: update_rate
           type: double
           purpose: Configures how frequently the node updates its output.
@@ -83,9 +85,11 @@ interfaces:
           target_frame: base_link
           purpose: Provides the robot pose relationship used by the controller.
       parameters:
-        - name: controller_frequency
-          type: double
-          purpose: Configures the external controller's update frequency.
+        # For external nodes, include only settings required by the visible
+        # behavior or interoperability contract.
+        - name: use_sim_time
+          type: bool
+          purpose: Uses the simulation clock required by the launched system.
 
     # Use plugin instead of executable for a composable node loaded from
     # another package.

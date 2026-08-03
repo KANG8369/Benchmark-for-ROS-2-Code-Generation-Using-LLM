@@ -58,7 +58,7 @@ interfaces:
       type: double
       purpose: Sets the image publication frequency.
     - name: show_camera
-      type: boolean
+      type: bool
       purpose: Enables local OpenCV display of captured or generated frames.
     - name: device_id
       type: integer
@@ -70,7 +70,7 @@ interfaces:
       type: integer
       purpose: Sets the requested image height.
     - name: burger_mode
-      type: boolean
+      type: bool
       purpose: Selects synthetic animated burger-image generation instead of camera
         capture.
     - name: frame_id
@@ -95,7 +95,7 @@ interfaces:
       type: integer
       purpose: Sets subscription queue depth when keep-last history is selected.
     - name: show_image
-      type: boolean
+      type: bool
       purpose: Enables rendering received images in an OpenCV window.
     - name: window_name
       type: string
