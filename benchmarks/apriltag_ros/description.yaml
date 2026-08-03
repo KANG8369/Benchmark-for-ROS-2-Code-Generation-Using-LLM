@@ -35,11 +35,6 @@ interfaces:
       type: sensor_msgs/msg/Image
       direction: subscribe
       purpose: Receives rectified raw camera images through the selected image transport.
-    - name: image_rect/compressed
-      type: sensor_msgs/msg/CompressedImage
-      direction: subscribe
-      purpose: Receives compressed rectified camera images when the compressed image
-        transport is selected.
     - name: camera_info
       type: sensor_msgs/msg/CameraInfo
       direction: subscribe

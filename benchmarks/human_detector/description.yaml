@@ -68,7 +68,7 @@ interfaces:
       purpose: Frequency of periodic detected-human transform and optional image output
         processing.
     - name: publish_image_with_detected
-      type: boolean
+      type: bool
       purpose: Enables publication of the annotated or unannotated RGB image output.
     - name: min_detection_confidence
       type: double
@@ -81,7 +81,7 @@ interfaces:
       purpose: Allowed timestamp difference for synchronized RGB, depth, and camera-info
         input messages.
     - name: use_sim_time
-      type: boolean
+      type: bool
       purpose: Selects simulated time when supplied by the launch interface.
   launch_arguments:
   - name: use_sim
