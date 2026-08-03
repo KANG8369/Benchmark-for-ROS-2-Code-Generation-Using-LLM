@@ -1,114 +1,247 @@
-# Benchmark MCP Design
+# ROS 2 Benchmark MCP Server
 
-This directory will contain an MCP server for running the ROS 2 code-generation
-benchmark with reproducible, role-scoped access to benchmark artifacts and ROS
-tools. This document is a design proposal; no executable server is included yet.
+This directory contains the runnable, Coder-facing MCP server for the ROS 2
+code-generation benchmark. It exposes immutable public descriptions and two
+auditable ROS 2 tools while keeping `metric.yaml` and `reference/` unavailable
+to the generator.
 
-## Goals
+## Implemented Scope
 
-- Expose long generator-facing descriptions as addressable MCP resources.
-- Give every evaluated model the same tool schemas, limits, and ROS environment.
-- Keep generated packages isolated in a run-scoped workspace.
-- Separate code generation, static evaluation, and simulation permissions.
-- Prevent the coder from reading hidden metrics, reference implementations, or
-  evaluator feedback before it is explicitly returned by the orchestrator.
+The initial server intentionally exposes only the capabilities required by the
+Coder Agent:
 
-## Proposed Components
+| Kind | MCP capability | Purpose |
+| --- | --- | --- |
+| Resource | `benchmark://cases` | Sorted public case catalog and snapshot hashes |
+| Resource template | `benchmark://cases/{case_id}/description` | Complete public `description.yaml` snapshot |
+| Resource template | `benchmark://cases/{case_id}/description/{section}` | `intent`, `functional_requirements`, or `interfaces` from that same snapshot |
+| Tool | `ros2_interface_show` | Exact installed definition of one declared ROS msg/srv/action type |
+| Tool | `build_ros_package` | One complete package snapshot built in a fresh workspace |
 
-```text
-mcp/
-├── server.py                       # MCP server entry point and capability setup
-├── schemas.py                      # Shared request and response models
-├── resources/
-│   ├── benchmark_catalog.py        # Available case metadata
-│   └── description.py              # Full or section-level public descriptions
-├── tools/
-│   ├── ros2_interface_show.py      # Installed ROS interface definitions
-│   └── build_ros_package.py        # Isolated colcon build and structured log
-├── policies/
-│   └── agent_permissions.yaml      # Per-agent resource and tool allowlists
-└── tests/
-    ├── test_resource_visibility.py
-    ├── test_workspace_isolation.py
-    └── test_tool_contracts.py
+The server never registers internal metric or reference resources. A future
+functional-evaluator server must be a separate process/profile rather than a
+model-selectable role on this public server.
+
+## Requirements
+
+- Python 3.10 or newer
+- ROS 2 Jazzy installed at `/opt/ros/jazzy`
+- `colcon` at `/usr/bin/colcon` for local build-tool use
+
+The runtime dependencies pin MCP Python SDK `2.0.0` and PyYAML `6.0.3` so the
+model-visible schemas and description parsing stay fixed across benchmark runs.
+
+## Install
+
+From the repository checkout:
+
+```bash
+cd mcp
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[test]'
 ```
 
-Simulation support should be added after the generation and static-evaluation
-path is stable. It is expected to add task-specific harness resources plus a
-restricted `run_simulation` tool; simulation assets must remain invisible to
-the coder when they disclose hidden evaluation details.
+Run the tests:
 
-## Resources
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
+ruff check src tests
+ruff format --check src tests
+```
 
-Resources are read-only benchmark inputs. Proposed URIs are:
+Disabling third-party pytest plugin autoload keeps ROS installation plugins from
+changing this unit-test environment.
 
-| URI | Consumer | Contents |
-| --- | --- | --- |
-| `benchmark://cases` | Orchestrator | Public case catalog and description metadata |
-| `benchmark://cases/{case}/description` | Coder, evaluators | Complete `description.yaml` |
-| `benchmark://cases/{case}/description/{section}` | Coder, evaluators | One long-description section such as `functional_requirements` or `interfaces` |
-| `benchmark-internal://cases/{case}/metric` | Evaluators only | Hidden `metric.yaml` |
-| `benchmark-internal://cases/{case}/reference/{path}` | Benchmark maintainers only | Reference-package evidence |
+## Run over stdio
 
-Section resources reduce context pressure without changing the generator input:
-the complete description remains the authoritative specification, and all
-sections presented to a model must come from the same immutable snapshot.
+From `mcp/` with the virtual environment active:
 
-## Initial Tools
+```bash
+ros2-benchmark-mcp --repo-root ..
+```
+
+This safe default serves descriptions and `ros2_interface_show`, but
+`build_ros_package` returns `status: unavailable`. To opt into host builds:
+
+```bash
+ros2-benchmark-mcp \
+  --repo-root .. \
+  --workspace-root /tmp/ros2-codegen-benchmark-mcp \
+  --max-build-calls 1 \
+  --build-timeout-seconds 300 \
+  --allow-unsafe-local-build
+```
+
+An MCP host can launch the server with an equivalent stdio configuration:
+
+```json
+{
+  "command": "/absolute/path/to/repository/mcp/.venv/bin/ros2-benchmark-mcp",
+  "args": [
+    "--repo-root",
+    "/absolute/path/to/repository",
+    "--workspace-root",
+    "/tmp/ros2-codegen-benchmark-mcp",
+    "--max-build-calls",
+    "1",
+    "--allow-unsafe-local-build"
+  ]
+}
+```
+
+Repository discovery can alternatively use the `ROS2_BENCHMARK_ROOT`
+environment variable. Server logs go to stderr so they do not corrupt the MCP
+stdio transport.
+
+Streamable HTTP is available for local integration testing:
+
+```bash
+ros2-benchmark-mcp --repo-root .. --transport streamable-http --port 8000
+```
+
+The default bind address is `127.0.0.1`.
+
+## Resource Responses
+
+The case registry is loaded once at server startup. Case identifiers come only
+from validated direct children of `benchmarks/`; request parameters are never
+joined into arbitrary filesystem paths.
+
+The complete and section-level description resources return JSON envelopes:
+
+```json
+{
+  "case_id": "dummy_sensors",
+  "description_sha256": "...",
+  "description": {
+    "intent": {},
+    "functional_requirements": [],
+    "interfaces": {}
+  }
+}
+```
+
+Every section read contains the same `description_sha256`, allowing an
+orchestrator to reject mixed snapshots. The optional `interfaces` section is
+represented with `present: false` when omitted.
+
+## Tool Contracts
 
 ### `ros2_interface_show`
 
-Returns the installed definition of one canonical ROS interface, for example
-`sensor_msgs/msg/LaserScan`. It is read-only and must report the ROS distribution
-and command result so runs remain auditable.
+Input:
+
+```json
+{
+  "interface_type": "sensor_msgs/msg/LaserScan"
+}
+```
+
+The canonical name is validated before a fixed argv command is executed. The
+result includes the ROS distribution, exact definition, definition SHA-256,
+exit code, stderr, duration, truncation state, and a structured error kind.
+Results are cached once per server run.
+
+Use the tool only when generated code directly reads, constructs, or writes an
+existing interface. Do not use it to discover an interface absent from the
+public description. Custom interfaces belong in the generated package and are
+validated by the build.
 
 ### `build_ros_package`
 
-Builds the submitted package in its run-scoped ROS 2 workspace and returns a
-structured result containing the exit code, stdout, stderr, duration, and build
-artifacts. The tool must not automatically edit code or retry the build.
+Input:
 
-Package file reading and writing belong to the run workspace API supplied by
-the agent host. They do not need to be duplicated as benchmark-specific MCP
-tools unless a client has no secure filesystem abstraction.
+```json
+{
+  "package_name": "example_package",
+  "files": [
+    {
+      "path": "package.xml",
+      "content": "<package format=\"3\">...</package>",
+      "executable": false
+    }
+  ]
+}
+```
 
-## Agent Contracts
+Only the complete snapshot is model-controlled. Timeout, workspace root,
+build-call budget, ROS distribution, command arguments, and environment are
+fixed by the server operator.
 
-| Agent | Inputs | Allowed MCP capabilities | Output |
-| --- | --- | --- | --- |
-| Coder | Immutable description snapshot; optional prior package and explicit evaluator feedback | Public description resources, `ros2_interface_show`, `build_ros_package` | One complete ROS 2 package: package name and every file path with its full contents |
-| Functional-requirement evaluator | Description, hidden metric, and generated package | Public description and hidden metric resources; read-only package inspection | Structured result for every requirement and pass criterion, with evidence and actionable feedback |
-| Simulation-harness author | Description, hidden metric, generated package, and simulation contract | Evaluator-only artifacts and a restricted harness workspace | Task-specific launch, fixtures, assertions, and environment configuration |
-| Simulation runner | Frozen generated package and approved harness | `build_ros_package` and future `run_simulation` | Structured execution result, logs, artifacts, and observed pass/fail evidence |
+Before writing anything, the tool rejects:
 
-The orchestrator, not an agent, advances artifacts between these stages:
+- invalid package names
+- absolute, non-normalized, backslash, or traversal paths
+- duplicate paths and reserved top-level `.git`, `build`, `install`, or `log`
+- excessive file counts or content sizes
+- missing/malformed `package.xml`
+- a manifest package name that differs from `package_name`
+
+Each accepted call receives a generated build ID and a fresh
+`<workspace-root>/<build-id>/src/<package-name>` directory. `colcon` runs with a
+clean environment sourced only from `/opt/ros/jazzy`; current user overlays and
+ambient environment secrets are not inherited. The result reports the package
+snapshot hash, status, command, exit code, timeout, duration, bounded logs, and
+validation errors. The tool never edits the submitted package and never
+retries automatically.
+
+## Local-Build Security Boundary
+
+Directory isolation is not an operating-system sandbox. CMake and `setup.py`
+can execute arbitrary commands during a build. The local backend is therefore
+disabled unless the operator supplies `--allow-unsafe-local-build`.
+
+Use local builds only for trusted development. Reproducible benchmark runs
+should execute the same tool contract inside a pinned OCI environment with no
+network, a non-root user, read-only root filesystem, only the ephemeral
+workspace writable, and fixed CPU, memory, PID, output, and time limits. Do not
+give the model a backend-selection option.
+
+## Agent Boundary
+
+The intended runtime flow is:
 
 ```text
 Coder -> build result -> functional evaluator -> explicit feedback -> Coder
-      -> all static checks pass -> simulation harness -> simulation runner
+      -> all static checks pass -> simulation runner
 ```
 
-## Reproducibility and Safety Rules
+- The current public server is for the Coder only.
+- The functional evaluator will receive hidden metrics through a separate
+  evaluator-scoped server and read generated package artifacts without write or
+  build permissions.
+- Simulation harnesses should be authored and validated offline against the
+  benchmark contract/reference, then frozen before model evaluation. They must
+  not adapt to an individual candidate package.
+- A future Simulation Runner will receive only frozen artifacts and a restricted
+  `run_simulation` tool; it will not generate or modify code.
 
-1. The coder can read `description.yaml` but never `metric.yaml`, `reference/`,
-   hidden thresholds, or simulation assertions.
-2. Tool names, JSON schemas, timeouts, output limits, container image, ROS 2
-   distribution, and retry budget are fixed for all compared models.
-3. Every run receives a new workspace identified by an opaque run ID; paths
-   outside that workspace are inaccessible to execution tools.
-4. Build and simulation tools return observations only. They never repair the
-   generated package or trigger an implicit regeneration loop.
-5. Tool calls, resource versions, model output, feedback, and environment
-   metadata are recorded in a machine-readable run manifest.
-6. Hidden evaluator data is exposed through a separate authorization scope,
-   not merely omitted from the prompt.
+The orchestrator fixes tool schemas, timeouts, output limits, environment,
+retry budgets, and artifact transitions identically for every compared model.
 
-## Implementation Order
+## Repository Layout
 
-1. Define resource/tool schemas and the per-agent authorization policy.
-2. Implement description resources with snapshot hashes and visibility tests.
-3. Implement `ros2_interface_show` with an allowlisted command contract.
-4. Implement isolated one-shot builds and structured build results.
-5. Connect the functional-requirement evaluator and feedback protocol.
-6. Add task-specific simulation harnesses and a restricted simulation runner.
-7. Pin the environment and publish an end-to-end reproducibility test.
+```text
+mcp/
+├── pyproject.toml
+├── src/benchmark_mcp/
+│   ├── registry.py          # Immutable public case snapshots
+│   ├── schemas.py           # Structured tool inputs and outputs
+│   ├── services.py          # Validated ROS commands and package builds
+│   └── server.py            # MCP resources, tools, and CLI
+└── tests/
+    ├── test_registry.py
+    ├── test_server.py
+    └── test_services.py
+```
+
+## Implementation Roadmap
+
+1. Current: public description resources and the two Coder tools.
+2. Add an evaluator-only server and immutable generated-package resources.
+3. Connect structured functional-requirement feedback to the orchestrator.
+4. Move builds into a pinned OCI runner without changing the model-visible
+   schema.
+5. Add frozen task-specific harnesses and the restricted `run_simulation` tool.
+6. Publish an end-to-end reproducibility test and run manifest schema.

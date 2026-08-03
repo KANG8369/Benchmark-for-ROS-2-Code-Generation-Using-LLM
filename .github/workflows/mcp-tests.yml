@@ -1,0 +1,43 @@
+name: MCP tests
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mcp-tests.yml"
+      - "mcp/**"
+      - "benchmarks/*/description.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mcp-tests.yml"
+      - "mcp/**"
+      - "benchmarks/*/description.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: mcp/pyproject.toml
+      - name: Install MCP package
+        run: python -m pip install -e './mcp[test]'
+      - name: Run tests
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: pytest mcp
+      - name: Lint
+        run: ruff check mcp/src mcp/tests
+      - name: Check formatting
+        run: ruff format --check mcp/src mcp/tests

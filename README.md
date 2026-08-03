@@ -202,6 +202,15 @@ evaluation rules. They are intentionally not repeated in each `metric.yaml`.
 Use [the complete metric template](templates/metric.yaml) when authoring a
 benchmark case.
 
+## MCP Server
+
+The runnable Coder-facing MCP server under [`mcp/`](mcp/) exposes public
+description resources, exact installed ROS 2 interface definitions, and
+isolated-workspace package build results. It does not expose hidden metrics or
+reference packages. See the [MCP setup and tool contracts](mcp/README.md) for
+installation, client configuration, tests, and the local-build security
+boundary.
+
 ## Repository Layout
 
 ```text
@@ -209,6 +218,10 @@ benchmark case.
 ├── README.md
 ├── docs/
 │   └── description-format.md
+├── mcp/
+│   ├── pyproject.toml
+│   ├── src/benchmark_mcp/
+│   └── tests/
 ├── benchmarks/
 │   ├── README.md
 │   └── <package_name>/
