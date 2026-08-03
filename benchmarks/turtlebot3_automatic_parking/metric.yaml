@@ -1,10 +1,6 @@
-schema_version: '2.0'
 package_name: turtlebot3_automatic_parking
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Reflective-spot parking state machine
@@ -14,23 +10,13 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows LaserScan and Odometry subscriptions feed a staged controller that identifies
-      a reflective parking spot and uses the sensed geometry and robot pose to maneuver toward it.
+    text: Reflective LaserScan regions are identified and converted into parking-spot
+      geometry.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._scan_parking_spot
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: self.scan is not None
       snippet: |2-
-            def _scan_parking_spot(self):
-                scan_done = False
-                intensity_index = []
-                index_count = []
-                spot_angle_index = []
-                min_scan_angle = 30
-                max_scan_angle = 330
-                intensity_threshold = 150
-
                 if self.scan is not None:
                     for i in range(len(self.scan.ranges)):
                         if i >= min_scan_angle and i < max_scan_angle:
@@ -42,6 +28,10 @@ metrics:
                                 intensity_index.append(0)
                         else:
                             intensity_index.append(0)
+      explanation: Thresholds reflective LaserScan samples within the configured scan region.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: spot_angle_index
+      snippet: |2-
                     for i in index_count:
                         if abs(i - index_count[int(len(index_count) / 2)]) < 20:
                             spot_angle_index.append(i)
@@ -50,12 +40,53 @@ metrics:
                                 self.center_angle = spot_angle_index[int(len(spot_angle_index) / 2)]
                                 self.start_angle = spot_angle_index[2]
                                 self.end_angle = spot_angle_index[-3]
+      explanation: Derives start, center, and end angles from the clustered reflective samples.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: start_angle_distance
+      snippet: |2-
+            def _finding_spot_position(self):
+                self.get_logger().info('scan parking spot done!')
+                start_angle_distance = self._get_angle_distance(self.start_angle)
+                center_angle_distance = self._get_angle_distance(self.center_angle)
+                end_angle_distance = self._get_angle_distance(self.end_angle)
 
-                return scan_done
-      explanation: Finds reflective scan regions and derives the parking-spot geometry.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._run
+                if (
+                    start_angle_distance[1] != 0 and
+                    center_angle_distance[1] != 0 and
+                    end_angle_distance[1] != 0
+                ):
+                    self.get_logger().info('calibration......')
+                    self.start_point = self._get_point(start_angle_distance)
+                    self.center_point = self._get_point(center_angle_distance)
+                    self.end_point = self._get_point(end_angle_distance)
+      explanation: Converts the detected angles and ranges into parking points.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: np.arctan2
+      snippet: |2-
+                    self.theta = np.arctan2(
+                        self.start_point[1] - self.end_point[1],
+                        self.start_point[0] - self.end_point[0])
+                    return True
+      explanation: Derives the parking orientation from the detected endpoint geometry.
+  - id: M-1-PC-2
+    text: Scan and odometry state feed a staged parking controller.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: _scan_callback
+      snippet: |2-
+            def _scan_callback(self, msg):
+                self.scan = msg
+      explanation: Stores each received scan for the controller.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: _odom_callback
+      snippet: |2-
+            def _odom_callback(self, msg):
+                self.odom = msg
+                self.is_odom_received = True
+      explanation: Stores odometry and marks it available to the controller.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence
       snippet: |2-
             def _run(self):
                 if self.is_scan_received and self.is_odom_received:
@@ -66,38 +97,26 @@ metrics:
                         self.parking_sequence += 1
                     elif self.parking_sequence == 1:
                         if self._scan_parking_spot():
-                            if self._finding_spot_position():
-                                self._print_parking_log()
-                                self.parking_sequence += 1
-                                self.get_logger().info('Rotation!')
-                        else:
-                            self.search_count += 1
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-                                self.search_count = 0
-
-                    elif self.parking_sequence == 2:
-                        self.init_yaw = yaw
-                        yaw = self.theta + yaw
-                        if self.theta > 0:
-                            if self.theta - self.init_yaw > 0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = 0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-                        else:
-                            if self.theta - self.init_yaw < -0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = -0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-
+      explanation: Runs the staged parking controller only after scan and odometry input are available.
+  - id: M-1-PC-3
+    text: Sensed parking geometry and robot pose are used to maneuver toward the
+      spot.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: self.start_point
+      snippet: |2-
+                    self.get_logger().info('calibration......')
+                    self.start_point = self._get_point(start_angle_distance)
+                    self.center_point = self._get_point(center_angle_distance)
+                    self.end_point = self._get_point(end_angle_distance)
+                    self.theta = np.arctan2(
+                        self.start_point[1] - self.end_point[1],
+                        self.start_point[0] - self.end_point[0])
+      explanation: Derives the spot points and approach angle from sensed scan geometry.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: rotation_point
+      snippet: |2-
                     elif self.parking_sequence == 3:
                         if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
                             if self.odom.pose.pose.position.x > (self.rotation_point[1]):
@@ -106,37 +125,7 @@ metrics:
                             else:
                                 cmd_vel.linear.x = 0.05
                                 cmd_vel.angular.z = 0.0
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Rotation Done.')
-
-                    elif self.parking_sequence == 4:
-                        if yaw - self.init_yaw > -pi / 2:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = -0.2
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Approach spot.')
-
-                    elif self.parking_sequence == 5:
-                        ranges = []
-                        for i in range(150, 210):
-                            if self.scan.ranges[i] != 0:
-                                ranges.append(self.scan.ranges[i])
-                        if min(ranges) > 0.2:
-                            cmd_vel.linear.x = -0.04
-                            cmd_vel.angular.z = 0.0
-                        else:
-                            self.get_logger().info('Auto parking Done.')
-                            self._stop_and_reset()
-                            sys.exit()
-
-                    self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: Implements the odometry-aware staged parking controller.
+      explanation: Compares odometry against the transformed parking point to choose translational motion.
 - id: M-2
   name: Annotated scan republishing
   description: Every received scan is republished with detected spot markers as required by FR-2.
@@ -144,16 +133,12 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows each LaserScan callback copies and republishes the scan on /scan_spot
-      and marks the detected spot's start, center, and end in the intensity array when available.
+    text: Each LaserScan callback copies the incoming scan fields.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._scan_callback
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: scan_spot = LaserScan
       snippet: |2-
-            def _scan_callback(self, msg):
-                self.scan = msg
                 scan_spot = LaserScan()
                 scan_spot.header = msg.header
                 scan_spot.angle_min = msg.angle_min
@@ -163,6 +148,44 @@ metrics:
                 scan_spot.scan_time = msg.scan_time
                 scan_spot.range_min = msg.range_min
                 scan_spot.range_max = msg.range_max
+                scan_spot.ranges = msg.ranges
+      explanation: Creates a LaserScan and copies the incoming scan metadata and ranges.
+  - id: M-2-PC-2
+    text: The copied scan is published on /scan_spot.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: scan_spot_publisher.publish
+      snippet: |2-
+                self.scan_spot_publisher.publish(scan_spot)
+      explanation: Publishes the copied scan on the configured /scan_spot publisher.
+  - id: M-2-PC-3
+    text: The detected spot start, center, and end are marked in the intensity
+      array.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: msg.intensities[i] + 10000
+      snippet: |2-
+                if (
+                    self.start_angle is not None and
+                    self.center_angle is not None and
+                    self.end_angle is not None
+                ):
+                    for i in range(len(msg.intensities)):
+                        if i == self.start_angle or i == self.center_angle or i == self.end_angle:
+                            scan_spot.intensities.append(msg.intensities[i] + 10000)
+                        else:
+                            scan_spot.intensities.append(msg.intensities[i])
+      explanation: Marks detected start, center, and end indices by increasing their copied intensity
+        values.
+  - id: M-2-PC-4
+    text: Scans are still republished when no parking spot is available.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: self.start_angle is not None
+      snippet: |2-
                 scan_spot.ranges = msg.ranges
                 if (
                     self.start_angle is not None and
@@ -175,8 +198,7 @@ metrics:
                         else:
                             scan_spot.intensities.append(msg.intensities[i])
                 self.scan_spot_publisher.publish(scan_spot)
-                self.is_scan_received = True
-      explanation: Copies scan fields, annotates selected indices, and publishes every callback.
+      explanation: Copies scan ranges, annotates intensities only when spot indices exist, and publishes outside that conditional block.
 - id: M-3
   name: Staged velocity commands
   description: Parking stages publish the required translational and rotational commands, satisfying FR-3.
@@ -184,55 +206,32 @@ metrics:
   - FR-3
   pass_criteria:
   - id: M-3-PC-1
-    text: Static inspection shows the parking state machine publishes geometry_msgs/msg/Twist commands
-      on /cmd_vel with distinct rotation and translation stages selected from scan and odometry progress.
+    text: Rotation stages produce angular geometry_msgs/msg/Twist commands.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._run
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.angular.z = 0.2
       snippet: |2-
-            def _run(self):
-                if self.is_scan_received and self.is_odom_received:
-                    yaw = self._get_yaw()
-                    cmd_vel = Twist()
-                    if self.parking_sequence == 0:
-                        self.get_logger().info('Start auto parking!')
-                        self.parking_sequence += 1
-                    elif self.parking_sequence == 1:
-                        if self._scan_parking_spot():
-                            if self._finding_spot_position():
-                                self._print_parking_log()
-                                self.parking_sequence += 1
-                                self.get_logger().info('Rotation!')
-                        else:
-                            self.search_count += 1
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-                                self.search_count = 0
-
-                    elif self.parking_sequence == 2:
-                        self.init_yaw = yaw
-                        yaw = self.theta + yaw
                         if self.theta > 0:
                             if self.theta - self.init_yaw > 0.1:
                                 cmd_vel.linear.x = 0.0
                                 cmd_vel.angular.z = 0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-                        else:
-                            if self.theta - self.init_yaw < -0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = -0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-
+      explanation: Produces positive angular Twist motion in a rotation stage.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.angular.z = -0.2
+      snippet: |2-
+                    elif self.parking_sequence == 4:
+                        if yaw - self.init_yaw > -pi / 2:
+                            cmd_vel.linear.x = 0.0
+                            cmd_vel.angular.z = -0.2
+      explanation: Produces negative angular Twist motion in a later rotation stage.
+  - id: M-3-PC-2
+    text: Translation stages produce linear geometry_msgs/msg/Twist commands.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.linear.x = -0.05
+      snippet: |2-
                     elif self.parking_sequence == 3:
                         if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
                             if self.odom.pose.pose.position.x > (self.rotation_point[1]):
@@ -241,22 +240,34 @@ metrics:
                             else:
                                 cmd_vel.linear.x = 0.05
                                 cmd_vel.angular.z = 0.0
-                        else:
-                            cmd_vel.linear.x = 0.0
+      explanation: Produces forward or reverse linear Twist motion from the position error.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: cmd_vel.linear.x = -0.04
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
                             cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Rotation Done.')
-
-                    elif self.parking_sequence == 4:
-                        if yaw - self.init_yaw > -pi / 2:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = -0.2
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Approach spot.')
-
+      explanation: Produces linear approach motion in the final translation stage.
+  - id: M-3-PC-3
+    text: Each non-terminal controller iteration publishes the Twist selected by its current stage on /cmd_vel.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: def _run
+      snippet: |2-
+            def _run(self):
+                if self.is_scan_received and self.is_odom_received:
+                    yaw = self._get_yaw()
+                    cmd_vel = Twist()
+      explanation: Initializes one shared Twist before selecting the current controller stage.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
                     elif self.parking_sequence == 5:
                         ranges = []
                         for i in range(150, 210):
@@ -271,7 +282,7 @@ metrics:
                             sys.exit()
 
                     self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: Selects angular or linear commands for each parking sequence and publishes them.
+      explanation: The common publish is outside the stage chain and is reached by non-terminal stage iterations; successful completion exits first.
 - id: M-4
   name: Stop and odometry reset
   description: Defined reset points issue both a stop command and reset notification as required by FR-4.
@@ -279,13 +290,11 @@ metrics:
   - FR-4
   pass_criteria:
   - id: M-4-PC-1
-    text: Static inspection shows reset points call a shared operation that publishes a zero Twist and
-      a std_msgs/msg/Empty reset message.
+    text: The shared reset operation publishes a zero linear and angular Twist.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._stop_and_reset
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: _stop_and_reset
       snippet: |2-
             def _stop_and_reset(self):
                 cmd_vel = Twist()
@@ -293,36 +302,29 @@ metrics:
                 cmd_vel.linear.x = 0.0
                 cmd_vel.angular.z = 0.0
                 self.cmd_vel_publisher.publish(cmd_vel)
+      explanation: The shared reset operation publishes a Twist with zero linear and angular velocity.
+  - id: M-4-PC-2
+    text: The shared reset operation publishes a std_msgs/msg/Empty reset notification.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: reset_publisher.publish
+      snippet: |2-
+                reset = Empty()
+                cmd_vel.linear.x = 0.0
+                cmd_vel.angular.z = 0.0
+                self.cmd_vel_publisher.publish(cmd_vel)
                 time.sleep(1)
                 self.reset_publisher.publish(reset)
-                time.sleep(3)
-      explanation: Publishes zero linear/angular velocity followed by the reset notification.
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._run
+      explanation: The shared reset operation constructs and publishes an Empty reset notification.
+  - id: M-4-PC-3
+    text: Maneuver transitions and completion points invoke the shared stop/reset
+      operation.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: if self.theta > 0
       snippet: |2-
-            def _run(self):
-                if self.is_scan_received and self.is_odom_received:
-                    yaw = self._get_yaw()
-                    cmd_vel = Twist()
-                    if self.parking_sequence == 0:
-                        self.get_logger().info('Start auto parking!')
-                        self.parking_sequence += 1
-                    elif self.parking_sequence == 1:
-                        if self._scan_parking_spot():
-                            if self._finding_spot_position():
-                                self._print_parking_log()
-                                self.parking_sequence += 1
-                                self.get_logger().info('Rotation!')
-                        else:
-                            self.search_count += 1
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-                                self.search_count = 0
-
-                    elif self.parking_sequence == 2:
-                        self.init_yaw = yaw
-                        yaw = self.theta + yaw
                         if self.theta > 0:
                             if self.theta - self.init_yaw > 0.1:
                                 cmd_vel.linear.x = 0.0
@@ -341,31 +343,10 @@ metrics:
                                 self._rotate_origin_only(self.init_yaw)
                                 self.parking_sequence += 1
                                 self.get_logger().info('Go to parking spot!')
-
-                    elif self.parking_sequence == 3:
-                        if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
-                            if self.odom.pose.pose.position.x > (self.rotation_point[1]):
-                                cmd_vel.linear.x = -0.05
-                                cmd_vel.angular.z = 0.0
-                            else:
-                                cmd_vel.linear.x = 0.05
-                                cmd_vel.angular.z = 0.0
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Rotation Done.')
-
-                    elif self.parking_sequence == 4:
-                        if yaw - self.init_yaw > -pi / 2:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = -0.2
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Approach spot.')
-
+      explanation: The positive- and negative-theta rotation branches each invoke the shared stop/reset operation when their threshold is reached.
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: Auto parking Done
+      snippet: |2-
                     elif self.parking_sequence == 5:
                         ranges = []
                         for i in range(150, 210):
@@ -378,9 +359,7 @@ metrics:
                             self.get_logger().info('Auto parking Done.')
                             self._stop_and_reset()
                             sys.exit()
-
-                    self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: Invokes stop/reset at maneuver transition and completion points.
+      explanation: Invokes the shared stop/reset operation in the final-stage completion branch.
 - id: M-5
   name: Recoverable failed search
   description: Repeated unsuccessful searches are reported without terminating the search, satisfying
@@ -389,21 +368,51 @@ metrics:
   - FR-5
   pass_criteria:
   - id: M-5-PC-1
-    text: Static inspection shows repeated parking-spot search failures are counted and logged, after
-      which the count is reset and scanning continues rather than terminating the node.
+    text: Repeated parking-spot search failures are counted.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._run
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 1
       snippet: |2-
-            def _run(self):
-                if self.is_scan_received and self.is_odom_received:
-                    yaw = self._get_yaw()
-                    cmd_vel = Twist()
-                    if self.parking_sequence == 0:
-                        self.get_logger().info('Start auto parking!')
-                        self.parking_sequence += 1
+                    elif self.parking_sequence == 1:
+                        if self._scan_parking_spot():
+                            if self._finding_spot_position():
+                                self._print_parking_log()
+                                self.parking_sequence += 1
+                                self.get_logger().info('Rotation!')
+                        else:
+                            self.search_count += 1
+                            if self.search_count > 100:
+      explanation: In the stage-1 failed-scan branch, increments the search counter and checks its repeated-failure threshold.
+  - id: M-5-PC-2
+    text: The repeated-search failure condition is logged.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: Fail to finding parking spot
+      snippet: |2-
+                            if self.search_count > 100:
+                                self.get_logger().error('Fail to finding parking spot.')
+      explanation: Logs an explicit error when the repeated-search threshold is exceeded.
+  - id: M-5-PC-3
+    text: The search counter is reset after the recoverable failure.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: search_count = 0
+      snippet: |2-
+                            if self.search_count > 100:
+                                self.get_logger().error('Fail to finding parking spot.')
+                                self.search_count = 0
+      explanation: Resets the search counter after reporting the recoverable failure.
+  - id: M-5-PC-4
+    text: Scanning continues after the recoverable failure instead of terminating
+      the node.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 1
+      snippet: |2
                     elif self.parking_sequence == 1:
                         if self._scan_parking_spot():
                             if self._finding_spot_position():
@@ -417,67 +426,7 @@ metrics:
                                 self.search_count = 0
 
                     elif self.parking_sequence == 2:
-                        self.init_yaw = yaw
-                        yaw = self.theta + yaw
-                        if self.theta > 0:
-                            if self.theta - self.init_yaw > 0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = 0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-                        else:
-                            if self.theta - self.init_yaw < -0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = -0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-
-                    elif self.parking_sequence == 3:
-                        if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
-                            if self.odom.pose.pose.position.x > (self.rotation_point[1]):
-                                cmd_vel.linear.x = -0.05
-                                cmd_vel.angular.z = 0.0
-                            else:
-                                cmd_vel.linear.x = 0.05
-                                cmd_vel.angular.z = 0.0
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Rotation Done.')
-
-                    elif self.parking_sequence == 4:
-                        if yaw - self.init_yaw > -pi / 2:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = -0.2
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Approach spot.')
-
-                    elif self.parking_sequence == 5:
-                        ranges = []
-                        for i in range(150, 210):
-                            if self.scan.ranges[i] != 0:
-                                ranges.append(self.scan.ranges[i])
-                        if min(ranges) > 0.2:
-                            cmd_vel.linear.x = -0.04
-                            cmd_vel.angular.z = 0.0
-                        else:
-                            self.get_logger().info('Auto parking Done.')
-                            self._stop_and_reset()
-                            sys.exit()
-
-                    self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: Logs failure after repeated misses, resets the search counter, and remains in the search
-        state.
+      explanation: Handles failed stage-1 scans by logging and resetting only the counter, without changing stage or exiting the controller.
 - id: M-6
   name: Successful completion
   description: The controller reaches a terminal success path after final stop/reset as required by FR-6.
@@ -485,79 +434,12 @@ metrics:
   - FR-6
   pass_criteria:
   - id: M-6-PC-1
-    text: Static inspection shows the final parking stage stops and resets the robot, reports completion,
-      and transitions out of continued maneuver execution.
+    text: The final parking position is detected by the last controller stage.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking._run
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
       snippet: |2-
-            def _run(self):
-                if self.is_scan_received and self.is_odom_received:
-                    yaw = self._get_yaw()
-                    cmd_vel = Twist()
-                    if self.parking_sequence == 0:
-                        self.get_logger().info('Start auto parking!')
-                        self.parking_sequence += 1
-                    elif self.parking_sequence == 1:
-                        if self._scan_parking_spot():
-                            if self._finding_spot_position():
-                                self._print_parking_log()
-                                self.parking_sequence += 1
-                                self.get_logger().info('Rotation!')
-                        else:
-                            self.search_count += 1
-                            if self.search_count > 100:
-                                self.get_logger().error('Fail to finding parking spot.')
-                                self.search_count = 0
-
-                    elif self.parking_sequence == 2:
-                        self.init_yaw = yaw
-                        yaw = self.theta + yaw
-                        if self.theta > 0:
-                            if self.theta - self.init_yaw > 0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = 0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-                        else:
-                            if self.theta - self.init_yaw < -0.1:
-                                cmd_vel.linear.x = 0.0
-                                cmd_vel.angular.z = -0.2
-                            else:
-                                self._stop_and_reset()
-                                self._rotate_origin_only(self.init_yaw)
-                                self.parking_sequence += 1
-                                self.get_logger().info('Go to parking spot!')
-
-                    elif self.parking_sequence == 3:
-                        if abs(self.odom.pose.pose.position.x - (self.rotation_point[1])) > 0.02:
-                            if self.odom.pose.pose.position.x > (self.rotation_point[1]):
-                                cmd_vel.linear.x = -0.05
-                                cmd_vel.angular.z = 0.0
-                            else:
-                                cmd_vel.linear.x = 0.05
-                                cmd_vel.angular.z = 0.0
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Rotation Done.')
-
-                    elif self.parking_sequence == 4:
-                        if yaw - self.init_yaw > -pi / 2:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = -0.2
-                        else:
-                            cmd_vel.linear.x = 0.0
-                            cmd_vel.angular.z = 0.0
-                            self.parking_sequence += 1
-                            self.get_logger().info('Approach spot.')
-
                     elif self.parking_sequence == 5:
                         ranges = []
                         for i in range(150, 210):
@@ -570,10 +452,67 @@ metrics:
                             self.get_logger().info('Auto parking Done.')
                             self._stop_and_reset()
                             sys.exit()
-
-                    self.cmd_vel_publisher.publish(cmd_vel)
-      explanation: Detects final-position completion, logs success, calls stop/reset, and exits the active
-        sequence.
+      explanation: The final stage enters its completion branch when the measured parking distance is at or below the threshold.
+  - id: M-6-PC-2
+    text: Successful parking completion is reported.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Reports successful automatic-parking completion in the final-stage distance-threshold branch.
+  - id: M-6-PC-3
+    text: The robot is stopped and odometry is reset at completion.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Calls the shared stop and odometry-reset operation in the final-stage completion branch.
+  - id: M-6-PC-4
+    text: Completion transitions the controller out of continued maneuver execution.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: parking_sequence == 5
+      snippet: |2-
+                    elif self.parking_sequence == 5:
+                        ranges = []
+                        for i in range(150, 210):
+                            if self.scan.ranges[i] != 0:
+                                ranges.append(self.scan.ranges[i])
+                        if min(ranges) > 0.2:
+                            cmd_vel.linear.x = -0.04
+                            cmd_vel.angular.z = 0.0
+                        else:
+                            self.get_logger().info('Auto parking Done.')
+                            self._stop_and_reset()
+                            sys.exit()
+      explanation: Exits continued maneuver execution only after the final-stage completion actions.
 - id: M-7
   name: LDS-02 startup rejection
   description: Startup rejects the unsupported LDS-02 model as required by FR-7.
@@ -581,66 +520,22 @@ metrics:
   - FR-7
   pass_criteria:
   - id: M-7-PC-1
-    text: Static inspection shows node initialization reads LDS_MODEL and fails explicitly when its value
-      identifies LDS-02.
+    text: Node initialization reads the LDS_MODEL environment setting.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
-      locator: AutomaticParking.__init__
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: os.environ['LDS_MODEL']
       snippet: |2-
-            def __init__(self):
-                super().__init__('automatic_parking')
-
+                if os.environ['LDS_MODEL'] == 'LDS-02':
+      explanation: Reads the LDS_MODEL environment setting during node initialization.
+  - id: M-7-PC-2
+    text: Initialization fails explicitly when LDS_MODEL identifies LDS-02.
+    evaluation: static
+    reference_evidence:
+    - path: turtlebot3_automatic_parking/turtlebot3_automatic_parking.py
+      anchor: LDS-02 is not supported
+      snippet: |2-
                 if os.environ['LDS_MODEL'] == 'LDS-02':
                     self.get_logger().error('LDS-02 is not supported')
                     sys.exit()
-
-                # Set initial value
-                self.scan = None
-                self.odom = None
-                self.search_count = 0
-                self.euler = [0.0, 0.0, 0.0]
-                self.center_angle = None
-                self.start_angle = None
-                self.end_angle = None
-                self.start_point = [0.0, 0.0]
-                self.end_point = [0.0, 0.0]
-                self.center_point = [0.0, 0.0]
-                self.rotation_point = [0.0, 0.0]
-                self.parking_sequence = 0
-                self.theta = 0.0
-                self.is_scan_received = False
-                self.is_odom_received = False
-                self.init_yaw = 0.0
-                # Set publisher
-                self.cmd_vel_publisher = self.create_publisher(
-                    Twist,
-                    '/cmd_vel',
-                    qos_profile=QoSProfile(depth=10))
-
-                self.reset_publisher = self.create_publisher(
-                    Empty,
-                    '/reset',
-                    qos_profile=QoSProfile(depth=10))
-
-                self.scan_spot_publisher = self.create_publisher(
-                    LaserScan,
-                    '/scan_spot',
-                    qos_profile=qos_profile_sensor_data)
-
-                # Set subscriber
-                self.scan_subscriber = self.create_subscription(
-                    LaserScan,
-                    '/scan',
-                    self._scan_callback,
-                    qos_profile=qos_profile_sensor_data)
-
-                self.odom_subscriber = self.create_subscription(
-                    Odometry,
-                    '/odom',
-                    self._odom_callback,
-                    qos_profile=QoSProfile(depth=10))
-
-                self._run_timer = self.create_timer(0.2, self._run)
-      explanation: Checks LDS_MODEL during construction and rejects LDS-02.
+      explanation: Logs an explicit error and exits when LDS_MODEL identifies LDS-02.

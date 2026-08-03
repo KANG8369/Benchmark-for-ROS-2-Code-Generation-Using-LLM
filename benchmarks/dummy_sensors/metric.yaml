@@ -1,10 +1,6 @@
-schema_version: '2.0'
 package_name: dummy_sensors
 reference:
   root: reference/
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 metrics:
 - id: M-1
   name: Dummy laser scan publisher
@@ -14,85 +10,69 @@ metrics:
   - FR-1
   pass_criteria:
   - id: M-1-PC-1
-    text: Static inspection shows the dummy_laser executable repeatedly publishes sensor_msgs/msg/LaserScan
-      on scan with frame_id single_rrbot_hokuyo_link and a current timestamp, where every range in a scan
-      is assigned the same time-varying sinusoidal value.
+    text: The dummy_laser executable publishes sensor_msgs/msg/LaserScan on scan.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_laser.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_laser");
-
+    - path: src/dummy_laser.cpp
+      anchor: create_publisher<sensor_msgs::msg::LaserScan>
+      snippet: |2-
           auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", 10);
-
-          rclcpp::WallRate loop_rate(30);
-
-          sensor_msgs::msg::LaserScan msg;
+      explanation: Creates a LaserScan publisher on the scan topic.
+  - id: M-1-PC-2
+    text: Each scan uses frame_id single_rrbot_hokuyo_link.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_laser.cpp
+      anchor: msg.header.frame_id
+      snippet: |2-
           msg.header.frame_id = "single_rrbot_hokuyo_link";
-
-          double angle_resolution = 2500;
-          double start_angle = -450000;
-          double stop_angle = 2250000;
-          double scan_frequency = 2500;
-
-          double angle_range = stop_angle - start_angle;
-          double num_values = angle_range / angle_resolution;
-          if (static_cast<int>(angle_range) % static_cast<int>(angle_resolution) == 0) {
-            // Include endpoint
-            ++num_values;
-          }
-          msg.ranges.resize(static_cast<int>(num_values));
-
-          // Set `time_increment` with 0 to avoid unstable status shown in the `LaserScan` display of rviz2
-          // while looking up transform with a forward time value.
-          msg.time_increment = 0.0f;
-          msg.angle_increment = static_cast<float>(angle_resolution / 10000.0 * DEG2RAD);
-          msg.angle_min = static_cast<float>(start_angle / 10000.0 * DEG2RAD - M_PI / 2);
-          msg.angle_max = static_cast<float>(stop_angle / 10000.0 * DEG2RAD - M_PI / 2);
-          msg.scan_time = static_cast<float>(100.0 / scan_frequency);
-          msg.range_min = 0.0f;
-          msg.range_max = 10.0f;
-
-          RCLCPP_INFO(node->get_logger(), "angle inc:\t%f", msg.angle_increment);
-          RCLCPP_INFO(node->get_logger(), "scan size:\t%zu", msg.ranges.size());
-          RCLCPP_INFO(node->get_logger(), "scan time increment: \t%f", msg.time_increment);
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          auto counter = 0.0;
-          auto amplitude = 1;
-          auto distance = 0.0f;
-          while (rclcpp::ok()) {
-            counter += 0.1;
-            distance = static_cast<float>(std::abs(amplitude * std::sin(counter)));
-
+      explanation: Sets the scan frame to single_rrbot_hokuyo_link.
+  - id: M-1-PC-3
+    text: Each scan receives a current timestamp.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_laser.cpp
+      anchor: msg.header.stamp
+      snippet: |2-
+            msg.header.stamp = clock->now();
+      explanation: Stamps each outgoing scan from the ROS clock.
+  - id: M-1-PC-4
+    text: Every range in one scan is assigned the same value.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_laser.cpp
+      anchor: msg.ranges[i]
+      snippet: |2-
             for (size_t i = 0; i < msg.ranges.size(); ++i) {
               msg.ranges[i] = distance;
             }
-
-            msg.header.stamp = clock->now();
-
+      explanation: Assigns the same computed distance to every range element.
+  - id: M-1-PC-5
+    text: The range value varies sinusoidally over time.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_laser.cpp
+      anchor: std::sin(counter)
+      snippet: |2-
+            counter += 0.1;
+            distance = static_cast<float>(std::abs(amplitude * std::sin(counter)));
+      explanation: Computes the distance from the absolute value of a sinusoid.
+  - id: M-1-PC-6
+    text: Scan messages are published repeatedly.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_laser.cpp
+      anchor: while (rclcpp::ok())
+      snippet: |2-
+          while (rclcpp::ok()) {
+      explanation: Runs scan generation continuously while ROS is active.
+    - path: src/dummy_laser.cpp
+      anchor: laser_pub->publish
+      snippet: |2-
             laser_pub->publish(msg);
             executor.spin_some();
             loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Configures the LaserScan, fills its ranges from an absolute sinusoid, stamps it, and
-        publishes continuously.
+      explanation: Publishes a scan and waits for the next loop iteration.
 - id: M-2
   name: Dummy joint-state publisher
   description: The package implements the two-joint sinusoidal joint-state stream required by FR-2.
@@ -100,57 +80,61 @@ metrics:
   - FR-2
   pass_criteria:
   - id: M-2-PC-1
-    text: Static inspection shows the dummy_joint_states executable repeatedly publishes sensor_msgs/msg/JointState
-      on joint_states for single_rrbot_joint1 and single_rrbot_joint2, with matching sinusoidal positions
-      and a current timestamp.
+    text: The dummy_joint_states executable publishes sensor_msgs/msg/JointState
+      on joint_states.
     evaluation: static
     reference_evidence:
-    - kind: source_code
-      path: src/dummy_joint_states.cpp
-      locator: main
-      snippet: |-
-        int main(int argc, char * argv[])
-        {
-          rclcpp::init(argc, argv);
-
-          auto node = rclcpp::Node::make_shared("dummy_joint_states");
-
+    - path: src/dummy_joint_states.cpp
+      anchor: create_publisher<sensor_msgs::msg::JointState>
+      snippet: |2-
           auto joint_state_pub = node->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
-
-          rclcpp::WallRate loop_rate(50);
-
-          sensor_msgs::msg::JointState msg;
+      explanation: Creates a JointState publisher on joint_states.
+  - id: M-2-PC-2
+    text: Each message names single_rrbot_joint1 and single_rrbot_joint2.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_joint_states.cpp
+      anchor: msg.name.push_back
+      snippet: |2-
           msg.name.push_back("single_rrbot_joint1");
           msg.name.push_back("single_rrbot_joint2");
-          msg.position.push_back(0.0);
-          msg.position.push_back(0.0);
-
-          rclcpp::TimeSource ts(node);
-          rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
-          ts.attachClock(clock);
-
-          rclcpp::executors::SingleThreadedExecutor executor;
-          executor.add_node(node);
-          auto counter = 0.0;
-          auto joint_value = 0.0;
-          while (rclcpp::ok()) {
+      explanation: Adds the two required single_rrbot joint names.
+  - id: M-2-PC-3
+    text: Both joints receive matching sinusoidal positions.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_joint_states.cpp
+      anchor: joint_value = std::sin
+      snippet: |2-
             counter += 0.1;
             joint_value = std::sin(counter);
 
             for (size_t i = 0; i < msg.name.size(); ++i) {
               msg.position[i] = joint_value;
             }
-
+      explanation: Computes one sinusoidal value and assigns it to every named joint.
+  - id: M-2-PC-4
+    text: Each joint-state message receives a current timestamp.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_joint_states.cpp
+      anchor: msg.header.stamp
+      snippet: |2-
             msg.header.stamp = clock->now();
-
+      explanation: Stamps each outgoing joint-state message from the ROS clock.
+  - id: M-2-PC-5
+    text: Joint-state messages are published repeatedly.
+    evaluation: static
+    reference_evidence:
+    - path: src/dummy_joint_states.cpp
+      anchor: while (rclcpp::ok())
+      snippet: |2-
+          while (rclcpp::ok()) {
+      explanation: Runs joint-state generation continuously while ROS is active.
+    - path: src/dummy_joint_states.cpp
+      anchor: joint_state_pub->publish
+      snippet: |2-
             joint_state_pub->publish(msg);
             executor.spin_some();
             loop_rate.sleep();
-          }
-
-          rclcpp::shutdown();
-
-          return 0;
-        }
-      explanation: Initializes two named joints, updates both positions from a sinusoid, stamps the message,
-        and publishes it.
+      explanation: Publishes joint state and waits for the next loop iteration.

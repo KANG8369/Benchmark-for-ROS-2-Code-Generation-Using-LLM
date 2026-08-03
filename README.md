@@ -148,25 +148,41 @@ A metric file has three levels:
 3. **Reference evidence**: A typed, traceable excerpt showing where the
    criterion was derived from in the reference package.
 
-Reference evidence documents the origin of each criterion. Generated packages
-are evaluated by semantic equivalence and are not required to reproduce the
-same source code, programming language, file structure, node decomposition, or
-implementation technique.
+Pass criteria must be granular enough to score independently. If one behavior
+can be implemented correctly while another behavior in the same sentence can
+fail, represent them as separate criteria such as `M-1-PC-1` and `M-1-PC-2`.
+Multiple reference files that demonstrate the same required behavior remain
+evidence for one criterion. The same evidence excerpt may be cited by multiple
+criteria when it genuinely supports each behavior.
 
-Metric schema `2.0` represents each `reference_evidence` item with:
+Reference evidence documents the origin and semantic meaning of each criterion.
+The evaluator reads it to understand the reference behavior, then searches the
+generated package for an equivalent implementation. Generated packages are not
+required to reproduce the same source code, programming language, file
+structure, node decomposition, or implementation technique.
 
-- `kind`: Evidence category. Supported values are `source_code`, `launch`,
-  `config`, `build`, `manifest`, and `resource`.
+Each `reference_evidence` item contains:
+
 - `path`: File path relative to the case's `reference/` directory.
-- `locator`: A symbol, function, class, configuration key, or other searchable
-  location within the referenced file.
+- `anchor`: A symbol, function, class, configuration key, or other searchable
+  location within the referenced file. It is a navigation and provenance hint,
+  not an evaluation requirement or semantic constraint.
 - `snippet`: A short, exact, contiguous excerpt from the referenced file.
 - `explanation`: The behavior demonstrated by that excerpt and its relevance to
   the pass criterion.
 
-The excerpt is authoring and evaluation provenance, not a string-matching
-requirement for generated code. Evaluators must inspect the generated package
-for semantically equivalent behavior.
+Use the minimum code needed to establish the criterion; there is no fixed
+line-count limit. If the proof is non-contiguous, cite multiple short evidence
+items instead of expanding one snippet across unrelated code. Use `anchor` for
+search context rather than copying an entire function, and make every
+`explanation` specific to the criterion it supports.
+
+The excerpt must contain enough local context to support its explanation. For
+example, evidence about an `else` branch must include the controlling condition
+when that condition is part of the criterion. The excerpt is a semantic
+reference, not a string-matching requirement. Evaluators must inspect the
+generated package for equivalent behavior and cite generated-package evidence
+for the result.
 
 Each pass criterion declares an evaluation method:
 
@@ -179,6 +195,9 @@ Each pass criterion declares an evaluation method:
 Exact constants such as timer periods, queue depths, and parameter values are
 required only when explicitly specified by the package description or when they
 form part of an externally observable interface contract.
+
+Semantic equivalence and description-scoped exactness are repository-wide
+evaluation rules. They are intentionally not repeated in each `metric.yaml`.
 
 Use [the complete metric template](templates/metric.yaml) when authoring a
 benchmark case.

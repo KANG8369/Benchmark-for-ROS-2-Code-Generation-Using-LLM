@@ -1,21 +1,23 @@
 # Copy this file to benchmarks/<package_name>/metric.yaml.
 #
 # A metric represents one package capability.
-# Each pass criterion describes one independently verifiable behavior.
-# Reference evidence identifies where the criterion was derived from in the
-# reference package. The snippet must be an exact, contiguous excerpt, but it
-# is provenance for the criterion and must not be used to require code identity.
-
-schema_version: "2.0"
+# Each pass criterion describes exactly one independently verifiable behavior.
+# Split behaviors into separate criteria when one can pass while another fails.
+# Multiple files that demonstrate the same behavior may remain as evidence for
+# one criterion, and one evidence excerpt may support more than one criterion.
+# Reference evidence identifies where the criterion was derived from and gives
+# the evaluator a semantic implementation example. The snippet must be an exact,
+# contiguous, self-contained excerpt, but it must not be used to require code
+# identity.
+# Include only the minimum code needed for the criterion; there is no fixed
+# line-count limit. If proof is non-contiguous, use multiple short evidence
+# items instead of expanding one snippet across unrelated code.
+# Include a controlling condition when an if/else branch is part of the behavior.
 
 package_name: example_package
 
 reference:
   root: reference/
-
-evaluation_policy:
-  equivalence: semantic
-  exact_constants_only_when_specified: true
 
 metrics:
   - id: M-1
@@ -31,9 +33,8 @@ metrics:
           Describe one independently verifiable package behavior.
         evaluation: static
         reference_evidence:
-          - kind: source_code
-            path: src/example_node.cpp
-            locator: ExampleNode::callback
+          - path: src/example_node.cpp
+            anchor: ExampleNode::callback
             snippet: |-
               void ExampleNode::callback()
               {
@@ -47,9 +48,8 @@ metrics:
           Describe another independently verifiable package behavior.
         evaluation: static
         reference_evidence:
-          - kind: launch
-            path: launch/example.launch.py
-            locator: generate_launch_description
+          - path: launch/example.launch.py
+            anchor: generate_launch_description
             snippet: |-
               def generate_launch_description():
                   return LaunchDescription([example_node])
@@ -69,9 +69,8 @@ metrics:
           Describe one behavior required to satisfy this capability.
         evaluation: static
         reference_evidence:
-          - kind: config
-            path: config/example.yaml
-            locator: example_node.ros__parameters
+          - path: config/example.yaml
+            anchor: example_node.ros__parameters
             snippet: |-
               example_node:
                 ros__parameters:
