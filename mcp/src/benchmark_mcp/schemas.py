@@ -72,3 +72,26 @@ class BuildResult(BaseModel):
     stderr_truncated: bool
     validation_errors: list[str]
     workspace_retained: bool
+    artifact_recorded: bool = False
+
+
+class FunctionalRequirementResult(BaseModel):
+    """One evaluator decision tied to a public functional requirement."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    requirement_id: str
+    status: Literal["pass", "fail", "not_evaluated"]
+    evidence: list[str]
+    feedback: str | None = None
+
+
+class FunctionalEvaluationFeedback(BaseModel):
+    """Structured evaluator output returned to the orchestrator, never the Coder MCP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    case_id: str
+    description_sha256: str
+    package_artifact_id: str
+    requirements: list[FunctionalRequirementResult]

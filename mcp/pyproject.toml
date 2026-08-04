@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ros2-codegen-benchmark-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP resources and ROS 2 tools for the ROS 2 code-generation benchmark"
 readme = "README.md"
 requires-python = ">=3.10"

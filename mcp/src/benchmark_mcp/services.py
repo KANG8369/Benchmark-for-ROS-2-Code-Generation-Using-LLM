@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -17,8 +16,10 @@ import xml.etree.ElementTree as ET
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import Protocol
 
 from benchmark_mcp.schemas import BuildResult, InterfaceShowResult, PackageFile
+from benchmark_mcp.snapshot import snapshot_sha256
 
 PACKAGE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 INTERFACE_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*/(msg|srv|action)/[A-Za-z][A-Za-z0-9_]*$")
@@ -121,27 +122,17 @@ def load_clean_ros_environment(ros_distro: str) -> dict[str, str]:
     return environment
 
 
-def snapshot_sha256(package_name: str, files: Sequence[PackageFile]) -> str:
-    """Hash a package snapshot independently of input file ordering."""
+class ArtifactRecorder(Protocol):
+    """Minimal writer contract used by a build backend."""
 
-    canonical = {
-        "package_name": package_name,
-        "files": [
-            {
-                "path": package_file.path,
-                "content": package_file.content,
-                "executable": package_file.executable,
-            }
-            for package_file in sorted(files, key=lambda item: item.path)
-        ],
-    }
-    encoded = json.dumps(
-        canonical,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+    def record(
+        self,
+        *,
+        run_id: str,
+        package_name: str,
+        files: list[PackageFile],
+        build_result: BuildResult,
+    ) -> None: ...
 
 
 def validate_package_snapshot(package_name: str, files: Sequence[PackageFile]) -> list[str]:
@@ -354,6 +345,7 @@ class BuildService:
         allow_unsafe_local_builds: bool = False,
         keep_workspaces: bool = False,
         environment: Mapping[str, str] | None = None,
+        artifact_store: ArtifactRecorder | None = None,
     ) -> None:
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
@@ -368,6 +360,7 @@ class BuildService:
         self.allow_unsafe_local_builds = allow_unsafe_local_builds
         self.keep_workspaces = keep_workspaces
         self._environment = dict(environment) if environment is not None else None
+        self._artifact_store = artifact_store
         self._calls_used = 0
         self._lock = threading.Lock()
 
@@ -512,7 +505,27 @@ class BuildService:
             except OSError as exc:
                 result.workspace_retained = True
                 result.stderr = f"{result.stderr}\nWorkspace cleanup failed: {exc}".strip()
+        self._record_artifact(result, files)
         return result
+
+    def _record_artifact(self, result: BuildResult, files: Sequence[PackageFile]) -> None:
+        """Write an evaluator-visible immutable artifact after a real build attempt."""
+
+        if self._artifact_store is None or result.status not in {"passed", "failed", "timed_out"}:
+            return
+        result.artifact_recorded = True
+        try:
+            self._artifact_store.record(
+                run_id=result.build_id,
+                package_name=result.package_name,
+                files=list(files),
+                build_result=result,
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            result.artifact_recorded = False
+            result.status = "internal_error"
+            result.success = False
+            result.stderr = f"{result.stderr}\nArtifact recording failed: {exc}".strip()
 
     @staticmethod
     def _materialize(package_directory: Path, files: Sequence[PackageFile]) -> None:
