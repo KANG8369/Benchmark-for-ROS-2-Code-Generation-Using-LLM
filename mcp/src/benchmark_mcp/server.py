@@ -7,38 +7,56 @@ import logging
 import tempfile
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Literal
 
 from mcp.server import MCPServer
 
+from benchmark_mcp.artifacts import ArtifactStore
 from benchmark_mcp.registry import BenchmarkRegistry, resolve_repository_root
 from benchmark_mcp.schemas import BuildResult, InterfaceShowResult, PackageFile
 from benchmark_mcp.services import BuildService, InterfaceService
 
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.2.0"
+Profile = Literal["coder", "evaluator"]
+
+
+def _default_runtime_root() -> Path:
+    return Path(tempfile.gettempdir()) / "ros2-codegen-benchmark-mcp"
 
 
 def create_server(
     repository_root: str | Path | None = None,
     *,
+    profile: Profile = "coder",
     interface_service: InterfaceService | None = None,
     build_service: BuildService | None = None,
+    artifact_store: ArtifactStore | None = None,
 ) -> MCPServer:
-    """Create the Coder-facing MCP server from one immutable repository snapshot."""
+    """Create one fixed-role MCP server from one immutable benchmark snapshot."""
 
+    if profile not in {"coder", "evaluator"}:
+        raise ValueError(f"Unknown server profile: {profile}")
     resolved_root = resolve_repository_root(repository_root)
-    registry = BenchmarkRegistry(resolved_root)
+    registry = BenchmarkRegistry(resolved_root, include_metrics=profile == "evaluator")
     interface_service = interface_service or InterfaceService()
-    build_service = build_service or BuildService(
-        workspace_root=Path(tempfile.gettempdir()) / "ros2-codegen-benchmark-mcp",
-    )
+    artifact_store = artifact_store or ArtifactStore(_default_runtime_root() / "artifacts")
+    if profile == "coder":
+        build_service = build_service or BuildService(
+            workspace_root=_default_runtime_root() / "workspaces",
+            artifact_store=artifact_store,
+        )
 
     server = MCPServer(
         "ROS 2 Code Generation Benchmark",
         version=SERVER_VERSION,
         instructions=(
-            "Read a complete public description before generating a package. "
-            "Use ros2_interface_show only for declared existing ROS interfaces. "
-            "Submit one complete package snapshot to build_ros_package."
+            "Coder profile: read a complete public description before generating a "
+            "package; use ros2_interface_show only for declared existing ROS "
+            "interfaces; submit one complete package snapshot to build_ros_package."
+            if profile == "coder"
+            else "Evaluator profile: read the hidden metric and one immutable generated "
+            "package artifact, then return FunctionalEvaluationFeedback to the "
+            "orchestrator outside MCP. Do not build, generate, or modify packages."
         ),
     )
 
@@ -75,6 +93,40 @@ def create_server(
     def benchmark_description_section(case_id: str, section: str) -> dict:
         return registry.section_resource(case_id, section)
 
+    if profile == "evaluator":
+
+        @server.resource(
+            "benchmark-internal://cases/{case_id}/metric",
+            name="benchmark_metric",
+            title="Hidden functional-evaluation metric",
+            description="Returns one evaluator-only metric snapshot for a benchmark case.",
+            mime_type="application/json",
+        )
+        def benchmark_metric(case_id: str) -> dict:
+            return registry.metric_resource(case_id)
+
+        @server.resource(
+            "benchmark-run://runs/{run_id}/package",
+            name="generated_package_artifact",
+            title="Immutable generated ROS package artifact",
+            description=(
+                "Returns a generated package manifest and build observation by opaque run ID."
+            ),
+            mime_type="application/json",
+        )
+        def generated_package_artifact(run_id: str) -> dict:
+            return artifact_store.package_resource(run_id)
+
+        @server.resource(
+            "benchmark-run://runs/{run_id}/package/files/{file_id}",
+            name="generated_package_file",
+            title="Immutable generated ROS package file",
+            description="Returns one file body from an immutable generated package artifact.",
+            mime_type="application/json",
+        )
+        def generated_package_file(run_id: str, file_id: str) -> dict:
+            return artifact_store.file_resource(run_id, file_id)
+
     @server.tool(
         name="ros2_interface_show",
         title="Show an installed ROS 2 interface",
@@ -89,19 +141,23 @@ def create_server(
 
         return interface_service.show(interface_type)
 
-    @server.tool(
-        name="build_ros_package",
-        title="Build one complete ROS 2 package snapshot",
-        structured_output=True,
-    )
-    def build_ros_package(package_name: str, files: list[PackageFile]) -> BuildResult:
-        """Materialize and build one complete package snapshot in a fresh workspace.
+    if profile == "coder":
+        assert build_service is not None
 
-        The tool returns observations only. It never changes the submitted snapshot and
-        never triggers an automatic repair or retry.
-        """
+        @server.tool(
+            name="build_ros_package",
+            title="Build one complete ROS 2 package snapshot",
+            structured_output=True,
+        )
+        def build_ros_package(package_name: str, files: list[PackageFile]) -> BuildResult:
+            """Materialize and build one complete package snapshot in a fresh workspace.
 
-        return build_service.build(package_name, files)
+            The tool returns observations only. It never changes the submitted snapshot,
+            never triggers an automatic repair or retry, and records a valid immutable
+            artifact for the evaluator after a real build attempt.
+            """
+
+            return build_service.build(package_name, files)
 
     return server
 
@@ -114,8 +170,19 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--workspace-root",
-        default=str(Path(tempfile.gettempdir()) / "ros2-codegen-benchmark-mcp"),
+        default=str(_default_runtime_root() / "workspaces"),
         help="Dedicated parent directory for ephemeral build workspaces.",
+    )
+    parser.add_argument(
+        "--artifact-root",
+        default=str(_default_runtime_root() / "artifacts"),
+        help="Private shared directory for immutable evaluator-visible build artifacts.",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=("coder", "evaluator"),
+        default="coder",
+        help="Fixed server role; the model cannot change it at runtime.",
     )
     parser.add_argument(
         "--max-build-calls",
@@ -163,14 +230,23 @@ def main(argv: Sequence[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO)
     try:
         repository_root = resolve_repository_root(args.repo_root)
-        build_service = BuildService(
-            workspace_root=args.workspace_root,
-            timeout_seconds=args.build_timeout_seconds,
-            max_build_calls=args.max_build_calls,
-            allow_unsafe_local_builds=args.allow_unsafe_local_build,
-            keep_workspaces=args.keep_workspaces,
+        artifact_store = ArtifactStore(args.artifact_root)
+        build_service = None
+        if args.profile == "coder":
+            build_service = BuildService(
+                workspace_root=args.workspace_root,
+                timeout_seconds=args.build_timeout_seconds,
+                max_build_calls=args.max_build_calls,
+                allow_unsafe_local_builds=args.allow_unsafe_local_build,
+                keep_workspaces=args.keep_workspaces,
+                artifact_store=artifact_store,
+            )
+        server = create_server(
+            repository_root,
+            profile=args.profile,
+            build_service=build_service,
+            artifact_store=artifact_store,
         )
-        server = create_server(repository_root, build_service=build_service)
     except (OSError, RuntimeError, ValueError) as exc:
         parser.error(str(exc))
 

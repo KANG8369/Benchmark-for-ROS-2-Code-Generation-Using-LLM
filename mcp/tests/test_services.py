@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from benchmark_mcp.artifacts import ArtifactStore
 from benchmark_mcp.schemas import PackageFile
 from benchmark_mcp.services import (
     BuildService,
@@ -140,12 +141,14 @@ print("fake build passed")
 """,
     )
     workspace_root = tmp_path / "workspaces"
+    artifact_store = ArtifactStore(tmp_path / "artifacts")
     service = BuildService(
         workspace_root=workspace_root,
         colcon_path=fake_colcon,
         max_build_calls=1,
         allow_unsafe_local_builds=True,
         environment=os.environ,
+        artifact_store=artifact_store,
     )
 
     first = service.build("demo_package", package_files())
@@ -155,6 +158,14 @@ print("fake build passed")
     assert first.success is True
     assert "fake build passed" in first.stdout
     assert first.workspace_retained is False
+    assert first.artifact_recorded is True
+    artifact = artifact_store.package_resource(first.build_id)
+    assert artifact["snapshot_sha256"] == first.snapshot_sha256
+    assert artifact["build"]["artifact_recorded"] is True
+    cmake_file = next(item for item in artifact["files"] if item["path"] == "CMakeLists.txt")
+    assert (
+        artifact_store.file_resource(first.build_id, cmake_file["file_id"])["content"] == CMAKELISTS
+    )
     assert list(workspace_root.iterdir()) == []
     assert second.status == "budget_exhausted"
 

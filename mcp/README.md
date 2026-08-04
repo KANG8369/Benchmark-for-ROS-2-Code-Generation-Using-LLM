@@ -1,26 +1,27 @@
 # ROS 2 Benchmark MCP Server
 
-This directory contains the runnable, Coder-facing MCP server for the ROS 2
-code-generation benchmark. It exposes immutable public descriptions and two
-auditable ROS 2 tools while keeping `metric.yaml` and `reference/` unavailable
-to the generator.
+This directory contains the runnable MCP servers for the ROS 2 code-generation
+benchmark. A server has one fixed role at launch: the Coder can read public
+descriptions and build one complete package snapshot; the Evaluator can read a
+hidden metric and immutable generated-package artifacts. `metric.yaml` and
+`reference/` are never visible to the Coder.
 
 ## Implemented Scope
 
-The initial server intentionally exposes only the capabilities required by the
-Coder Agent:
+The server role is chosen by its operator with `--profile`; it is not selected
+by the model, a prompt, or an MCP tool call.
 
-| Kind | MCP capability | Purpose |
+| Kind | Coder profile | Evaluator profile |
 | --- | --- | --- |
-| Resource | `benchmark://cases` | Sorted public case catalog and snapshot hashes |
-| Resource template | `benchmark://cases/{case_id}/description` | Complete public `description.yaml` snapshot |
-| Resource template | `benchmark://cases/{case_id}/description/{section}` | `intent`, `functional_requirements`, or `interfaces` from that same snapshot |
-| Tool | `ros2_interface_show` | Exact installed definition of one declared ROS msg/srv/action type |
-| Tool | `build_ros_package` | One complete package snapshot built in a fresh workspace |
+| Public resources | `benchmark://cases`, `benchmark://cases/{case_id}/description`, `benchmark://cases/{case_id}/description/{section}` | Same read-only public resources |
+| Hidden metric | Not registered | `benchmark-internal://cases/{case_id}/metric` |
+| Generated artifact | Not registered | `benchmark-run://runs/{run_id}/package` and `.../files/{file_id}` |
+| `ros2_interface_show` | Registered | Registered for evidence checks when needed |
+| `build_ros_package` | Registered | Not registered |
 
-The server never registers internal metric or reference resources. A future
-functional-evaluator server must be a separate process/profile rather than a
-model-selectable role on this public server.
+The Evaluator receives the `run_id` from the orchestrator after a real Coder
+build. The Coder learns the build ID in its result but cannot read the artifact
+or metric through its server surface.
 
 ## Requirements
 
@@ -67,7 +68,9 @@ This safe default serves descriptions and `ros2_interface_show`, but
 ```bash
 ros2-benchmark-mcp \
   --repo-root .. \
-  --workspace-root /tmp/ros2-codegen-benchmark-mcp \
+  --profile coder \
+  --workspace-root /tmp/ros2-codegen-benchmark-mcp/workspaces \
+  --artifact-root /tmp/ros2-codegen-benchmark-mcp/artifacts \
   --max-build-calls 1 \
   --build-timeout-seconds 300 \
   --allow-unsafe-local-build
@@ -81,8 +84,12 @@ An MCP host can launch the server with an equivalent stdio configuration:
   "args": [
     "--repo-root",
     "/absolute/path/to/repository",
+    "--profile",
+    "coder",
     "--workspace-root",
-    "/tmp/ros2-codegen-benchmark-mcp",
+    "/tmp/ros2-codegen-benchmark-mcp/workspaces",
+    "--artifact-root",
+    "/tmp/ros2-codegen-benchmark-mcp/artifacts",
     "--max-build-calls",
     "1",
     "--allow-unsafe-local-build"
@@ -101,6 +108,43 @@ ros2-benchmark-mcp --repo-root .. --transport streamable-http --port 8000
 ```
 
 The default bind address is `127.0.0.1`.
+
+## Run the Evaluator Profile
+
+Start this as a separate MCP process, using the exact same private
+`--artifact-root` used by the Coder process:
+
+```bash
+ros2-benchmark-mcp \
+  --repo-root .. \
+  --profile evaluator \
+  --artifact-root /tmp/ros2-codegen-benchmark-mcp/artifacts
+```
+
+The evaluator process has no package-writing or build tool. It reads the
+hidden metric, manifest, and file bodies, then emits the following structured
+object to the **orchestrator** (this is an output contract, not a Coder-visible
+MCP resource):
+
+```json
+{
+  "case_id": "dummy_sensors",
+  "description_sha256": "...",
+  "package_artifact_id": "the build_id returned by build_ros_package",
+  "requirements": [
+    {
+      "requirement_id": "FR-01",
+      "status": "pass",
+      "evidence": ["src/example.cpp:42"],
+      "feedback": null
+    }
+  ]
+}
+```
+
+The orchestrator verifies that the description hash and package artifact ID
+belong to the current run before it forwards only permitted feedback to the
+Coder. It must not give the Evaluator's server connection to the Coder.
 
 ## Resource Responses
 
@@ -184,7 +228,10 @@ clean environment sourced only from `/opt/ros/jazzy`; current user overlays and
 ambient environment secrets are not inherited. The result reports the package
 snapshot hash, status, command, exit code, timeout, duration, bounded logs, and
 validation errors. The tool never edits the submitted package and never
-retries automatically.
+retries automatically. A completed local build attempt (`passed`, `failed`, or
+`timed_out`) is stored atomically under the private artifact root. Its manifest
+contains the snapshot hash, package file IDs, and build result; an evaluator
+can read file bodies only through its own profile.
 
 ## Local-Build Security Boundary
 
@@ -207,10 +254,12 @@ Coder -> build result -> functional evaluator -> explicit feedback -> Coder
       -> all static checks pass -> simulation runner
 ```
 
-- The current public server is for the Coder only.
-- The functional evaluator will receive hidden metrics through a separate
-  evaluator-scoped server and read generated package artifacts without write or
-  build permissions.
+- The Coder server exposes two tools: interface inspection and package build.
+- The Evaluator server has read-only hidden metrics and immutable package
+  artifacts, plus optional interface inspection, but no write or build tool.
+- `FunctionalEvaluationFeedback` is the fixed evaluator-to-orchestrator output
+  contract; retry policy remains external (`--max-build-calls`), rather than a
+  hard-coded Coder repair loop.
 - Simulation harnesses should be authored and validated offline against the
   benchmark contract/reference, then frozen before model evaluation. They must
   not adapt to an individual candidate package.
@@ -227,8 +276,10 @@ mcp/
 ├── pyproject.toml
 ├── src/benchmark_mcp/
 │   ├── registry.py          # Immutable public case snapshots
+│   ├── artifacts.py         # Atomic evaluator-visible package artifacts
 │   ├── schemas.py           # Structured tool inputs and outputs
 │   ├── services.py          # Validated ROS commands and package builds
+│   ├── snapshot.py          # Canonical package snapshot identity
 │   └── server.py            # MCP resources, tools, and CLI
 └── tests/
     ├── test_registry.py
@@ -238,10 +289,11 @@ mcp/
 
 ## Implementation Roadmap
 
-1. Current: public description resources and the two Coder tools.
-2. Add an evaluator-only server and immutable generated-package resources.
-3. Connect structured functional-requirement feedback to the orchestrator.
-4. Move builds into a pinned OCI runner without changing the model-visible
+1. Current: fixed Coder/Evaluator profiles, immutable artifacts, and structured
+   evaluator feedback contract.
+2. Connect the evaluator implementation and orchestrator to that feedback
+   contract.
+3. Move builds into a pinned OCI runner without changing the model-visible
    schema.
-5. Add frozen task-specific harnesses and the restricted `run_simulation` tool.
-6. Publish an end-to-end reproducibility test and run manifest schema.
+4. Add frozen task-specific harnesses and the restricted `run_simulation` tool.
+5. Publish an end-to-end reproducibility test and run manifest schema.

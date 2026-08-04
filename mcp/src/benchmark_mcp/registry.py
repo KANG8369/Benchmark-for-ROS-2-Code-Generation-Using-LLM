@@ -30,10 +30,19 @@ class CaseSnapshot:
         return [section for section in DESCRIPTION_SECTIONS if section in self.description]
 
 
+@dataclass(frozen=True)
+class MetricSnapshot:
+    """One hidden metric loaded only by an evaluator-profile registry."""
+
+    case_id: str
+    metric_sha256: str
+    metric: dict[str, Any]
+
+
 class BenchmarkRegistry:
     """Validated, immutable view of public benchmark descriptions."""
 
-    def __init__(self, repository_root: Path) -> None:
+    def __init__(self, repository_root: Path, *, include_metrics: bool = False) -> None:
         self.repository_root = repository_root.resolve(strict=True)
         self.benchmarks_root = (self.repository_root / "benchmarks").resolve(strict=True)
         if not self.benchmarks_root.is_dir():
@@ -41,6 +50,7 @@ class BenchmarkRegistry:
         self._cases = self._load_cases()
         if not self._cases:
             raise ValueError(f"No valid benchmark cases found under {self.benchmarks_root}")
+        self._metrics = self._load_metrics() if include_metrics else None
 
     @property
     def case_ids(self) -> list[str]:
@@ -87,6 +97,17 @@ class BenchmarkRegistry:
             "section": section,
             "present": section in snapshot.description,
             "content": copy.deepcopy(snapshot.description.get(section)),
+        }
+
+    def metric_resource(self, case_id: str) -> dict[str, Any]:
+        if self._metrics is None:
+            raise PermissionError("Hidden metric resources are unavailable in this server profile")
+        self._get_case(case_id)
+        snapshot = self._metrics[case_id]
+        return {
+            "case_id": case_id,
+            "metric_sha256": snapshot.metric_sha256,
+            "metric": copy.deepcopy(snapshot.metric),
         }
 
     def _get_case(self, case_id: str) -> CaseSnapshot:
@@ -142,6 +163,21 @@ class BenchmarkRegistry:
                 description=parsed,
             )
         return cases
+
+    def _load_metrics(self) -> dict[str, MetricSnapshot]:
+        metrics: dict[str, MetricSnapshot] = {}
+        for case_id in self.case_ids:
+            metric_path = self.benchmarks_root / case_id / "metric.yaml"
+            raw_metric = metric_path.read_bytes()
+            parsed = yaml.safe_load(raw_metric)
+            if not isinstance(parsed, dict):
+                raise ValueError(f"Metric must be a mapping: {metric_path}")
+            metrics[case_id] = MetricSnapshot(
+                case_id=case_id,
+                metric_sha256=hashlib.sha256(raw_metric).hexdigest(),
+                metric=parsed,
+            )
+        return metrics
 
     @staticmethod
     def _is_regular_direct_file(path: Path, expected_parent: Path) -> bool:
