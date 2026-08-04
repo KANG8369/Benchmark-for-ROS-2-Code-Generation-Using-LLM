@@ -1,0 +1,541 @@
+package_name: stereo_image_proc
+reference:
+  root: reference/
+metrics:
+- id: M-1
+  name: Calibrated disparity publication
+  description: Synchronized rectified monochrome stereo images and calibration produce a floating-point DisparityImage only when demanded, satisfying FR-1.
+  requirement_ids:
+  - FR-1
+  pass_criteria:
+  - id: M-1-PC-1
+    text: The disparity callback returns without processing when the disparity publisher has no subscribers.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: pub_disparity_->get_subscription_count
+      snippet: |2-
+          // If there are no subscriptions for the disparity image, do nothing
+          if (pub_disparity_->get_subscription_count() == 0u) {
+            return;
+          }
+        
+          // Update the camera model
+          model_.fromCameraInfo(l_info_msg, r_info_msg);
+      explanation: Gates disparity computation on output demand before using synchronized inputs.
+  - id: M-1-PC-2
+    text: Left and right calibration plus rectified MONO8 images are passed to the stereo matcher to fill a DisparityImage.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: model_.fromCameraInfo
+      snippet: |2-
+          // Update the camera model
+          model_.fromCameraInfo(l_info_msg, r_info_msg);
+        
+          // Allocate new disparity image message
+          auto disp_msg = std::make_unique<stereo_msgs::msg::DisparityImage>();
+          disp_msg->header = l_info_msg->header;
+          disp_msg->image.header = l_info_msg->header;
+      explanation: Initializes calibrated output metadata from the synchronized camera information.
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: block_matcher_.processDisparity
+      snippet: |2-
+          const cv::Mat_<uint8_t> l_image =
+            cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::MONO8)->image;
+          const cv::Mat_<uint8_t> r_image =
+            cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::MONO8)->image;
+        
+          // Perform block matching to find the disparities
+          block_matcher_.processDisparity(l_image, r_image, model_, *disp_msg);
+      explanation: Converts both rectified streams to monochrome matrices and computes calibrated disparity data.
+  - id: M-1-PC-3
+    text: The completed stereo_msgs/msg/DisparityImage is published on disparity.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: create_publisher
+      snippet: |2-
+          pub_disparity_ = create_publisher<stereo_msgs::msg::DisparityImage>("disparity", 1, pub_opts);
+      explanation: Creates the required disparity publisher.
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: pub_disparity_->publish
+      snippet: |2-
+          pub_disparity_->publish(std::move(disp_msg));
+      explanation: Publishes the matcher-populated disparity message.
+- id: M-2
+  name: Dense stereo PointCloud2 projection
+  description: Synchronized disparity, calibration, and left rectified color are projected into a dense PointCloud2 on demand as required by FR-2.
+  requirement_ids:
+  - FR-2
+  pass_criteria:
+  - id: M-2-PC-1
+    text: The point-cloud callback returns without projection when points2 has no subscribers.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: pub_points2_->get_subscription_count
+      snippet: |2-
+          // If there are no subscriptions for the point cloud, do nothing
+          if (pub_points2_->get_subscription_count() == 0u) {
+            return;
+          }
+        
+          // Update the camera model
+          model_.fromCameraInfo(l_info_msg, r_info_msg);
+      explanation: Gates projection on output demand and then updates calibration from synchronized camera information.
+  - id: M-2-PC-2
+    text: The floating-point disparity image is projected through the stereo camera model into dense XYZ data.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: projectDisparityImageTo3d
+      snippet: |2-
+          const cv::Mat_<float> dmat(dimage.height, dimage.width, data, dimage.step);
+          model_.projectDisparityImageTo3d(dmat, points_mat_, true);
+          cv::Mat_<cv::Vec3f> mat = points_mat_;
+      explanation: Reinterprets calibrated disparity as float data and projects every pixel into 3D.
+  - id: M-2-PC-3
+    text: Projected XYZ values and optional left-image color are written into and published as sensor_msgs/msg/PointCloud2.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: PointCloud2Iterator<float>
+      snippet: |2-
+          sensor_msgs::PointCloud2Iterator<float> iter_x(*points_msg, "x");
+          sensor_msgs::PointCloud2Iterator<float> iter_y(*points_msg, "y");
+          sensor_msgs::PointCloud2Iterator<float> iter_z(*points_msg, "z");
+        
+          float bad_point = std::numeric_limits<float>::quiet_NaN();
+          for (int v = 0; v < mat.rows; ++v) {
+            for (int u = 0; u < mat.cols; ++u, ++iter_x, ++iter_y, ++iter_z) {
+              if (isValidPoint(mat(v, u))) {
+                // x,y,z
+                *iter_x = mat(v, u)[0];
+                *iter_y = mat(v, u)[1];
+                *iter_z = mat(v, u)[2];
+              } else {
+                *iter_x = *iter_y = *iter_z = bad_point;
+              }
+            }
+          }
+      explanation: Preserves dense image layout while filling valid XYZ samples and NaNs for invalid samples.
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: pub_points2_->publish
+      snippet: |2-
+          pub_points2_->publish(std::move(points_msg));
+      explanation: Publishes the completed dense PointCloud2.
+- id: M-3
+  name: Exact and approximate input synchronization
+  description: Both processing nodes support exact, unbounded approximate, and epsilon-bounded approximate synchronization as required by FR-3.
+  requirement_ids:
+  - FR-3
+  pass_criteria:
+  - id: M-3-PC-1
+    text: The disparity node selects exact synchronization when approximate_sync is false, ordinary approximate synchronization for zero tolerance, and epsilon synchronization for nonzero tolerance.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: if (approx)
+      snippet: |2-
+          if (approx) {
+            if (0.0 == approx_sync_epsilon) {
+              approximate_sync_ = std::make_shared<ApproximateSync>(
+                ApproximatePolicy(queue_size),
+                sub_l_image_, sub_l_info_,
+                sub_r_image_, sub_r_info_);
+      explanation: Selects ordinary approximate synchronization for a zero configured tolerance.
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: ApproximateEpsilonPolicy
+      snippet: |2-
+            } else {
+              approximate_epsilon_sync_ = std::make_shared<ApproximateEpsilonSync>(
+                ApproximateEpsilonPolicy(
+                  queue_size, rclcpp::Duration::from_seconds(approx_sync_epsilon)),
+                sub_l_image_, sub_l_info_,
+                sub_r_image_, sub_r_info_);
+      explanation: Uses the configured seconds tolerance for epsilon-bounded approximate synchronization.
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: exact_sync_
+      snippet: |2-
+          } else {
+            exact_sync_ = std::make_shared<ExactSync>(
+              ExactPolicy(queue_size),
+              sub_l_image_, sub_l_info_,
+              sub_r_image_, sub_r_info_);
+      explanation: Selects exact synchronization when approximate_sync is disabled.
+  - id: M-3-PC-2
+    text: The point-cloud node provides the same three synchronization choices for image, two camera-info, and disparity inputs.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: approximate_sync_
+      snippet: |2-
+          if (approx) {
+            if (0.0 == approx_sync_epsilon) {
+              approximate_sync_ = std::make_shared<ApproximateSync>(
+                ApproximatePolicy(queue_size),
+                sub_l_image_, sub_l_info_,
+                sub_r_info_, sub_disparity_);
+      explanation: Provides ordinary approximate synchronization for all point-cloud inputs.
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: approximate_epsilon_sync_
+      snippet: |2-
+            } else {
+              approximate_epsilon_sync_ = std::make_shared<ApproximateEpsilonSync>(
+                ApproximateEpsilonPolicy(
+                  queue_size, rclcpp::Duration::from_seconds(approx_sync_epsilon)),
+                sub_l_image_, sub_l_info_,
+                sub_r_info_, sub_disparity_);
+      explanation: Adds configured epsilon tolerance to point-cloud input synchronization.
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: ExactPolicy(queue_size)
+      snippet: |2-
+          } else {
+            exact_sync_ = std::make_shared<ExactSync>(
+              ExactPolicy(queue_size),
+              sub_l_image_, sub_l_info_,
+              sub_r_info_, sub_disparity_);
+      explanation: Provides exact synchronization when approximate mode is disabled.
+- id: M-4
+  name: Lazy source subscriptions
+  description: Both processors subscribe only while their output publishers have connected consumers and unsubscribe after the last consumer disconnects, satisfying FR-4.
+  requirement_ids:
+  - FR-4
+  pass_criteria:
+  - id: M-4-PC-1
+    text: The disparity publisher match callback unsubscribes all four source streams at zero consumers and resubscribes them when demand appears.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: matched_callback
+      snippet: |2-
+          pub_opts.event_callbacks.matched_callback =
+            [this](rclcpp::MatchedInfo & s)
+            {
+              if (s.current_count == 0) {
+                sub_l_image_.unsubscribe();
+                sub_l_info_.unsubscribe();
+                sub_r_image_.unsubscribe();
+                sub_r_info_.unsubscribe();
+              } else if (!sub_l_image_.getSubscriber()) {
+      explanation: Uses output matching state to stop or begin disparity source subscriptions.
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: sub_l_image_.subscribe
+      snippet: |2-
+                sub_l_image_.subscribe(
+                  *this, left_topic, hints.getTransport(), sensor_data_qos, sub_opts);
+                sub_l_info_.subscribe(this, left_info_topic,
+                  sensor_data_qos, sub_opts);
+                sub_r_image_.subscribe(
+                  *this, right_topic, hints.getTransport(), sensor_data_qos, sub_opts);
+                sub_r_info_.subscribe(this, right_info_topic,
+                  sensor_data_qos, sub_opts);
+      explanation: Subscribes to every required disparity source in the nonzero-demand branch.
+  - id: M-4-PC-2
+    text: The points2 publisher match callback unsubscribes all four source streams at zero consumers and resubscribes them when demand appears.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: matched_callback
+      snippet: |2-
+          pub_opts.event_callbacks.matched_callback =
+            [this](rclcpp::MatchedInfo & s)
+            {
+              if (s.current_count == 0) {
+                sub_l_image_.unsubscribe();
+                sub_l_info_.unsubscribe();
+                sub_r_info_.unsubscribe();
+                sub_disparity_.unsubscribe();
+              } else if (!sub_l_image_.getSubscriber()) {
+      explanation: Uses output matching state to stop or begin point-cloud source subscriptions.
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: sub_disparity_.subscribe
+      snippet: |2-
+                sub_l_image_.subscribe(
+                  *this, left_topic, hints.getTransport(), sensor_data_qos, sub_opts);
+                sub_l_info_.subscribe(this, left_info_topic,
+                  sensor_data_qos, sub_opts);
+                sub_r_info_.subscribe(this, right_topic,
+                  sensor_data_qos, sub_opts);
+                sub_disparity_.subscribe(this, disparity_topic,
+                  sensor_data_qos, sub_opts);
+      explanation: Subscribes to every required point-cloud source in the nonzero-demand branch.
+- id: M-5
+  name: Runtime stereo matcher configuration
+  description: The disparity processor supports BM and SGBM plus adjustable matching and filtering settings while rejecting unknown algorithms, satisfying FR-5.
+  requirement_ids:
+  - FR-5
+  pass_criteria:
+  - id: M-5-PC-1
+    text: stereo_algorithm selects block matching or semi-global block matching.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: stereo_algorithm_value
+      snippet: |2-
+            if ("stereo_algorithm" == param_name) {
+              const int stereo_algorithm_value = param.as_int();
+              if (BLOCK_MATCHING == stereo_algorithm_value) {
+                block_matcher_.setStereoType(StereoProcessor::BM);
+              } else if (SEMI_GLOBAL_BLOCK_MATCHING == stereo_algorithm_value) {
+                block_matcher_.setStereoType(StereoProcessor::SGBM);
+      explanation: Maps both supported public values to their matching implementations.
+  - id: M-5-PC-2
+    text: An unsupported stereo_algorithm parameter update is rejected with a reason.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: Unknown stereo algorithm
+      snippet: |2-
+              } else {
+                result.successful = false;
+                std::ostringstream oss;
+                oss << "Unknown stereo algorithm type '" << stereo_algorithm_value << "'";
+                result.reason = oss.str();
+              }
+      explanation: Marks the parameter transaction unsuccessful and reports the unsupported value.
+  - id: M-5-PC-3
+    text: Runtime parameter updates cover matching windows, search range, uniqueness, texture and speckle filtering, disparity checks, and SGBM smoothness and mode.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/disparity_node.cpp
+      anchor: prefilter_size
+      snippet: |2-
+            } else if ("prefilter_size" == param_name) {
+              block_matcher_.setPreFilterSize(param.as_int());
+            } else if ("prefilter_cap" == param_name) {
+              block_matcher_.setPreFilterCap(param.as_int());
+            } else if ("correlation_window_size" == param_name) {
+              block_matcher_.setCorrelationWindowSize(param.as_int());
+            } else if ("min_disparity" == param_name) {
+              block_matcher_.setMinDisparity(param.as_int());
+            } else if ("disparity_range" == param_name) {
+              block_matcher_.setDisparityRange(param.as_int());
+            } else if ("uniqueness_ratio" == param_name) {
+              block_matcher_.setUniquenessRatio(param.as_double());
+            } else if ("texture_threshold" == param_name) {
+              block_matcher_.setTextureThreshold(param.as_int());
+            } else if ("speckle_size" == param_name) {
+              block_matcher_.setSpeckleSize(param.as_int());
+            } else if ("speckle_range" == param_name) {
+              block_matcher_.setSpeckleRange(param.as_int());
+            } else if ("sgbm_mode" == param_name) {
+              block_matcher_.setSgbmMode(param.as_int());
+            } else if ("P1" == param_name) {
+              block_matcher_.setP1(param.as_double());
+            } else if ("P2" == param_name) {
+              block_matcher_.setP2(param.as_double());
+            } else if ("disp12_max_diff" == param_name) {
+              block_matcher_.setDisp12MaxDiff(param.as_int());
+            }
+      explanation: Applies every matching, filtering, search, and smoothness setting named by FR-5.
+- id: M-6
+  name: Point-cloud color and packing choices
+  description: PointCloud2 output can include RGB or XYZ only and can use padded or compact field layout as required by FR-6.
+  requirement_ids:
+  - FR-6
+  pass_criteria:
+  - id: M-6-PC-1
+    text: use_color selects XYZRGB fields or XYZ-only fields.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: use_color
+      snippet: |2-
+          if (!this->get_parameter("avoid_point_cloud_padding").as_bool()) {
+            if (this->get_parameter("use_color").as_bool()) {
+              // Data will be packed as (DC=don't care, each item is a float):
+              //   x, y, z, DC, rgb, DC, DC, DC
+              // Resulting step size: 32 bytes
+              pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+            } else {
+              // Data will be packed as:
+              //   x, y, z, DC
+              // Resulting step size: 16 bytes
+              pcd_modifier.setPointCloud2FieldsByString(1, "xyz");
+            }
+      explanation: Chooses colored or geometry-only point fields under normal padded layout.
+  - id: M-6-PC-2
+    text: avoid_point_cloud_padding selects explicit compact XYZRGB or XYZ field layouts without alignment padding.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/point_cloud_node.cpp
+      anchor: setPointCloud2Fields
+      snippet: |2-
+          } else {
+            if (this->get_parameter("use_color").as_bool()) {
+              // Data will be packed as:
+              //   x, y, z, rgb
+              // Resulting step size: 16 bytes
+              pcd_modifier.setPointCloud2Fields(
+                4,
+                "x", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "z", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "rgb", 1, sensor_msgs::msg::PointField::FLOAT32);
+            } else {
+              // Data will be packed as:
+              //   x, y, z
+              // Resulting step size: 12 bytes
+              pcd_modifier.setPointCloud2Fields(
+                3,
+                "x", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+                "z", 1, sensor_msgs::msg::PointField::FLOAT32);
+            }
+          }
+      explanation: Defines compact field sets for both colored and XYZ-only output when padding avoidance is enabled.
+- id: M-7
+  name: Reusable StereoProcessor outputs
+  description: StereoProcessor derives requested rectified, disparity, PointCloud, and PointCloud2 products and reports monocular failure as required by FR-7.
+  requirement_ids:
+  - FR-7
+  pass_criteria:
+  - id: M-7-PC-1
+    text: Stereo output requests automatically request the rectified mono inputs and point-cloud requests also request disparity and left rectified color.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/stereo_processor.cpp
+      anchor: STEREO_ALL
+      snippet: |2-
+          if (flags & STEREO_ALL) {
+            // Need the rectified images for stereo processing
+            left_flags |= LEFT_RECT;
+            right_flags |= RIGHT_RECT;
+          }
+          if (flags & (POINT_CLOUD | POINT_CLOUD2)) {
+            flags |= DISPARITY;
+            // Need the color channels for the point cloud
+            left_flags |= LEFT_RECT_COLOR;
+          }
+      explanation: Expands selected outputs into all prerequisite monocular and stereo products.
+  - id: M-7-PC-2
+    text: Failure of required left or right monocular processing causes StereoProcessor to report false.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/stereo_processor.cpp
+      anchor: mono_processor_.process
+      snippet: |2-
+          if (!mono_processor_.process(left_raw, model.left(), output.left, left_flags)) {
+            return false;
+          }
+          if (!mono_processor_.process(right_raw, model.right(), output.right, right_flags >> 4)) {
+            return false;
+          }
+      explanation: Propagates either required monocular-processing failure to the caller.
+  - id: M-7-PC-3
+    text: Selected flags independently produce disparity, legacy PointCloud, and PointCloud2 outputs after monocular processing succeeds.
+    evaluation: static
+    reference_evidence:
+    - path: src/stereo_image_proc/stereo_processor.cpp
+      anchor: flags & DISPARITY
+      snippet: |2-
+          if (flags & DISPARITY) {
+            processDisparity(output.left.rect, output.right.rect, model, output.disparity);
+          }
+        
+          // Project disparity image to 3d point cloud
+          if (flags & POINT_CLOUD) {
+            processPoints(
+              output.disparity, output.left.rect_color, output.left.color_encoding, model, output.points);
+          }
+        
+          // Project disparity image to 3d point cloud
+          if (flags & POINT_CLOUD2) {
+            processPoints2(
+              output.disparity, output.left.rect_color, output.left.color_encoding, model, output.points2);
+          }
+        
+          return true;
+      explanation: Dispatches every selected stereo product and reports successful processing.
+- id: M-8
+  name: Stereo launch composition
+  description: The supplied launch loads both components into a new or existing container and optionally includes namespaced left and right image_proc pipelines as required by FR-8.
+  requirement_ids:
+  - FR-8
+  pass_criteria:
+  - id: M-8-PC-1
+    text: The launch defines disparity and point-cloud composable nodes with the configurable namespace, parameters, and left/right remappings.
+    evaluation: static
+    reference_evidence:
+    - path: launch/stereo_image_proc.launch.py
+      anchor: composable_nodes
+      snippet: |2-
+            composable_nodes = [
+                ComposableNode(
+                    package='stereo_image_proc',
+                    plugin='stereo_image_proc::DisparityNode',
+                    namespace=LaunchConfiguration('namespace'),
+                    parameters=[{
+                        'approximate_sync': LaunchConfiguration('approximate_sync'),
+                        'stereo_algorithm': LaunchConfiguration('stereo_algorithm'),
+      explanation: Defines the disparity component under the configured package namespace and forwards launch settings.
+    - path: launch/stereo_image_proc.launch.py
+      anchor: PointCloudNode
+      snippet: |2-
+                ComposableNode(
+                    package='stereo_image_proc',
+                    plugin='stereo_image_proc::PointCloudNode',
+                    namespace=LaunchConfiguration('namespace'),
+                    parameters=[{
+                        'approximate_sync': LaunchConfiguration('approximate_sync'),
+                        'avoid_point_cloud_padding': LaunchConfiguration('avoid_point_cloud_padding'),
+                        'use_color': LaunchConfiguration('use_color'),
+                    }],
+      explanation: Defines the point-cloud component with synchronization, color, and packing settings.
+  - id: M-8-PC-2
+    text: An empty container argument creates stereo_image_proc_container, while a nonempty argument loads both components into the named existing container.
+    evaluation: static
+    reference_evidence:
+    - path: launch/stereo_image_proc.launch.py
+      anchor: ComposableNodeContainer
+      snippet: |2-
+                ComposableNodeContainer(
+                    condition=LaunchConfigurationEquals('container', ''),
+                    package='rclcpp_components',
+                    executable='component_container',
+                    name='stereo_image_proc_container',
+                    namespace='',
+                    composable_node_descriptions=composable_nodes,
+                ),
+                LoadComposableNodes(
+                    condition=LaunchConfigurationNotEquals('container', ''),
+                    composable_node_descriptions=composable_nodes,
+                    target_container=LaunchConfiguration('container'),
+                ),
+      explanation: Implements the mutually exclusive new-container and caller-supplied-container paths.
+  - id: M-8-PC-3
+    text: When launch_image_proc is enabled, left and right image_proc launches are included under the package namespace with their configured camera namespaces and container.
+    evaluation: static
+    reference_evidence:
+    - path: launch/stereo_image_proc.launch.py
+      anchor: PushRosNamespace
+      snippet: |2-
+                GroupAction(
+                    [
+                        PushRosNamespace(LaunchConfiguration('namespace')),
+                        IncludeLaunchDescription(
+                            PythonLaunchDescriptionSource([
+                                FindPackageShare('image_proc'), '/launch/image_proc.launch.py'
+                            ]),
+                            launch_arguments={'container': LaunchConfiguration('container'),
+                                              'namespace': LaunchConfiguration('left_namespace')}.items()
+                        ),
+                    ],
+                    condition=IfCondition(LaunchConfiguration('launch_image_proc')),
+                ),
+                GroupAction(
+                    [
+                        PushRosNamespace(LaunchConfiguration('namespace')),
+                        IncludeLaunchDescription(
+                            PythonLaunchDescriptionSource([
+                                FindPackageShare('image_proc'), '/launch/image_proc.launch.py'
+                            ]),
+                            launch_arguments={'container': LaunchConfiguration('container'),
+                                              'namespace': LaunchConfiguration('right_namespace')}.items()
+                        ),
+                    ],
+                    condition=IfCondition(LaunchConfiguration('launch_image_proc')),
+                )
+      explanation: Conditionally starts both camera-side image_proc pipelines with namespace and container propagation.

@@ -1,0 +1,10 @@
+# Colcon build dirs
+build/
+install/
+log/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+.DS_Store

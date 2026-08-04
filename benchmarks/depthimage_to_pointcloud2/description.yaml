@@ -1,0 +1,68 @@
+intent:
+  package_name: depthimage_to_pointcloud2
+  summary: Converts approximately synchronized depth and RGB images, using depth-camera
+    calibration, into an XYZRGB PointCloud2 stream.
+  scope: Provides the converter executable and launch-time input and depth-value handling
+    configuration; external camera systems provide image and calibration data.
+functional_requirements:
+- id: FR-1
+  text: The converter publishes an XYZRGB PointCloud2 constructed from approximately
+    synchronized supported depth and RGB images using received depth-camera calibration.
+- id: FR-2
+  text: The converter withholds point-cloud output until camera information is available
+    and skips conversion when RGB image conversion fails or the depth image encoding
+    is unsupported.
+- id: FR-3
+  text: The converter limits invalid and over-range depth samples by emitting quiet
+    NaNs or substituting the configured maximum range.
+- id: FR-4
+  text: The installed launch file starts the converter with configurable RGB, depth,
+    calibration-base, maximum-range, and invalid-depth handling settings and publishes
+    its output on /camera/pointcloud2.
+interfaces:
+  nodes:
+  - name: rgbd_to_pointcloud
+    responsibility: Converts synchronized RGB and depth images using depth-camera
+      calibration into colored point clouds; direct execution without a node-name
+      override uses the name depthimage_to_pointcloud2_node.
+    topics:
+    - name: <rgb_image_topic>
+      type: sensor_msgs/msg/Image
+      direction: subscribe
+      purpose: Receives the RGB image synchronized with the depth image for point
+        color values.
+    - name: <depth_image_topic>
+      type: sensor_msgs/msg/Image
+      direction: subscribe
+      purpose: Receives the depth image used to calculate point coordinates.
+    - name: <full_sensor_topic>/camera_info
+      type: sensor_msgs/msg/CameraInfo
+      direction: subscribe
+      purpose: Receives camera intrinsics used to project depth pixels into 3D coordinates.
+    - name: /camera/pointcloud2
+      type: sensor_msgs/msg/PointCloud2
+      direction: publish
+      purpose: Publishes the generated XYZRGB point cloud.
+    parameters:
+    - name: range_max
+      type: double
+      purpose: Sets the maximum usable depth range in meters, with zero disabling
+        range limiting.
+    - name: use_quiet_nan
+      type: bool
+      purpose: Selects quiet-NaN output instead of maximum-range replacement for invalid
+        and over-range depth samples.
+    - name: colorful
+      type: bool
+      purpose: Is an accepted conversion parameter supplied by the launch file.
+  launch_arguments:
+  - name: full_sensor_topic
+    purpose: Sets the base used to form the depth camera-info topic.
+  - name: range_max
+    purpose: Sets the converter maximum depth range.
+  - name: use_quiet_nan
+    purpose: Selects quiet-NaN handling for invalid and over-range depth values.
+  - name: depth_image_topic
+    purpose: Sets the depth-image topic remapped to the converter.
+  - name: rgb_image_topic
+    purpose: Sets the RGB-image topic remapped to the converter.

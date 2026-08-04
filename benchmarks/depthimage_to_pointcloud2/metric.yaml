@@ -1,0 +1,197 @@
+package_name: depthimage_to_pointcloud2
+reference:
+  root: reference/
+metrics:
+- id: M-1
+  name: Synchronized colored point-cloud conversion
+  description: The synchronized depth and RGB inputs are projected with camera calibration into the colored point cloud required by FR-1.
+  requirement_ids:
+  - FR-1
+  pass_criteria:
+  - id: M-1-PC-1
+    text: Depth and RGB images are processed through an approximate-time synchronization callback.
+    evaluation: static
+    reference_evidence:
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: MySyncPolicy
+      snippet: |2-
+                sync.reset(new Synchronizer<MySyncPolicy>(MySyncPolicy(10), depth_sub, rgb_sub));
+                sync->registerCallback(std::bind(&Depthimage2Pointcloud2::callback, this, std::placeholders::_1, std::placeholders::_2));
+      explanation: Registers one approximate-time callback over the depth and RGB subscribers.
+  - id: M-1-PC-2
+    text: Camera calibration and supported depth encodings drive XYZRGB point generation.
+    evaluation: static
+    reference_evidence:
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: model.fromCameraInfo
+      snippet: |2-
+                image_geometry::PinholeCameraModel model;
+                model.fromCameraInfo(g_cam_info);
+        
+                if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1) {
+                    depthimage_to_pointcloud2::convert<uint16_t>(depth_msg, cloud_msg, model, range_max, use_quiet_nan, cv_ptr);
+                } else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1) {
+                    depthimage_to_pointcloud2::convert<float>(depth_msg, cloud_msg, model, range_max, use_quiet_nan, cv_ptr);
+      explanation: Builds the camera model from calibration and dispatches both supported depth encodings to colored point conversion.
+    - path: include/depthimage_to_pointcloud2/depth_conversions.hpp
+      anchor: '*iter_x ='
+      snippet: |2-
+              *iter_x = (u - center_x) * depth * constant_x;
+              *iter_y = (v - center_y) * depth * constant_y;
+              *iter_z = DepthTraits<T>::toMeters(depth);
+      explanation: Projects each valid depth pixel into calibrated metric XYZ coordinates.
+  - id: M-1-PC-3
+    text: The completed XYZRGB PointCloud2 is published.
+    evaluation: static
+    reference_evidence:
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: setPointCloud2FieldsByString
+      snippet: |2-
+                sensor_msgs::PointCloud2Modifier pcd_modifier(*cloud_msg);
+                pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+      explanation: Configures the output as an XYZRGB PointCloud2.
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: g_pub_point_cloud->publish
+      snippet: |2-
+                g_pub_point_cloud->publish(*cloud_msg);
+      explanation: Publishes the converted point cloud after successful conversion.
+- id: M-2
+  name: Invalid-input conversion guards
+  description: Conversion is withheld for missing calibration, RGB conversion failure, or unsupported depth encodings as required by FR-2.
+  requirement_ids:
+  - FR-2
+  pass_criteria:
+  - id: M-2-PC-1
+    text: Point-cloud conversion returns without publishing until camera information has been received.
+    evaluation: static
+    reference_evidence:
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: No camera info
+      snippet: |2-
+                if (nullptr == g_cam_info) {
+                    RCLCPP_WARN(this->get_logger(), "No camera info, skipping point cloud conversion");
+                    return;
+                }
+      explanation: The callback exits before cloud construction when calibration is unavailable.
+  - id: M-2-PC-2
+    text: RGB conversion failure is logged and causes the current synchronized pair to be skipped.
+    evaluation: static
+    reference_evidence:
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: cv_bridge exception
+      snippet: |2-
+                try {
+                    cv_ptr = cv_bridge::toCvShare(rgb_msg, rgb_msg->encoding);
+                } catch (cv_bridge::Exception& e) {
+                    RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+                    return;
+                }
+      explanation: Catches RGB conversion errors, logs them, and returns before publication.
+  - id: M-2-PC-3
+    text: Unsupported depth encodings are logged and skipped without point-cloud publication.
+    evaluation: static
+    reference_evidence:
+    - path: src/depthimage_to_pointcloud2_node.cpp
+      anchor: unsupported encoding
+      snippet: |2-
+                } else {
+                    RCLCPP_WARN(this->get_logger(), "Depth image has unsupported encoding [%s]", depth_msg->encoding.c_str());
+                    return;
+                }
+        
+                g_pub_point_cloud->publish(*cloud_msg);
+      explanation: The unsupported-encoding branch returns before the following publish operation.
+- id: M-3
+  name: Invalid and over-range depth policy
+  description: Invalid and over-range samples are represented according to the configured range and quiet-NaN policy required by FR-3.
+  requirement_ids:
+  - FR-3
+  pass_criteria:
+  - id: M-3-PC-1
+    text: Invalid depth samples become range_max when enabled without quiet NaNs, and otherwise become quiet NaNs.
+    evaluation: static
+    reference_evidence:
+    - path: include/depthimage_to_pointcloud2/depth_conversions.hpp
+      anchor: DepthTraits<T>::valid
+      snippet: |2-
+              if (!DepthTraits<T>::valid(depth)) {
+                if (range_max != 0.0 && !use_quiet_nan) {
+                  depth = DepthTraits<T>::fromMeters(range_max);
+                } else {
+                  *iter_x = *iter_y = *iter_z = *iter_rgb = bad_point;
+                  continue;
+                }
+      explanation: Implements both configured representations for invalid samples.
+  - id: M-3-PC-2
+    text: Valid samples beyond range_max become quiet NaNs or are clamped to range_max according to use_quiet_nan.
+    evaluation: static
+    reference_evidence:
+    - path: include/depthimage_to_pointcloud2/depth_conversions.hpp
+      anchor: depth > depth_max
+      snippet: |2-
+              } else if (range_max != 0.0) {
+                T depth_max = DepthTraits<T>::fromMeters(range_max);
+                if (depth > depth_max) {
+                  if (use_quiet_nan) {
+                    *iter_x = *iter_y = *iter_z = *iter_rgb = bad_point;
+                    continue;
+                  } else {
+                    depth = depth_max;
+                  }
+        
+                }
+              }
+      explanation: Applies the selected quiet-NaN or clamping policy to over-range samples.
+- id: M-4
+  name: Configurable converter launch
+  description: The installed launch contract exposes the requested settings and output remapping required by FR-4.
+  requirement_ids:
+  - FR-4
+  pass_criteria:
+  - id: M-4-PC-1
+    text: The launch exposes full_sensor_topic, range_max, use_quiet_nan, depth_image_topic, and rgb_image_topic arguments.
+    evaluation: static
+    reference_evidence:
+    - path: launch/depthimage_to_pointcloud2.launch.py
+      anchor: DeclareLaunchArgument
+      snippet: |2-
+                DeclareLaunchArgument(
+                    'full_sensor_topic',
+                    default_value=['/camera'],
+                    description='Base for topic (and node) names'),
+                DeclareLaunchArgument(
+                    'range_max',
+                    default_value='19.0',
+                    description='Max range of depth sensor'),
+                DeclareLaunchArgument(
+                    'use_quiet_nan',
+                    default_value='false',
+                    description='Use quiet NaN instead of range_max'),
+                DeclareLaunchArgument(
+                    'depth_image_topic',
+                    default_value='/camera/depth',
+                    description='Depth image topic'),
+                DeclareLaunchArgument(
+                    'rgb_image_topic',
+                    default_value='/camera/rgb',
+                    description='Colorize the point cloud from external RGB image topic'),
+      explanation: Declares every launch-time input and depth-policy setting named by FR-4.
+  - id: M-4-PC-2
+    text: The launch passes conversion parameters, remaps all configured inputs, and maps pointcloud2 to /camera/pointcloud2.
+    evaluation: static
+    reference_evidence:
+    - path: launch/depthimage_to_pointcloud2.launch.py
+      anchor: remappings
+      snippet: |2-
+                    parameters=[
+                        {'range_max': LaunchConfiguration('range_max'),
+                         'use_quiet_nan': LaunchConfiguration('use_quiet_nan'),
+                         'colorful': PythonExpression(["'true' if '", LaunchConfiguration('rgb_image_topic'), "' else 'false'"])}
+                    ],
+                    remappings=[
+                        ("image", LaunchConfiguration('rgb_image_topic')),
+                        ("depth", [LaunchConfiguration('depth_image_topic')]),
+                        ("depth_camera_info", [LaunchConfiguration('full_sensor_topic'), "/camera_info"]),
+                        ("pointcloud2", '/camera/pointcloud2')
+                    ]
+      explanation: Connects launch arguments to node parameters and topic remappings, including the required output topic.

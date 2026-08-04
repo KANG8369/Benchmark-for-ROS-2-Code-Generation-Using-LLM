@@ -1,0 +1,132 @@
+intent:
+  package_name: laser_scan_merger
+  summary: Merges approximately time-synchronized LaserScan inputs into one filtered
+    LaserScan expressed in a configured frame.
+  scope: Provides a composable laser-scan-merging node; upstream scan publishers and
+    the TF transforms between their frames and the merged frame are external responsibilities.
+functional_requirements:
+- id: FR-1
+  text: The merger accepts two through nine configured LaserScan inputs, approximately
+    synchronizes them, transforms their projected points into the configured merged
+    frame, and publishes a combined LaserScan.
+- id: FR-2
+  text: The merged scan retains the nearest valid point in each configured angular
+    bin while applying configured angular, range, height, timing, and empty-range
+    policies.
+- id: FR-3
+  text: The node waits and retries when required transforms are unavailable, and can
+    either reuse initial transforms for fixed scan frames or refresh them for moving
+    scan frames.
+- id: FR-4
+  text: The node suppresses merged-scan publication when the output topic has no subscribers.
+- id: FR-5
+  text: The node refuses to initialize scan synchronization when fewer than two or
+    more than nine input topics are configured.
+- id: FR-6
+  text: When fewer QoS policies than scan topics are provided, the node fills missing
+    policies with reliable delivery, and ignores policies beyond the configured input
+    count.
+- id: FR-7
+  text: The provided launch files host the merger component in a component container
+    selected by a robot-specific configuration directory, and the demo launch also
+    starts RViz and attempts looping playback of its demo bag.
+interfaces:
+  nodes:
+  - name: laser_scan_merger_node
+    responsibility: Composable laser scan merger component, launched under this name
+      and using component_laser_scan_merger as its direct component default name when
+      no launch name override is supplied.
+    topics:
+    - name: <scan_topic>
+      type: sensor_msgs/msg/LaserScan
+      direction: subscribe
+      purpose: One of the configured input scans to synchronize and merge.
+    - name: <output_topic>
+      type: sensor_msgs/msg/LaserScan
+      direction: publish
+      purpose: Merged scan output; uses the relative topic name merged_scan when output_topic
+        is empty.
+    - name: /tf
+      type: tf2_msgs/msg/TFMessage
+      direction: subscribe
+      purpose: Receives dynamic transforms used by the TransformListener when transforming
+        input scans into the merged frame.
+    - name: /tf_static
+      type: tf2_msgs/msg/TFMessage
+      direction: subscribe
+      purpose: Receives static transforms used by the TransformListener when transforming
+        input scans into the merged frame.
+    tf:
+    - source_frame: <input LaserScan header.frame_id>
+      target_frame: <merged_frame_id>
+      purpose: Looks up the transform used to express each input scan in the merged
+        output frame.
+    parameters:
+    - name: scan_topics
+      type: string_array
+      purpose: Ordered input LaserScan topic names; two through nine entries are required
+        for synchronization.
+    - name: scan_policies
+      type: integer_array
+      purpose: Per-input QoS reliability policies, where 0 selects reliable delivery
+        and nonzero selects best-effort delivery.
+    - name: merged_frame_id
+      type: string
+      purpose: Target TF frame and frame_id assigned to the merged scan.
+    - name: output_topic
+      type: string
+      purpose: Topic on which to publish the merged LaserScan, with merged_scan used
+        when empty.
+    - name: debug
+      type: bool
+      purpose: Enables diagnostic logging.
+    - name: moving_frames
+      type: bool
+      purpose: Refreshes input-frame transforms for each synchronized set instead
+        of reusing the initial transforms.
+    - name: queue_size
+      type: integer
+      purpose: Approximate-time synchronization queue depth.
+    - name: angle_min
+      type: double
+      purpose: Minimum output scan angle in radians.
+    - name: angle_max
+      type: double
+      purpose: Maximum output scan angle in radians.
+    - name: angle_increment
+      type: double
+      purpose: Angular resolution of the output scan in radians.
+    - name: range_min
+      type: double
+      purpose: Minimum accepted point range and output scan minimum range.
+    - name: range_max
+      type: double
+      purpose: Maximum accepted point range and output scan maximum range.
+    - name: inf_epsilon
+      type: double
+      purpose: Offset used for empty output ranges when infinite ranges are disabled.
+    - name: use_inf
+      type: bool
+      purpose: Selects positive infinity rather than range_max plus inf_epsilon for
+        output bins with no obstacle.
+    - name: scan_time
+      type: double
+      purpose: Scan time assigned to the merged output.
+    - name: min_height
+      type: double
+      purpose: Minimum accepted point height in the merged frame.
+    - name: max_height
+      type: double
+      purpose: Maximum accepted point height in the merged frame.
+    - name: tolerance
+      type: double
+      purpose: TF lookup timeout tolerance.
+  launch_arguments:
+  - name: robotname
+    purpose: Selects the configuration subdirectory whose param.yaml file is supplied
+      to the merger component.
+  external_nodes:
+  - name: component_manager_node
+    package: rclcpp_components
+    executable: component_container
+    purpose: Hosts the laser_scan_merger_node composable component.
