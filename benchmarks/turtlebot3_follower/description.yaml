@@ -8,3 +8,13 @@ intent:
     Provides the follower executable and launch orchestration for three
     configured follower robots; external robot systems provide TF, laser
     scans, odometry, and execution of velocity commands.
+
+target_environment: >-
+  Targets a four-robot TurtleBot3 setup consisting of leader TB3_1 and
+  followers TB3_2, TB3_3, and TB3_4. Each robot is expected to provide its
+  namespaced odometry and base frames, 2D laser-scan data, and velocity-command
+  interface, while the ROS 2 Jazzy environment provides the Nav2 FollowPath
+  controller, velocity smoother, and lifecycle manager used by each follower.
+  Robot drivers or a simulator, localization and odometry sources, sensor-data
+  publication, and physical or simulated execution of velocity commands are
+  external to this package.
