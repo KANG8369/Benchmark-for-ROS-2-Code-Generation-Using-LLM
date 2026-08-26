@@ -39,3 +39,6 @@ functional_requirements:
       The installed camera demonstration launch accepts a camera-device
       selection and configures AprilTag detection for rectified camera
       imagery.
+
+target_environment: >-
+  A calibrated monocular camera system observing AprilTags.

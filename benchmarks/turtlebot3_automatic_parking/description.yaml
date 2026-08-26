@@ -42,3 +42,6 @@ functional_requirements:
     text: >-
       The node rejects startup when LDS_MODEL is LDS-02 because that laser
       scanner model is unsupported.
+
+target_environment: >-
+  A TurtleBot3 mobile robot equipped with a supported 2D lidar and odometry in a reflective-marker parking environment.

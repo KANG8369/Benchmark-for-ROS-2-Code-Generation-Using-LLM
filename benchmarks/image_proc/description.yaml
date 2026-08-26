@@ -68,3 +68,6 @@ functional_requirements:
       The marker-tracking component lazily detects the configured ArUco
       marker in a camera image and publishes its estimated pose using the
       paired camera calibration.
+
+target_environment: >-
+  A calibrated monocular-camera image-processing pipeline.

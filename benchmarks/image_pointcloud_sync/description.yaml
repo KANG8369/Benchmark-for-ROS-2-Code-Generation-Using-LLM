@@ -35,3 +35,6 @@ functional_requirements:
     text: >-
       The package makes the synchronizer available as both a composable ROS
       2 component and a standalone executable.
+
+target_environment: >-
+  A camera-and-lidar sensor-fusion system.

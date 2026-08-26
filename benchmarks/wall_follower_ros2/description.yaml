@@ -29,3 +29,6 @@ functional_requirements:
       The supplied wall-follower launch starts the controller with
       configured linear and angular velocity settings and includes the
       package's empty Gazebo simulation launch.
+
+target_environment: >-
+  A differential-drive mobile robot equipped with a 2D lidar.

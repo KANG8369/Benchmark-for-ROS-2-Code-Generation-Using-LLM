@@ -59,3 +59,6 @@ functional_requirements:
       components into either a new or caller-supplied component container
       and can additionally invoke left and right image_proc launch pipelines
       under configurable namespaces.
+
+target_environment: >-
+  A calibrated stereo-camera processing system.

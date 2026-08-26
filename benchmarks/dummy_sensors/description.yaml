@@ -17,3 +17,6 @@ functional_requirements:
       The dummy_joint_states executable continuously publishes timestamped
       JointState messages for single_rrbot_joint1 and single_rrbot_joint2
       with matching sinusoidally varying positions.
+
+target_environment: >-
+  A test or simulation environment using the single-RRBot model.

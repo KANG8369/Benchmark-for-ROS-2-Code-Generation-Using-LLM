@@ -23,3 +23,6 @@ functional_requirements:
       the tracker estimates its pose using the configured marker size and
       broadcasts a timestamped transform from the camera frame to that
       marker's dynamic frame.
+
+target_environment: >-
+  A TurtleBot3 mobile robot equipped with a calibrated RGB camera and observing ArUco markers.

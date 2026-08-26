@@ -22,3 +22,6 @@ functional_requirements:
     text: >-
       The Python bringup launch additionally starts RViz2 with the packaged
       RViz configuration.
+
+target_environment: >-
+  A ROS 2 demonstration environment using the single-RRBot model.

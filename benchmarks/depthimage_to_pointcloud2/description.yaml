@@ -28,3 +28,6 @@ functional_requirements:
       The installed launch file starts the converter with configurable RGB,
       depth, calibration-base, maximum-range, and invalid-depth handling
       settings and publishes its output on /camera/pointcloud2.
+
+target_environment: >-
+  An RGB-D camera system providing aligned depth and color images with depth-camera calibration.

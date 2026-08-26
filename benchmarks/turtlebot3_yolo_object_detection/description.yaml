@@ -27,3 +27,6 @@ functional_requirements:
     text: >-
       The installed launch file starts the object-detection node with a
       user-selectable path to its YOLO model.
+
+target_environment: >-
+  A TurtleBot3 mobile robot equipped with an RGB camera and a compatible YOLO model.

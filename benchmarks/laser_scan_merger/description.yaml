@@ -46,3 +46,6 @@ functional_requirements:
       container selected by a robot-specific configuration directory, and
       the demo launch also starts RViz and attempts looping playback of its
       demo bag.
+
+target_environment: >-
+  A robot equipped with two to nine 2D laser scanners whose frames are connected through TF.

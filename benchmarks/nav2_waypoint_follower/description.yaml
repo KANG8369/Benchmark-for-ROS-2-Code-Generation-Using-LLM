@@ -56,3 +56,6 @@ functional_requirements:
       The exported input-at-waypoint task executor waits for an empty input
       message at each reached waypoint until its configured timeout and
       reports failure when no input arrives.
+
+target_environment: >-
+  A Nav2-enabled mobile robot.

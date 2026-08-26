@@ -40,3 +40,6 @@ functional_requirements:
     text: >-
       The node stops its periodic output timer when deactivated and destroys
       it during cleanup, shutdown, or error handling.
+
+target_environment: >-
+  A calibrated RGB-D camera system providing aligned RGB and depth images.
