@@ -9,8 +9,9 @@ decomposition, algorithm, or implementation technique when those choices are
 not required by the public functional requirements.
 
 > **Format status:** This branch uses the revised public-FR/hidden-PC format.
-> Benchmark data has been migrated, while MCP tests, detailed format documents,
-> templates, and explicit per-PC Evaluator output are still being migrated.
+> Benchmark data, templates, and format documents have been migrated, while
+> MCP registry/tests and explicit per-PC Evaluator output are still being
+> migrated.
 
 ## Benchmark Unit
 
