@@ -5,29 +5,138 @@ metrics:
   text: The lifecycle waypoint follower accepts Cartesian waypoint goals, sends each
     waypoint in order to navigation, reports the active waypoint index, and returns
     missed waypoint details when processing completes.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The lifecycle node exposes a Cartesian waypoint-following action
+        server and a navigation action client.
+    - id: FR-1-PC-2
+      text: >-
+        The current indexed Cartesian pose is sent as a NavigateToPose goal
+        before the index advances.
+    - id: FR-1-PC-3
+      text: >-
+        The action publishes current_waypoint feedback using the active
+        sequence index.
+    - id: FR-1-PC-4
+      text: >-
+        Failed waypoints are appended with index, pose, and error details,
+        and successful exhaustion completes the action with that result.
+
 - id: FR-2
   text: The follower supports repeated waypoint-sequence loops, goal cancellation,
     and goal preemption while processing a waypoint-following request.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        After the final waypoint, the sequence restarts at index zero until
+        the requested number of loops is exhausted.
+    - id: FR-2-PC-2
+      text: >-
+        A cancellation request cancels navigation goals, terminates the
+        waypoint action, and returns.
+    - id: FR-2-PC-3
+      text: >-
+        A preemption request accepts the pending goal, replaces the pose
+        sequence, and restarts at waypoint zero.
+
 - id: FR-3
   text: The follower can either stop immediately or continue to later waypoints after
     navigation, waypoint-task, or GPS-conversion failures according to its failure
     policy.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Navigation failure is recorded and either terminates immediately or
+        allows the loop to advance according to the configured failure policy.
+    - id: FR-3-PC-2
+      text: >-
+        Waypoint-task failure is recorded and terminates only when the
+        configured failure policy requires it.
+    - id: FR-3-PC-3
+      text: >-
+        Failed GPS conversion terminates conversion when the failure policy
+        requires it and otherwise skips only the failed waypoint.
+
 - id: FR-4
   text: The follower accepts GPS waypoint goals, converts each geographic pose through
     the configured geographic conversion service into the configured global frame,
     and navigates the successfully converted poses.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        The node exposes a GPS waypoint-following action server and creates a
+        client for the configured geographic conversion service.
+    - id: FR-4-PC-2
+      text: >-
+        Each geographic pose populates a FromLL request with latitude,
+        longitude, and altitude and invokes the service.
+    - id: FR-4-PC-3
+      text: >-
+        Successful conversions become timestamped poses in the configured
+        global frame with their original orientation and are processed by the
+        common waypoint behavior.
+
 - id: FR-5
   text: When activated, the follower makes its Cartesian and GPS waypoint actions
     available and establishes its lifecycle-manager bond; deactivation makes both
     actions unavailable and destroys the bond.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        Activation makes both waypoint action servers available and creates
+        the lifecycle bond.
+    - id: FR-5-PC-2
+      text: >-
+        Deactivation makes both waypoint action servers unavailable and
+        destroys the lifecycle bond.
+
 - id: FR-6
   text: The exported wait-at-waypoint task executor pauses at each reached waypoint
     for a configured duration when enabled.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        The wait plugin exposes configurable enablement and waypoint pause
+        duration settings.
+    - id: FR-6-PC-2
+      text: >-
+        An enabled wait task sleeps for the configured milliseconds at a
+        reached waypoint and reports success.
+
 - id: FR-7
   text: The exported photo-at-waypoint task executor subscribes to a configured image
     stream and saves the latest image at each reached waypoint when enabled and able
     to create its output directory.
+  pass_criteria:
+    - id: FR-7-PC-1
+      text: >-
+        The photo plugin exposes configurable enablement, image input, and
+        output-directory settings and does not run when its output directory
+        cannot be created.
+    - id: FR-7-PC-2
+      text: >-
+        When enabled, the plugin subscribes to the configured image stream and
+        retains the most recently received image.
+    - id: FR-7-PC-3
+      text: >-
+        At each reached waypoint, the enabled plugin writes the latest image
+        into the configured output directory and reports write failure.
+
 - id: FR-8
   text: The exported input-at-waypoint task executor waits for an empty input message
     at each reached waypoint until its configured timeout and reports failure when
     no input arrives.
+  pass_criteria:
+    - id: FR-8-PC-1
+      text: >-
+        The input plugin exposes configurable enablement, input topic, and
+        timeout settings and subscribes to Empty messages on that topic.
+    - id: FR-8-PC-2
+      text: >-
+        Receipt of an Empty message confirms the waypoint task and produces
+        success when it arrives before the timeout.
+    - id: FR-8-PC-3
+      text: >-
+        An enabled task that receives no confirmation before timeout logs a
+        warning and reports failure.

@@ -5,37 +5,219 @@ metrics:
   text: The launch file loads a debayer component and mono and color rectification
     components into an existing container or a newly started component container under
     a configurable namespace.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The launch description accepts a configurable namespace input.
+    - id: FR-1-PC-2
+      text: >-
+        The launch description accepts a configurable component-container
+        input.
+    - id: FR-1-PC-3
+      text: >-
+        Debayer, mono rectify, and color rectify composable nodes are
+        defined.
+    - id: FR-1-PC-4
+      text: >-
+        The components can be started in a new component container.
+    - id: FR-1-PC-5
+      text: >-
+        The components can instead be loaded into an existing container.
+    - id: FR-1-PC-6
+      text: >-
+        The launch directory is installed into the package share directory.
+
 - id: FR-2
   text: The public Processor utility converts supported raw mono, color, and Bayer
     images into requested mono and color image matrices and optionally rectifies them
     with a supplied pinhole camera model.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        A public Processor API exposes processing flags, output storage, and
+        a process operation.
+    - id: FR-2-PC-2
+      text: >-
+        Supported mono, color, and Bayer raw encodings are accepted.
+    - id: FR-2-PC-3
+      text: >-
+        A requested mono output product is constructed.
+    - id: FR-2-PC-4
+      text: >-
+        A requested color output product is constructed.
+    - id: FR-2-PC-5
+      text: >-
+        Requested output products can be rectified using camera calibration.
+
 - id: FR-3
   text: The public edge-aware debayer utilities reconstruct color image matrices from
     Bayer image matrices using edge-aware and weighted edge-aware interpolation.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        A public edge-aware Bayer demosaicing utility is declared and
+        implemented.
+    - id: FR-3-PC-2
+      text: >-
+        A public weighted edge-aware Bayer demosaicing utility is declared
+        and implemented.
+
 - id: FR-4
   text: The public QoS utility selects a sensor-data QoS profile when no publisher
     is known for an input topic and otherwise derives compatible reliability and durability
     settings from an existing publisher.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        SensorDataQoS is returned when no publisher is discovered.
+    - id: FR-4-PC-2
+      text: >-
+        Input reliability is derived to be compatible with the discovered
+        publisher.
+    - id: FR-4-PC-3
+      text: >-
+        Input durability is derived to be compatible with the discovered
+        publisher.
+
 - id: FR-5
   text: The debayer component lazily processes raw images only while an output has
     subscribers and publishes monochrome and color outputs for supported encodings
     while rejecting malformed, ambiguous, or unsupported input encodings.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        Supported Bayer input is converted and published as a requested
+        color product.
+    - id: FR-5-PC-2
+      text: >-
+        A requested mono product is published directly or through cv_bridge
+        conversion.
+    - id: FR-5-PC-3
+      text: >-
+        Malformed Bayer input is rejected before OpenCV image construction.
+    - id: FR-5-PC-4
+      text: >-
+        Ambiguous 8UC3 input is reported explicitly.
+    - id: FR-5-PC-5
+      text: >-
+        Unsupported input encodings are reported explicitly.
+    - id: FR-5-PC-6
+      text: >-
+        Raw-image subscription is created or shut down according to output
+        demand.
+
 - id: FR-6
   text: The rectification component lazily produces a calibrated rectified image,
     passes through images with zero distortion, and suppresses output when camera
     calibration is unavailable.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        The camera subscription is managed lazily according to
+        rectified-output demand.
+    - id: FR-6-PC-2
+      text: >-
+        Rectified output is suppressed for uncalibrated input.
+    - id: FR-6-PC-3
+      text: >-
+        Zero-distortion input is passed through without remapping.
+    - id: FR-6-PC-4
+      text: >-
+        Nonzero-distortion input is rectified with camera calibration and
+        published.
+
 - id: FR-7
   text: The crop-and-decimate component lazily crops and downsamples synchronized
     image and camera-info streams while updating output binning and ROI metadata and
     rejecting invalid crop regions or unsupported Bayer decimation.
+  pass_criteria:
+    - id: FR-7-PC-1
+      text: >-
+        The requested image crop is applied.
+    - id: FR-7-PC-2
+      text: >-
+        The cropped image is downsampled according to the requested
+        decimation.
+    - id: FR-7-PC-3
+      text: >-
+        Unsupported Bayer decimation returns without output.
+    - id: FR-7-PC-4
+      text: >-
+        Crop offsets outside the input image cause processing to return
+        without output.
+    - id: FR-7-PC-5
+      text: >-
+        CameraInfo binning fields are updated for the transformed image.
+    - id: FR-7-PC-6
+      text: >-
+        CameraInfo ROI fields are updated for the transformed image.
+    - id: FR-7-PC-7
+      text: >-
+        The camera subscription is managed lazily according to output
+        demand.
+
 - id: FR-8
   text: The crop-non-zero component lazily publishes the bounding crop of the largest
     non-zero region in a supported single-channel image and skips unsuitable or all-zero
     images.
+  pass_criteria:
+    - id: FR-8-PC-1
+      text: >-
+        The input subscription is managed lazily according to cropped-output
+        demand.
+    - id: FR-8-PC-2
+      text: >-
+        Unsupported channel layouts are rejected without output.
+    - id: FR-8-PC-3
+      text: >-
+        The largest external nonzero region is selected.
+    - id: FR-8-PC-4
+      text: >-
+        The bounding crop of the selected region is published.
+    - id: FR-8-PC-5
+      text: >-
+        All-zero input returns without publishing a crop.
+
 - id: FR-9
   text: The resize component lazily resizes synchronized image and camera-info pairs
     by configured scale factors or explicit dimensions and updates output calibration
     and ROI metadata.
+  pass_criteria:
+    - id: FR-9-PC-1
+      text: >-
+        The camera subscription is managed lazily according to
+        resized-output demand.
+    - id: FR-9-PC-2
+      text: >-
+        Output dimensions can be resolved from configured scale factors.
+    - id: FR-9-PC-3
+      text: >-
+        Explicit output dimensions override scale-derived dimensions when
+        configured.
+    - id: FR-9-PC-4
+      text: >-
+        The input image is resized to the resolved dimensions.
+    - id: FR-9-PC-5
+      text: >-
+        Camera intrinsics, projection values, and ROI fields are scaled
+        consistently.
+
 - id: FR-10
   text: The marker-tracking component lazily detects the configured ArUco marker in
     a camera image and publishes its estimated pose using the paired camera calibration.
+  pass_criteria:
+    - id: FR-10-PC-1
+      text: >-
+        Dictionary, marker ID, and marker size configuration is declared.
+    - id: FR-10-PC-2
+      text: >-
+        Synchronized camera subscription is managed lazily according to
+        pose-output demand.
+    - id: FR-10-PC-3
+      text: >-
+        The configured ArUco marker is detected and its calibrated pose is
+        estimated.
+    - id: FR-10-PC-4
+      text: >-
+        The estimated marker pose is published as
+        geometry_msgs/msg/PoseStamped.

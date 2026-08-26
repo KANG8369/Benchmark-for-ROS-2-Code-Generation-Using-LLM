@@ -5,24 +5,103 @@ metrics:
   text: The merger accepts two through nine configured LaserScan inputs, approximately
     synchronizes them, transforms their projected points into the configured merged
     frame, and publishes a combined LaserScan.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        Approximate-time synchronization supports every configured input count
+        from two through nine.
+    - id: FR-1-PC-2
+      text: >-
+        Every synchronized LaserScan is projected to a point cloud,
+        transformed into the merged frame, and accumulated with the other
+        inputs.
+    - id: FR-1-PC-3
+      text: >-
+        The merged points are converted to a LaserScan whose frame_id is
+        merged_frame_id and the result is published.
+
 - id: FR-2
   text: The merged scan retains the nearest valid point in each configured angular
     bin while applying configured angular, range, height, timing, and empty-range
     policies.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        Output angle, range, scan-time, and zero time-increment metadata are
+        populated from configured policies.
+    - id: FR-2-PC-2
+      text: >-
+        Empty angular bins use positive infinity or range_max plus
+        inf_epsilon according to use_inf.
+    - id: FR-2-PC-3
+      text: >-
+        NaN points and points outside configured height, range, or angular
+        bounds are excluded from output bins.
+    - id: FR-2-PC-4
+      text: >-
+        Each accepted point is assigned to its angular bin and replaces the
+        bin only when it is nearer.
+
 - id: FR-3
   text: The node waits and retries when required transforms are unavailable, and can
     either reuse initial transforms for fixed scan frames or refresh them for moving
     scan frames.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Initial transforms can be reused for fixed scan frames, while moving
+        scan frames obtain refreshed transforms for each synchronized set.
+    - id: FR-3-PC-2
+      text: >-
+        A synchronized input set is skipped when a required transform is
+        unavailable, allowing a later set to retry.
+
 - id: FR-4
   text: The node suppresses merged-scan publication when the output topic has no subscribers.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        No merged scan is produced or published while the output has no
+        subscribers.
+
 - id: FR-5
   text: The node refuses to initialize scan synchronization when fewer than two or
     more than nine input topics are configured.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        More than nine configured scan topics produce an error and prevent
+        scan synchronization from being initialized.
+    - id: FR-5-PC-2
+      text: >-
+        Fewer than two configured scan topics produce an error and prevent
+        scan synchronization from being initialized.
+
 - id: FR-6
   text: When fewer QoS policies than scan topics are provided, the node fills missing
     policies with reliable delivery, and ignores policies beyond the configured input
     count.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        Missing scan policies are filled with reliable delivery until every
+        configured scan topic has a policy.
+    - id: FR-6-PC-2
+      text: >-
+        Excess policies do not create extra subscribers, while each in-range
+        policy selects reliable or best-effort delivery for its scan topic.
+
 - id: FR-7
   text: The provided launch files host the merger component in a component container
     selected by a robot-specific configuration directory, and the demo launch also
     starts RViz and attempts looping playback of its demo bag.
+  pass_criteria:
+    - id: FR-7-PC-1
+      text: >-
+        The standard launch starts a ROS 2 component container, loads the
+        merger component, and supplies the selected robot-specific
+        configuration.
+    - id: FR-7-PC-2
+      text: >-
+        The demo launch adds RViz with the packaged configuration and
+        attempts looping playback of the packaged demo bag.

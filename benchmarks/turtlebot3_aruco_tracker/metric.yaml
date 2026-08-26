@@ -4,10 +4,43 @@ metrics:
 - id: FR-1
   text: The tracker accepts the first camera calibration message, derives camera intrinsic
     and distortion data from it, and then stops subscribing to calibration updates.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The first accepted CameraInfo message supplies the camera intrinsic and
+        distortion data used for marker pose estimation.
+    - id: FR-1-PC-2
+      text: >-
+        The camera-information subscription is destroyed after the first
+        calibration is accepted.
+
 - id: FR-2
   text: The tracker ignores compressed images and reports missing calibration until
     it has received camera information.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        Compressed images are not decoded or processed for detection before
+        camera calibration is available, and the missing calibration is
+        reported.
+
 - id: FR-3
   text: For every detected DICT_5X5_250 ArUco marker in a calibrated image, the tracker
     estimates its pose using the configured marker size and broadcasts a timestamped
     transform from the camera frame to that marker's dynamic frame.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Detection uses the predefined DICT_5X5_250 ArUco dictionary.
+    - id: FR-3-PC-2
+      text: >-
+        Detected marker corners are pose-estimated with the configured
+        marker size and stored camera calibration.
+    - id: FR-3-PC-3
+      text: >-
+        Each detected marker produces a transform stamped with the source
+        image time from the camera frame to that marker's dynamic frame.
+    - id: FR-3-PC-4
+      text: >-
+        The installed launch exposes the marker size as a configurable value
+        and passes it to the tracker node.

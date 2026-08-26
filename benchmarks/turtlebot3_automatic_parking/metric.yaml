@@ -4,21 +4,113 @@ metrics:
 - id: FR-1
   text: The node uses laser scans and odometry to identify a reflective parking spot
     and calculate a maneuver toward it.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        Reflective LaserScan regions are identified and converted into
+        parking-spot geometry.
+    - id: FR-1-PC-2
+      text: >-
+        Scan and odometry state feed a staged parking controller.
+    - id: FR-1-PC-3
+      text: >-
+        Sensed parking geometry and robot pose are used to maneuver toward
+        the spot.
+
 - id: FR-2
   text: The node republishes every received laser scan on /scan_spot and marks the
     detected parking spot's start, center, and end measurements when available.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        Every received LaserScan has its input fields copied into the
+        republished scan.
+    - id: FR-2-PC-2
+      text: >-
+        The copied scan is published on /scan_spot.
+    - id: FR-2-PC-3
+      text: >-
+        The detected spot start, center, and end are marked in the intensity
+        array.
+    - id: FR-2-PC-4
+      text: >-
+        Scans are still republished when no parking spot is available.
+
 - id: FR-3
   text: The node publishes /cmd_vel velocity commands to rotate, position, reorient,
     and reverse the robot into the detected parking spot.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Rotation stages produce angular geometry_msgs/msg/Twist commands.
+    - id: FR-3-PC-2
+      text: >-
+        Translation stages produce linear geometry_msgs/msg/Twist commands.
+    - id: FR-3-PC-3
+      text: >-
+        Each non-terminal controller iteration publishes the Twist selected
+        by its current stage on /cmd_vel.
+
 - id: FR-4
   text: The node publishes a zero velocity command and an Empty reset request on /reset
     at parking maneuver reset points.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        Every maneuver reset point publishes a Twist with zero linear and
+        angular velocity.
+    - id: FR-4-PC-2
+      text: >-
+        Every maneuver reset point publishes a std_msgs/msg/Empty reset
+        notification.
+    - id: FR-4-PC-3
+      text: >-
+        Required maneuver transitions and completion perform both the stop and
+        reset publications.
+
 - id: FR-5
   text: The node reports repeated unsuccessful parking-spot searches and continues
     searching.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        Repeated parking-spot search failures are counted.
+    - id: FR-5-PC-2
+      text: >-
+        The repeated-search failure condition is logged.
+    - id: FR-5-PC-3
+      text: >-
+        Search state is reset after the repeated recoverable failure.
+    - id: FR-5-PC-4
+      text: >-
+        Scanning continues after the recoverable failure instead of
+        terminating the node.
+
 - id: FR-6
   text: The node terminates after successful parking following its final stop and
     reset request.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        The controller detects arrival at the final parking position.
+    - id: FR-6-PC-2
+      text: >-
+        Successful parking completion is reported.
+    - id: FR-6-PC-3
+      text: >-
+        The robot is stopped and odometry is reset at completion.
+    - id: FR-6-PC-4
+      text: >-
+        Completion transitions the controller out of continued maneuver
+        execution.
+
 - id: FR-7
   text: The node rejects startup when LDS_MODEL is LDS-02 because that laser scanner
     model is unsupported.
+  pass_criteria:
+    - id: FR-7-PC-1
+      text: >-
+        Node initialization reads the LDS_MODEL environment setting.
+    - id: FR-7-PC-2
+      text: >-
+        Initialization fails explicitly when LDS_MODEL identifies LDS-02.

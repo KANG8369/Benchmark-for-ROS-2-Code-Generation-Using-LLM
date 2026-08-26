@@ -5,7 +5,45 @@ metrics:
   text: The dummy_laser executable continuously publishes timestamped LaserScan messages
     with sinusoidally varying uniform range values in the single_rrbot_hokuyo_link
     frame.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The dummy_laser executable publishes sensor_msgs/msg/LaserScan on
+        scan.
+    - id: FR-1-PC-2
+      text: >-
+        Each scan uses frame_id single_rrbot_hokuyo_link.
+    - id: FR-1-PC-3
+      text: >-
+        Each scan receives a current timestamp.
+    - id: FR-1-PC-4
+      text: >-
+        Every range in one scan is assigned the same value.
+    - id: FR-1-PC-5
+      text: >-
+        The range value varies sinusoidally over time.
+    - id: FR-1-PC-6
+      text: >-
+        Scan messages are published repeatedly.
+
 - id: FR-2
   text: The dummy_joint_states executable continuously publishes timestamped JointState
     messages for single_rrbot_joint1 and single_rrbot_joint2 with matching sinusoidally
     varying positions.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        The dummy_joint_states executable publishes
+        sensor_msgs/msg/JointState on joint_states.
+    - id: FR-2-PC-2
+      text: >-
+        Each message names single_rrbot_joint1 and single_rrbot_joint2.
+    - id: FR-2-PC-3
+      text: >-
+        Both joints receive matching sinusoidal positions.
+    - id: FR-2-PC-4
+      text: >-
+        Each joint-state message receives a current timestamp.
+    - id: FR-2-PC-5
+      text: >-
+        Joint-state messages are published repeatedly.

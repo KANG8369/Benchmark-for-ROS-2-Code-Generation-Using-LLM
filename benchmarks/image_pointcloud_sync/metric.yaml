@@ -4,17 +4,71 @@ metrics:
 - id: FR-1
   text: The node approximately pairs Image and PointCloud2 messages from configurable
     input topics using a configurable synchronization queue and maximum timestamp interval.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The synchronization policy pairs sensor_msgs Image and PointCloud2
+        messages using approximate-time synchronization.
+    - id: FR-1-PC-2
+      text: >-
+        The configured queue size and maximum interval determine which input
+        pairs are accepted for synchronized processing.
+
 - id: FR-2
   text: For every accepted pair, the node publishes copied image and point-cloud messages
     whose header timestamps both equal the earlier input timestamp while preserving the
     remaining input message contents.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        The common output timestamp is selected as the earlier timestamp of
+        the accepted image and point-cloud pair.
+    - id: FR-2-PC-2
+      text: >-
+        The node copies both accepted messages, changes both copied header
+        stamps to the common timestamp, and publishes both copies.
+
 - id: FR-3
   text: The node uses sensor-data QoS for both configurable input subscriptions and both
     configurable synchronized-output publishers.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Both input topic names and both synchronized-output topic names are
+        independently configurable.
+    - id: FR-3-PC-2
+      text: >-
+        Both typed input subscribers and both typed output publishers use
+        sensor-data QoS.
+
 - id: FR-4
   text: The supplied launch description exposes all topic and synchronization settings
     as launch arguments and starts the synchronizer executable with those values as node
     parameters.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        The launch description declares arguments for four topic names,
+        queue size, and maximum synchronization interval.
+    - id: FR-4-PC-2
+      text: >-
+        The launch description starts the package executable under the
+        synchronizer node name and forwards all six launch configurations as
+        parameters.
+
 - id: FR-5
   text: The package makes the synchronizer available as both a composable ROS 2 component
     and a standalone executable.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        The synchronizer is provided as an installed, loadable ROS 2
+        composable component.
+    - id: FR-5-PC-2
+      text: >-
+        The component is registered so a component container can discover and
+        load it.
+    - id: FR-5-PC-3
+      text: >-
+        An installed standalone executable instantiates the synchronizer
+        outside a component container.

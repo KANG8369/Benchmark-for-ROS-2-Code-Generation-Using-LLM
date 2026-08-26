@@ -5,6 +5,35 @@ metrics:
   text: The dummy_map_server node continuously publishes a world-frame nav_msgs/msg/OccupancyGrid
     with fixed geometry, initially unknown cells, and a moving occupied and free-cell
     pattern.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The node publishes nav_msgs/msg/OccupancyGrid messages on the map
+        topic.
+    - id: FR-1-PC-2
+      text: >-
+        The occupancy grid uses the world frame.
+    - id: FR-1-PC-3
+      text: >-
+        Occupancy-grid cells are initialized as unknown.
+    - id: FR-1-PC-4
+      text: >-
+        Occupied and free cells are updated to form a moving map pattern.
+    - id: FR-1-PC-5
+      text: >-
+        Each map receives a current timestamp.
+    - id: FR-1-PC-6
+      text: >-
+        Map messages are published repeatedly.
+
 - id: FR-2
   text: The node retains its latest map publication so compatible subscribers that
     join after publication can receive the current map.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        The map publisher retains only the latest sample with depth one.
+    - id: FR-2-PC-2
+      text: >-
+        Transient-local or equivalent durability is used for late-subscriber
+        delivery.

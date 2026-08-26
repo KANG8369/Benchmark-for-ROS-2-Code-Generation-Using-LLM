@@ -1,4 +1,0 @@
-intent:
-  package_name: nav2_collision_monitor
-  summary: Provides lifecycle-managed collision monitoring that converts configured obstacle observations into safety-zone detections and either filters commanded robot velocity or publishes detector state.
-  scope: Implements the collision_monitor and collision_detector nodes, reusable obstacle-source and safety-zone classes, planar collision-projection utilities, parameter files, and standalone or composed launch orchestration; sensor publishers, TF broadcasters, robot controllers, component containers, and lifecycle clients are external responsibilities.

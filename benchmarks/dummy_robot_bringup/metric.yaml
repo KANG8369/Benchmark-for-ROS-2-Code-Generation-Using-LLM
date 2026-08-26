@@ -4,9 +4,56 @@ metrics:
 - id: FR-1
   text: Each installed bringup launch description starts the dummy map server, robot
     state publisher, dummy joint-state publisher, and dummy laser publisher.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        The Python bringup launch starts the map server,
+        robot_state_publisher, joint-state publisher, and laser publisher.
+    - id: FR-1-PC-2
+      text: >-
+        The XML bringup launch starts the same four required nodes.
+    - id: FR-1-PC-3
+      text: >-
+        The YAML bringup launch starts the same four required nodes.
+    - id: FR-1-PC-4
+      text: >-
+        The launch directory is installed into the package share directory.
+
 - id: FR-2
   text: The launch descriptions provide the packaged single-RRBot URDF as the robot
     description parameter for the robot state publisher.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        The Python launch loads single_rrbot.urdf and passes it as
+        robot_description.
+    - id: FR-2-PC-2
+      text: >-
+        The XML launch loads single_rrbot.urdf and passes it as
+        robot_description.
+    - id: FR-2-PC-3
+      text: >-
+        The YAML launch loads single_rrbot.urdf and passes it as
+        robot_description.
+    - id: FR-2-PC-4
+      text: >-
+        The package provides a single_rrbot robot model.
+    - id: FR-2-PC-5
+      text: >-
+        The directory containing the URDF is installed into the package
+        share directory.
+
 - id: FR-3
   text: The Python bringup launch additionally starts RViz2 with the packaged RViz
     configuration.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        The Python bringup launch starts an rviz2 node.
+    - id: FR-3-PC-2
+      text: >-
+        Rviz2 receives the path to the package-provided RViz configuration.
+    - id: FR-3-PC-3
+      text: >-
+        The RViz configuration directory is installed into the package share
+        directory.

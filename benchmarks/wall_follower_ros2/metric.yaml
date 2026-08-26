@@ -5,13 +5,59 @@ metrics:
   text: The controller classifies each received laser scan into five directional obstacle
     zones and publishes Twist commands that move forward, turn left, or reverse and
     turn according to the detected obstacle pattern.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        Each scan is classified into five directional obstacle zones and the
+        nearest range in every zone is retained.
+    - id: FR-1-PC-2
+      text: >-
+        Obstacle combinations are classified against safety_distance into
+        explicit driving states.
+    - id: FR-1-PC-3
+      text: >-
+        Driving states produce forward, left-turn, and reverse-left Twist
+        commands using the configured velocity magnitudes.
+    - id: FR-1-PC-4
+      text: >-
+        The selected Twist command is published after scan-derived state and
+        velocity computation.
+
 - id: FR-2
   text: The controller does not publish motion commands until it has received at least
     one laser scan.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        The controller distinguishes the state before the first LaserScan from
+        the state after scan data becomes available.
+    - id: FR-2-PC-2
+      text: >-
+        No motion state is computed and no motion command is published before
+        the first LaserScan is received.
+
 - id: FR-3
   text: The controller publishes a zero-valued Twist command when it receives SIGINT
     before shutting down.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        The command published before shutdown is a zero-valued Twist.
+    - id: FR-3-PC-2
+      text: >-
+        SIGINT handling publishes the zero command before ROS shutdown and
+        process exit.
+
 - id: FR-4
   text: The supplied wall-follower launch starts the controller with configured linear
     and angular velocity settings and includes the package's empty Gazebo simulation
     launch.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        The wall-follower launch starts the controller and supplies its
+        configured linear and angular velocity settings.
+    - id: FR-4-PC-2
+      text: >-
+        The wall-follower launch includes the package empty_simulation
+        launch, which in turn includes Gazebo.

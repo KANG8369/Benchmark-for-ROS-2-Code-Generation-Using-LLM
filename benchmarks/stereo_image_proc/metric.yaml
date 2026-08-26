@@ -5,29 +5,132 @@ metrics:
   text: The disparity processor publishes a calibrated floating-point disparity image
     when synchronized left and right rectified monochrome images and camera information
     are available and an output subscriber is connected.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        No disparity processing or publication occurs while the disparity
+        output has no subscribers.
+    - id: FR-1-PC-2
+      text: >-
+        Left and right calibration plus rectified MONO8 images are passed to
+        the stereo matcher to fill a DisparityImage.
+    - id: FR-1-PC-3
+      text: >-
+        The completed stereo_msgs/msg/DisparityImage is published on
+        disparity.
+
 - id: FR-2
   text: The point-cloud processor publishes a dense PointCloud2 projection of synchronized
     disparity, camera calibration, and left rectified color data when an output subscriber
     is connected.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        No point-cloud projection or publication occurs while points2 has no
+        subscribers.
+    - id: FR-2-PC-2
+      text: >-
+        The floating-point disparity image is projected through the stereo
+        camera model into dense XYZ data.
+    - id: FR-2-PC-3
+      text: >-
+        Projected XYZ values and optional left-image color are written into
+        and published as sensor_msgs/msg/PointCloud2.
+
 - id: FR-3
   text: Both processing nodes support exact synchronization or configurable approximate
     synchronization with an optional timestamp tolerance for their required input
     streams.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        The disparity node selects exact synchronization when
+        approximate_sync is false, ordinary approximate synchronization for
+        zero tolerance, and epsilon synchronization for nonzero tolerance.
+    - id: FR-3-PC-2
+      text: >-
+        The point-cloud node provides the same three synchronization choices
+        for image, two camera-info, and disparity inputs.
+
 - id: FR-4
   text: Both processing nodes subscribe to their source streams only while their respective
     output has subscribers and stop subscribing when the output has no subscribers.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        The disparity node unsubscribes from all four source streams at zero
+        consumers and resubscribes when output demand appears.
+    - id: FR-4-PC-2
+      text: >-
+        The point-cloud node unsubscribes from all four source streams at zero
+        consumers and resubscribes when output demand appears.
+
 - id: FR-5
   text: The disparity node supports block matching and semi-global block matching
     with runtime-adjustable matching, filtering, search-range, and smoothness settings,
     and rejects an unsupported stereo algorithm selection.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        stereo_algorithm selects block matching or semi-global block
+        matching.
+    - id: FR-5-PC-2
+      text: >-
+        An unsupported stereo_algorithm parameter update is rejected with a
+        reason.
+    - id: FR-5-PC-3
+      text: >-
+        Runtime parameter updates cover matching windows, search range,
+        uniqueness, texture and speckle filtering, disparity checks, and
+        SGBM smoothness and mode.
+
 - id: FR-6
   text: The point-cloud node can include RGB data or XYZ-only data and can select
     compact field packing to reduce point-cloud bandwidth.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        use_color selects XYZRGB fields or XYZ-only fields.
+    - id: FR-6-PC-2
+      text: >-
+        avoid_point_cloud_padding selects explicit compact XYZRGB or XYZ
+        field layouts without alignment padding.
+
 - id: FR-7
   text: The exported StereoProcessor utility produces selected rectified images, disparity
     data, legacy PointCloud data, and PointCloud2 data from calibrated stereo images,
     and reports failure when required monocular processing fails.
+  pass_criteria:
+    - id: FR-7-PC-1
+      text: >-
+        Stereo output requests automatically request the rectified mono
+        inputs and point-cloud requests also request disparity and left
+        rectified color.
+    - id: FR-7-PC-2
+      text: >-
+        Failure of required left or right monocular processing causes
+        StereoProcessor to report false.
+    - id: FR-7-PC-3
+      text: >-
+        Selected flags independently produce disparity, legacy PointCloud,
+        and PointCloud2 outputs after monocular processing succeeds.
+
 - id: FR-8
   text: The supplied launch description loads the disparity and point-cloud components
     into either a new or caller-supplied component container and can additionally
     invoke left and right image_proc launch pipelines under configurable namespaces.
+  pass_criteria:
+    - id: FR-8-PC-1
+      text: >-
+        The launch defines disparity and point-cloud composable nodes with
+        the configurable namespace, parameters, and left/right remappings.
+    - id: FR-8-PC-2
+      text: >-
+        An empty container setting creates a new component container, while a
+        nonempty setting loads both components into the selected existing
+        container.
+    - id: FR-8-PC-3
+      text: >-
+        When image processing launch is enabled, left and right image_proc
+        pipelines are included under the package namespace with their
+        configured camera namespaces and container.

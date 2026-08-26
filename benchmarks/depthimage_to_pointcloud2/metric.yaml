@@ -4,14 +4,60 @@ metrics:
 - id: FR-1
   text: The converter publishes an XYZRGB PointCloud2 constructed from approximately
     synchronized supported depth and RGB images using received depth-camera calibration.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        Depth and RGB images are accepted and processed as approximate-time
+        synchronized pairs.
+    - id: FR-1-PC-2
+      text: >-
+        Camera calibration and supported depth encodings drive XYZRGB point
+        generation.
+    - id: FR-1-PC-3
+      text: >-
+        The completed XYZRGB PointCloud2 is published.
+
 - id: FR-2
   text: The converter withholds point-cloud output until camera information is available
     and skips conversion when RGB image conversion fails or the depth image encoding
     is unsupported.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        Point-cloud conversion returns without publishing until camera
+        information has been received.
+    - id: FR-2-PC-2
+      text: >-
+        RGB conversion failure is logged and causes the current synchronized
+        pair to be skipped.
+    - id: FR-2-PC-3
+      text: >-
+        Unsupported depth encodings are logged and skipped without
+        point-cloud publication.
+
 - id: FR-3
   text: The converter limits invalid and over-range depth samples by emitting quiet
     NaNs or substituting the configured maximum range.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Invalid depth samples become range_max when enabled without quiet
+        NaNs, and otherwise become quiet NaNs.
+    - id: FR-3-PC-2
+      text: >-
+        Valid samples beyond range_max become quiet NaNs or are clamped to
+        range_max according to use_quiet_nan.
+
 - id: FR-4
   text: The installed launch file starts the converter with configurable RGB, depth,
     calibration-base, maximum-range, and invalid-depth handling settings and publishes
     its output on /camera/pointcloud2.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        The launch exposes configurable calibration-base, maximum-range,
+        invalid-depth handling, depth-image, and RGB-image settings.
+    - id: FR-4-PC-2
+      text: >-
+        The launch passes conversion parameters, remaps all configured
+        inputs, and maps pointcloud2 to /camera/pointcloud2.

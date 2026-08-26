@@ -5,23 +5,117 @@ metrics:
   text: The cam2image node periodically publishes sensor image messages acquired from
     a configured camera device or generated in synthetic burger mode, with a current
     timestamp and configured frame ID.
+  pass_criteria:
+    - id: FR-1-PC-1
+      text: >-
+        Cam2image periodically publishes sensor_msgs/msg/Image messages.
+    - id: FR-1-PC-2
+      text: >-
+        Camera frames are used as the image source when synthetic burger
+        mode is disabled.
+    - id: FR-1-PC-3
+      text: >-
+        The synthetic burger renderer supplies images when camera input is
+        disabled.
+    - id: FR-1-PC-4
+      text: >-
+        Published images receive a current timestamp.
+    - id: FR-1-PC-5
+      text: >-
+        Published images use the configured frame identifier.
+
 - id: FR-2
   text: The cam2image node horizontally flips subsequently published images when it
     receives a true Boolean command on its flip_image subscription.
+  pass_criteria:
+    - id: FR-2-PC-1
+      text: >-
+        Cam2image subscribes to flip_image using std_msgs/msg/Bool.
+    - id: FR-2-PC-2
+      text: >-
+        The most recently received Bool value controls horizontal flipping of
+        subsequent images.
+    - id: FR-2-PC-3
+      text: >-
+        Subsequent images are flipped horizontally when that state is true.
+
 - id: FR-3
   text: The cam2image node skips publication for a timer iteration when no camera
     frame is available.
+  pass_criteria:
+    - id: FR-3-PC-1
+      text: >-
+        Camera capture success and frame validity are checked before image
+        construction.
+    - id: FR-3-PC-2
+      text: >-
+        No image is published for an iteration in which no valid camera frame
+        is available.
+
 - id: FR-4
   text: The cam2image node raises an error when its camera cannot be opened, its QoS
     reliability or history setting is invalid, or synthetic-image dimensions are too
     small for the burger image.
+  pass_criteria:
+    - id: FR-4-PC-1
+      text: >-
+        Camera initialization reports an explicit camera-open failure.
+    - id: FR-4-PC-2
+      text: >-
+        Unsupported QoS reliability settings are rejected explicitly.
+    - id: FR-4-PC-3
+      text: >-
+        Unsupported QoS history settings are rejected explicitly.
+    - id: FR-4-PC-4
+      text: >-
+        Synthetic burger dimensions that are too small raise an explicit
+        error.
+
 - id: FR-5
   text: The showimage node receives configured-QoS sensor image messages and, when
     enabled, converts supported image encodings for display in an OpenCV window.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        Showimage creates an image subscription using the configured QoS.
+    - id: FR-5-PC-2
+      text: >-
+        Requested QoS reliability and history settings are validated.
+    - id: FR-5-PC-3
+      text: >-
+        Supported incoming image data is converted for display.
+    - id: FR-5-PC-4
+      text: >-
+        Image display occurs only when display output is enabled.
+
 - id: FR-6
   text: The exported ROSCvMatContainer utility adapts OpenCV matrices and sensor_msgs
     Image messages while preserving image headers and providing owned or referenced
     image-data access and copies.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        A public ROSCvMatContainer and rclcpp type adapter are declared.
+    - id: FR-6-PC-2
+      text: >-
+        Owned, referenced, and copied matrix access modes are exposed.
+    - id: FR-6-PC-3
+      text: >-
+        Deep conversion to sensor_msgs/msg/Image preserves dimensions,
+        encoding, data, and the ROS header.
+    - id: FR-6-PC-4
+      text: >-
+        The public headers and image_tools library target are installed and
+        exported.
+
 - id: FR-7
   text: The exported image type adapter raises an error for unsupported OpenCV matrix
     types and unsupported incoming sensor image encodings.
+  pass_criteria:
+    - id: FR-7-PC-1
+      text: >-
+        OpenCV-to-ROS conversion rejects unsupported cv::Mat element types.
+    - id: FR-7-PC-2
+      text: >-
+        ROS-to-OpenCV conversion rejects unsupported sensor_msgs image
+        encodings.
