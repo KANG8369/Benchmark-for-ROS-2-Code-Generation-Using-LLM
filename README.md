@@ -1,215 +1,194 @@
 # ROS 2 Code Generation Benchmark for Large Language Models
 
-This repository provides a benchmark for evaluating whether a large language model (LLM) can generate a functionally correct ROS 2 package from a structured natural-language description.
+This repository evaluates whether a large language model can generate a
+functionally correct ROS 2 package from a public structured description.
 
-The benchmark focuses on **functional equivalence**, not source-code similarity. A generated package may use a different node decomposition, algorithm, timer period, or implementation style when those details are not part of the observable contract. It passes when it implements the required behavior and interoperates through the required ROS 2 interfaces.
+The benchmark measures functional behavior rather than source-code similarity.
+A generated package may use a different language, package layout, node
+decomposition, algorithm, or implementation technique when those choices are
+not required by the public functional requirements.
 
-> **Status:** The benchmark format is being stabilized and benchmark cases are being added. The repository currently defines the artifact structure, description and metric formats, and preliminary evaluation principles; the detailed evaluation protocol is still under development.
+> **Format status:** This branch uses the revised public-FR/hidden-PC format.
+> Benchmark data has been migrated, while MCP tests, detailed format documents,
+> templates, and explicit per-PC Evaluator output are still being migrated.
 
 ## Benchmark Unit
 
-Each benchmark case contains three core benchmark artifacts:
+Each benchmark case contains two required artifacts and may retain one optional
+authoring archive:
 
-| Artifact | Purpose | Visible to the code generator |
-| --- | --- | --- |
-| `description.yaml` | Defines the package intent, observable functional requirements, and ROS 2 interface contract. | Yes |
-| `metric.yaml` | Defines named evaluation dimensions and independently checkable pass criteria. | No |
-| `reference/` | Contains the original ROS 2 package used to derive and verify the description and metrics. | No |
+| Artifact | Purpose | Coder | Evaluator |
+| --- | --- | --- | --- |
+| `description.yaml` | Defines package intent, public functional requirements, and an optional target environment. | Visible | Visible |
+| `metric.yaml` | Repeats the public FRs and defines hidden pass criteria for each FR. | Hidden | Visible |
+| `reference/` | Optional authoring material retained for provenance or manual review. It is not an evaluation input. | Hidden | Hidden |
 
-The reference package is evidence for benchmark authors and evaluators. It is not a source template that the generated implementation must reproduce.
+The ordered `(id, text)` pairs in
+`description.functional_requirements` must exactly equal those in
+`metric.metrics`.
 
-## Evaluation Principle
+## Visibility Boundary
 
-The benchmark asks the following question:
+```text
+Coder Agent
+└── description.yaml
+    ├── intent
+    ├── functional_requirements
+    └── target_environment (optional)
 
-> Given only the structured description, did the LLM generate a ROS 2 package with the intended observable behavior and interoperability contract?
+Evaluator Agent
+├── description.yaml
+├── metric.yaml
+│   └── matching FRs
+│       └── hidden pass criteria
+└── immutable generated-package artifact and build result
+```
 
-Evaluation follows these rules:
-
-1. Do not require source-code identity with the reference package.
-2. Accept alternative implementations that satisfy the same observable behavior.
-3. Require exact topic, service, action, TF, parameter, and launch contracts only when they are specified in `description.yaml`. The metric may evaluate these contracts but must not introduce requirements hidden from the code generator.
-4. Generalize incidental implementation details such as a `100 ms` timer to periodic execution unless the exact value is a public requirement.
-5. Derive every pass criterion from reachable reference-package behavior and cite the relevant source evidence.
-6. Do not award credit for code that merely contains matching names without implementing the associated behavior.
+The Coder never receives `metric.yaml` or its pass criteria. The Evaluator
+receives the same public FRs as the Coder and uses the hidden PCs only to make
+the evaluation reproducible and granular.
 
 ## Evaluation Workflow
 
 ```mermaid
 flowchart LR
-    A[Reference ROS 2 package] --> B[Description authoring]
-    A --> C[Metric authoring]
-    B --> D[description.yaml]
-    C --> E[metric.yaml]
-    D --> F[LLM package generator]
-    F --> G[Generated ROS 2 package]
-    G --> H[Build and static analysis]
-    G --> I[Runtime evaluation]
-    E --> H
-    E --> I
-    H --> J[Benchmark result]
-    I --> J
-```
+    D[description.yaml<br/>Intent + Public FR + Target Environment]
+    M[metric.yaml<br/>Matching FR + Hidden PC]
+    C[Coder Agent]
+    P[Generated ROS 2 Package]
+    B[ROS 2 Jazzy Build]
+    E[Evaluator Agent]
+    R[FR and PC Results]
+    O[Final Package]
 
-Only `description.yaml` is provided to the package generator. The metric and reference package remain hidden during generation.
+    D --> C
+    C --> P
+    P --> B
+    B --> E
+    D --> E
+    M --> E
+    E --> R
+    R -->|all FRs pass| O
+    R -->|failed FR evidence and feedback| C
+```
 
 ## Description Format
 
-`description.yaml` is the generator-facing specification for one benchmark
-package. It states what package must be generated, which observable behaviors
-must be reproduced, and which verified ROS 2 interfaces must remain
-interoperable. It describes the required contract without exposing the
-reference implementation or prescribing incidental source-code details.
+`description.yaml` is the complete Coder-visible package specification.
 
 | Section | Required | Purpose |
 | --- | --- | --- |
 | `intent` | Yes | Identifies the package and summarizes its purpose and responsibility boundary. |
-| `functional_requirements` | Yes | Lists observable, independently verifiable package behaviors. |
-| `interfaces` | No | Records verified package nodes, ROS graph resources, launch settings, launched external nodes, and environment variables. |
-
-Use the following files when authoring a benchmark case:
-
-- [Complete description template](templates/description.yaml): a copyable YAML
-  document containing every supported field.
-- [Description format specification](docs/description-format.md): field
-  definitions, required/optional status, validation constraints, and resource
-  ownership rules.
-
-Optional fields and categories must be omitted when they do not apply. Do not
-represent missing information with empty lists or placeholder values such as
-`none`, `N/A`, or `unknown`.
-
-## Description Example
-
-The following description was derived from `dummy_sensors`, one of the three ROS 2 packages in the `dummy_robot` demo collection. The package provides two nodes that generate synthetic laser-scan and joint-state data.
+| `functional_requirements` | Yes | Lists public observable behaviors supplied to both Coder and Evaluator. |
+| `target_environment` | No | Identifies the robot, sensor, or system environment when it materially constrains implementation. |
 
 ```yaml
 intent:
-  package_name: dummy_sensors
+  package_name: turtlebot3_follower
   summary: >-
-    Provides standalone dummy ROS 2 sensor nodes that continuously publish
-    simulated laser-scan and joint-state data for a simple robot.
+    Coordinates a chain of TurtleBot3 followers through Nav2 FollowPath.
   scope: >-
-    This package generates synthetic sensor messages; robot visualization,
-    transform publication, and consumption of the sensor data are external
-    responsibilities.
+    Provides follower logic and launch orchestration; robot drivers,
+    localization, and actuation are external.
 
 functional_requirements:
   - id: FR-1
     text: >-
-      The dummy_laser node continuously publishes timestamped simulated laser
-      scans with varying range measurements in the
-      single_rrbot_hokuyo_link frame.
-  - id: FR-2
-    text: >-
-      The dummy_joint_states node continuously publishes timestamped joint
-      states for single_rrbot_joint1 and single_rrbot_joint2 with synchronized
-      varying position values.
+      The follower executable accepts a requested follower count and creates
+      one follower node for each index.
 
-interfaces:
-  nodes:
-    - name: dummy_laser
-      responsibility: Publishes simulated planar laser range data.
-      topics:
-        - name: scan
-          type: sensor_msgs/msg/LaserScan
-          direction: publish
-          purpose: >-
-            Provides simulated laser-scan ranges stamped in the
-            single_rrbot_hokuyo_link frame.
-    - name: dummy_joint_states
-      responsibility: Publishes simulated positions for the dummy robot joints.
-      topics:
-        - name: joint_states
-          type: sensor_msgs/msg/JointState
-          direction: publish
-          purpose: >-
-            Provides timestamped positions for single_rrbot_joint1 and
-            single_rrbot_joint2.
+target_environment: >-
+  A multi-robot system using TurtleBot3 mobile robots.
 ```
 
-### How to Read the Description
+### Description Rules
 
-- `intent` identifies the package and summarizes its purpose and responsibility boundary.
-- `functional_requirements` states the observable behaviors that a generated package must reproduce. It does not prescribe incidental implementation details such as the original loop rates or trigonometric formulas.
-- `interfaces.nodes` records each implemented ROS 2 node and nests the graph resources used by that node. In this example, both resources are published topics.
-- Interface categories that do not apply, such as services, actions, TF lookups, parameters, launch arguments, and external nodes, are omitted instead of being filled with placeholder values.
+- `intent.package_name` must match the benchmark case directory.
+- FR IDs start at `FR-1`, remain sequential, and are not duplicated.
+- FR text describes observable required behavior without prescribing incidental
+  implementation structure.
+- `target_environment` is a short context statement, not an interface inventory.
+- Omit `target_environment` for platform-independent utilities when it adds no
+  implementation-relevant information.
+- `interfaces` is not part of the revised Description format.
 
 ## Metric Format
 
-Each benchmark case contains a `metric.yaml` file derived from the complete
-reference package.
+`metric.yaml` contains the same ordered FRs as the public Description and adds
+Evaluator-only pass criteria directly below each FR.
 
-A metric file has three levels:
+```yaml
+package_name: turtlebot3_follower
 
-1. **Metric**: A major package capability to evaluate.
-2. **Pass criterion**: One independently verifiable behavior required by the
-   capability.
-3. **Reference evidence**: A typed, traceable excerpt showing where the
-   criterion was derived from in the reference package.
+metrics:
+  - id: FR-1
+    text: >-
+      The follower executable accepts a requested follower count and creates
+      one follower node for each index.
+    pass_criteria:
+      - id: FR-1-PC-1
+        text: >-
+          The follower executable accepts a requested follower count.
+      - id: FR-1-PC-2
+        text: >-
+          Exactly one follower node is created for each requested index.
+```
 
-Pass criteria must be granular enough to score independently. If one behavior
-can be implemented correctly while another behavior in the same sentence can
-fail, represent them as separate criteria such as `M-1-PC-1` and `M-1-PC-2`.
-Multiple reference files that demonstrate the same required behavior remain
-evidence for one criterion. The same evidence excerpt may be cited by multiple
-criteria when it genuinely supports each behavior.
+### Metric Rules
 
-Reference evidence documents the origin and semantic meaning of each criterion.
-The evaluator reads it to understand the reference behavior, then searches the
-generated package for an equivalent implementation. Generated packages are not
-required to reproduce the same source code, programming language, file
-structure, node decomposition, or implementation technique.
+- `package_name` must match both the case directory and Description package name.
+- `metrics[].id` and `metrics[].text` must exactly match the Description FRs.
+- Every FR has at least one PC.
+- PC IDs use `FR-<n>-PC-<n>` and remain sequential within their parent FR.
+- One PC represents one independently verifiable behavior whenever practical.
+- A PC must be directly derivable from its public parent FR and must not add a
+  hidden requirement.
+- PCs describe observable behavior, not reference function names, callbacks,
+  loops, helpers, file paths, or source layout.
+- PC entries contain only `id` and `text`.
+- `evaluation`, `reference`, `reference_evidence`, `requirement_ids`, paths,
+  anchors, snippets, and explanations are not part of the revised Metric format.
 
-Each `reference_evidence` item contains:
+All current PCs are evaluated statically from immutable generated-package
+artifacts. Per-PC evaluation mode is a framework-level policy and is not
+repeated in each Metric entry.
 
-- `path`: File path relative to the case's `reference/` directory.
-- `anchor`: A symbol, function, class, configuration key, or other searchable
-  location within the referenced file. It is a navigation and provenance hint,
-  not an evaluation requirement or semantic constraint.
-- `snippet`: A short, exact, contiguous excerpt from the referenced file.
-- `explanation`: The behavior demonstrated by that excerpt and its relevance to
-  the pass criterion.
+## Result Aggregation
 
-Use the minimum code needed to establish the criterion; there is no fixed
-line-count limit. If the proof is non-contiguous, cite multiple short evidence
-items instead of expanding one snippet across unrelated code. Use `anchor` for
-search context rather than copying an entire function, and make every
-`explanation` specific to the criterion it supports.
+```text
+all PCs for one FR pass     -> FR pass
+one or more PCs fail        -> FR fail
+all FRs pass + build passes -> Static Gate pass
+```
 
-The excerpt must contain enough local context to support its explanation. For
-example, evidence about an `else` branch must include the controlling condition
-when that condition is part of the criterion. The excerpt is a semantic
-reference, not a string-matching requirement. Evaluators must inspect the
-generated package for equivalent behavior and cite generated-package evidence
-for the result.
+Candidate evidence must come from the generated package, not from an optional
+reference archive. Evaluator feedback identifies missing or contradictory
+observable behavior without requiring a particular reference implementation.
 
-Each pass criterion declares an evaluation method:
+## Reference Policy
 
-- `static`: Evaluated from source code, launch files, manifests, or
-  configuration files.
-- `dynamic`: Evaluated by building or running the generated package and
-  observing its behavior.
-- `hybrid`: Evaluated using both static and dynamic evidence.
+Existing `reference/` directories may be retained as optional authoring archives
+while the format is stabilized. They may be consulted manually when reviewing
+historical case intent, but:
 
-Exact constants such as timer periods, queue depths, and parameter values are
-required only when explicitly specified by the package description or when they
-form part of an externally observable interface contract.
+- neither MCP profile registers reference-file resources;
+- the Evaluator does not use reference code to judge a candidate;
+- Metric files do not contain reference evidence;
+- generated code is never compared for source similarity.
 
-Semantic equivalence and description-scoped exactness are repository-wide
-evaluation rules. They are intentionally not repeated in each `metric.yaml`.
-
-Use [the complete metric template](templates/metric.yaml) when authoring a
-benchmark case.
+The checked-in registry still requires a `reference/` directory while its
+schema migration is in progress. That legacy loader requirement does not make
+reference code an Agent input or an evaluation source.
 
 ## MCP Server
 
-The runnable MCP implementation under [`mcp/`](mcp/) exposes two fixed server
-profiles: Coder (public descriptions, exact ROS interface definitions, and
-isolated package builds) and Evaluator (hidden metrics plus immutable generated
-package artifacts, without build/write capability). See the [MCP setup and
-tool contracts](mcp/README.md) for installation, client configuration, tests,
-and the local-build security boundary.
+The runnable MCP implementation under [`mcp/`](mcp/) provides fixed Coder and
+Evaluator profiles. See [mcp/README.md](mcp/README.md) for resource boundaries,
+tool contracts, installation, and local-build security constraints.
+
+The branch data format is already FR-to-PC. The explicit per-PC Evaluator result
+schema and remaining registry tests are still being updated; consult the status
+note above before treating this branch as a released end-to-end benchmark.
 
 ## Repository Layout
 
@@ -217,22 +196,29 @@ and the local-build security boundary.
 .
 ├── README.md
 ├── docs/
-│   └── description-format.md
 ├── mcp/
-│   ├── pyproject.toml
-│   ├── src/benchmark_mcp/
-│   └── tests/
 ├── benchmarks/
 │   ├── README.md
 │   └── <package_name>/
 │       ├── description.yaml
 │       ├── metric.yaml
-│       └── reference/
-│           ├── package.xml
-│           └── ...
+│       └── reference/       # optional authoring archive
 └── templates/
-    ├── description.yaml
-    └── metric.yaml
 ```
 
-Each package directory below `benchmarks/` is one independently evaluated benchmark case. The package name declared in `description.yaml` must match the reference package's `package.xml`.
+Each direct child of `benchmarks/` is one independently evaluated case.
+`intent.package_name` and `metric.package_name` must match that directory name.
+If an optional reference archive is retained, its `package.xml` name must also
+match.
+
+## Authoring Checklist
+
+Before accepting a case:
+
+1. Confirm that Description and Metric FR IDs, order, and text match exactly.
+2. Confirm that every PC is supported by its public FR.
+3. Remove implementation-specific or reference-specific wording from PCs.
+4. Add `target_environment` only when it provides material generation context.
+5. Validate the case with the repository migration/validation scripts.
+6. Confirm that the Coder profile cannot access the hidden Metric.
+7. Confirm that the Evaluator cites only generated-package evidence.
