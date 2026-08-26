@@ -1,79 +1,33 @@
 # Copy this file to benchmarks/<package_name>/metric.yaml.
 #
-# A metric represents one package capability.
-# Each pass criterion describes exactly one independently verifiable behavior.
-# Split behaviors into separate criteria when one can pass while another fails.
-# Multiple files that demonstrate the same behavior may remain as evidence for
-# one criterion, and one evidence excerpt may support more than one criterion.
-# Reference evidence identifies where the criterion was derived from and gives
-# the evaluator a semantic implementation example. The snippet must be an exact,
-# contiguous, self-contained excerpt, but it must not be used to require code
-# identity.
-# Include only the minimum code needed for the criterion; there is no fixed
-# line-count limit. If proof is non-contiguous, use multiple short evidence
-# items instead of expanding one snippet across unrelated code.
-# Include a controlling condition when an if/else branch is part of the behavior.
+# metrics repeats the public Description FRs exactly and adds hidden pass
+# criteria for the Evaluator. Every FR must have one or more PCs.
+#
+# PC entries contain only id and text. Do not add evaluation, reference,
+# reference_evidence, requirement_ids, paths, anchors, snippets, explanations,
+# or implementation-specific function/class/file requirements.
 
 package_name: example_package
 
-reference:
-  root: reference/
-
 metrics:
-  - id: M-1
-    name: Example Capability
-    description: >-
-      Describe the package capability evaluated by this metric.
-    requirement_ids:
-      - FR-1
-
+  - id: FR-1
+    text: >-
+      Describe one public observable package behavior.
     pass_criteria:
-      - id: M-1-PC-1
+      - id: FR-1-PC-1
         text: >-
-          Describe one independently verifiable package behavior.
-        evaluation: static
-        reference_evidence:
-          - path: src/example_node.cpp
-            anchor: ExampleNode::callback
-            snippet: |-
-              void ExampleNode::callback()
-              {
-                publisher_->publish(message_);
-              }
-            explanation: >-
-              Explain how this reference code demonstrates the criterion.
+          Describe one independently verifiable behavior required by FR-1.
 
-      - id: M-1-PC-2
+      - id: FR-1-PC-2
         text: >-
-          Describe another independently verifiable package behavior.
-        evaluation: static
-        reference_evidence:
-          - path: launch/example.launch.py
-            anchor: generate_launch_description
-            snippet: |-
-              def generate_launch_description():
-                  return LaunchDescription([example_node])
-            explanation: >-
-              Explain how the launch configuration supports this behavior.
+          Describe another independently verifiable behavior required by
+          FR-1.
 
-  - id: M-2
-    name: Another Capability
-    description: >-
-      Describe another major capability of the package.
-    requirement_ids:
-      - FR-2
-
+  - id: FR-2
+    text: >-
+      Describe a second distinct public behavior without prescribing
+      incidental implementation details.
     pass_criteria:
-      - id: M-2-PC-1
+      - id: FR-2-PC-1
         text: >-
-          Describe one behavior required to satisfy this capability.
-        evaluation: static
-        reference_evidence:
-          - path: config/example.yaml
-            anchor: example_node.ros__parameters
-            snippet: |-
-              example_node:
-                ros__parameters:
-                  enabled: true
-            explanation: >-
-              Explain how this configuration contributes to the behavior.
+          Describe one independently verifiable behavior required by FR-2.
