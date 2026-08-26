@@ -6,25 +6,93 @@ metrics:
       The follower executable accepts a requested follower count and creates
       one follower node for each index, pairing follower TB3_<i+1> with leader
       TB3_<i>.
+    pass_criteria:
+      - id: FR-1-PC-1
+        text: >-
+          The follower executable accepts a requested follower count.
+      - id: FR-1-PC-2
+        text: >-
+          Exactly one follower node is created for each requested follower
+          index.
+      - id: FR-1-PC-3
+        text: >-
+          Each follower TB3_<i+1> is paired with the immediately preceding
+          robot TB3_<i> as its leader.
 
   - id: FR-2
     text: >-
       Each follower node broadcasts a static transform from its leader
       odometry frame to its own odometry frame.
+    pass_criteria:
+      - id: FR-2-PC-1
+        text: >-
+          Each follower node broadcasts a static odometry-frame transform.
+      - id: FR-2-PC-2
+        text: >-
+          The static transform parent is the leader robot's odometry frame.
+      - id: FR-2-PC-3
+        text: >-
+          The static transform child is the follower robot's odometry frame.
 
   - id: FR-3
     text: >-
       Each follower node repeatedly resolves the leader base pose in the
       follower base frame and submits a two-pose FollowPath goal to the
       corresponding controller.
+    pass_criteria:
+      - id: FR-3-PC-1
+        text: >-
+          A repeated follower operation resolves the leader base pose in the
+          follower base frame.
+      - id: FR-3-PC-2
+        text: >-
+          The generated navigation path contains exactly two poses.
+      - id: FR-3-PC-3
+        text: >-
+          The two-pose path is assigned to a nav2_msgs/action/FollowPath goal.
+      - id: FR-3-PC-4
+        text: >-
+          The goal is submitted to the corresponding follower-specific
+          FollowPath action server.
 
   - id: FR-4
     text: >-
       A follower node warns and skips path-goal submission whenever its
       FollowPath action server is unavailable.
+    pass_criteria:
+      - id: FR-4-PC-1
+        text: >-
+          The follower checks whether its FollowPath action server is
+          available before submitting a goal.
+      - id: FR-4-PC-2
+        text: >-
+          An unavailable FollowPath action server produces an explicit
+          warning.
+      - id: FR-4-PC-3
+        text: >-
+          The unavailable-server path exits without submitting a FollowPath
+          goal.
 
   - id: FR-5
     text: >-
       The provided launch configuration starts and lifecycle-manages
       controller and velocity-smoothing pipelines for TB3_2, TB3_3, and
       TB3_4, using follower-specific scan and velocity-command bindings.
+    pass_criteria:
+      - id: FR-5-PC-1
+        text: >-
+          The launch configuration creates navigation pipelines for TB3_2,
+          TB3_3, and TB3_4.
+      - id: FR-5-PC-2
+        text: >-
+          Each follower pipeline starts a controller server and a velocity
+          smoother.
+      - id: FR-5-PC-3
+        text: >-
+          Each follower pipeline has an autostart lifecycle manager that
+          manages its controller server and velocity smoother.
+      - id: FR-5-PC-4
+        text: >-
+          Each follower pipeline uses packaged controller and velocity-smoother
+          configuration with follower-specific scan and velocity-command
+          bindings.
