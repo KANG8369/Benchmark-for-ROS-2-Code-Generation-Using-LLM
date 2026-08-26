@@ -9,5 +9,34 @@ intent:
     configured follower robots; external robot systems provide TF, laser
     scans, odometry, and execution of velocity commands.
 
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The follower executable accepts a requested follower count and creates
+      one follower node for each index, pairing follower TB3_<i+1> with
+      leader TB3_<i>.
+
+  - id: FR-2
+    text: >-
+      Each follower node broadcasts a static transform from its leader
+      odometry frame to its own odometry frame.
+
+  - id: FR-3
+    text: >-
+      Each follower node repeatedly resolves the leader base pose in the
+      follower base frame and submits a two-pose FollowPath goal to the
+      corresponding controller.
+
+  - id: FR-4
+    text: >-
+      A follower node warns and skips path-goal submission whenever its
+      FollowPath action server is unavailable.
+
+  - id: FR-5
+    text: >-
+      The provided launch configuration starts and lifecycle-manages
+      controller and velocity-smoothing pipelines for TB3_2, TB3_3, and
+      TB3_4, using follower-specific scan and velocity-command bindings.
+
 target_environment: >-
   A multi-robot system using TurtleBot3 mobile robots.

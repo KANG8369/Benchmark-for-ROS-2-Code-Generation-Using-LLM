@@ -5,3 +5,40 @@ intent:
   scope: Detects a reflective parking location, visualizes detected scan markers,
     and controls the parking sequence; external robot systems provide laser scans
     and odometry and consume velocity and reset commands.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The node uses laser scans and odometry to identify a reflective
+      parking spot and calculate a maneuver toward it.
+
+  - id: FR-2
+    text: >-
+      The node republishes every received laser scan on /scan_spot and marks
+      the detected parking spot's start, center, and end measurements when
+      available.
+
+  - id: FR-3
+    text: >-
+      The node publishes /cmd_vel velocity commands to rotate, position,
+      reorient, and reverse the robot into the detected parking spot.
+
+  - id: FR-4
+    text: >-
+      The node publishes a zero velocity command and an Empty reset request
+      on /reset at parking maneuver reset points.
+
+  - id: FR-5
+    text: >-
+      The node reports repeated unsuccessful parking-spot searches and
+      continues searching.
+
+  - id: FR-6
+    text: >-
+      The node terminates after successful parking following its final stop
+      and reset request.
+
+  - id: FR-7
+    text: >-
+      The node rejects startup when LDS_MODEL is LDS-02 because that laser
+      scanner model is unsupported.

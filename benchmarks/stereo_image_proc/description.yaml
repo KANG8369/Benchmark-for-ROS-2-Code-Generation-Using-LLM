@@ -7,3 +7,55 @@ intent:
     a reusable stereo-processing library, and provides launch orchestration; camera
     drivers, calibration producers, input-image production, output consumers, and
     image_proc implementation are external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The disparity processor publishes a calibrated floating-point
+      disparity image when synchronized left and right rectified monochrome
+      images and camera information are available and an output subscriber
+      is connected.
+
+  - id: FR-2
+    text: >-
+      The point-cloud processor publishes a dense PointCloud2 projection of
+      synchronized disparity, camera calibration, and left rectified color
+      data when an output subscriber is connected.
+
+  - id: FR-3
+    text: >-
+      Both processing nodes support exact synchronization or configurable
+      approximate synchronization with an optional timestamp tolerance for
+      their required input streams.
+
+  - id: FR-4
+    text: >-
+      Both processing nodes subscribe to their source streams only while
+      their respective output has subscribers and stop subscribing when the
+      output has no subscribers.
+
+  - id: FR-5
+    text: >-
+      The disparity node supports block matching and semi-global block
+      matching with runtime-adjustable matching, filtering, search-range,
+      and smoothness settings, and rejects an unsupported stereo algorithm
+      selection.
+
+  - id: FR-6
+    text: >-
+      The point-cloud node can include RGB data or XYZ-only data and can
+      select compact field packing to reduce point-cloud bandwidth.
+
+  - id: FR-7
+    text: >-
+      The exported StereoProcessor utility produces selected rectified
+      images, disparity data, legacy PointCloud data, and PointCloud2 data
+      from calibrated stereo images, and reports failure when required
+      monocular processing fails.
+
+  - id: FR-8
+    text: >-
+      The supplied launch description loads the disparity and point-cloud
+      components into either a new or caller-supplied component container
+      and can additionally invoke left and right image_proc launch pipelines
+      under configurable namespaces.

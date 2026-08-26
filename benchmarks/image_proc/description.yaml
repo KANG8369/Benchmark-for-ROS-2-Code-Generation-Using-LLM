@@ -5,3 +5,66 @@ intent:
   scope: Processes image and camera-calibration streams supplied by external publishers;
     camera acquisition, calibration production, display, and downstream consumption
     are external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The launch file loads a debayer component and mono and color
+      rectification components into an existing container or a newly started
+      component container under a configurable namespace.
+
+  - id: FR-2
+    text: >-
+      The public Processor utility converts supported raw mono, color, and
+      Bayer images into requested mono and color image matrices and
+      optionally rectifies them with a supplied pinhole camera model.
+
+  - id: FR-3
+    text: >-
+      The public edge-aware debayer utilities reconstruct color image
+      matrices from Bayer image matrices using edge-aware and weighted
+      edge-aware interpolation.
+
+  - id: FR-4
+    text: >-
+      The public QoS utility selects a sensor-data QoS profile when no
+      publisher is known for an input topic and otherwise derives compatible
+      reliability and durability settings from an existing publisher.
+
+  - id: FR-5
+    text: >-
+      The debayer component lazily processes raw images only while an output
+      has subscribers and publishes monochrome and color outputs for
+      supported encodings while rejecting malformed, ambiguous, or
+      unsupported input encodings.
+
+  - id: FR-6
+    text: >-
+      The rectification component lazily produces a calibrated rectified
+      image, passes through images with zero distortion, and suppresses
+      output when camera calibration is unavailable.
+
+  - id: FR-7
+    text: >-
+      The crop-and-decimate component lazily crops and downsamples
+      synchronized image and camera-info streams while updating output
+      binning and ROI metadata and rejecting invalid crop regions or
+      unsupported Bayer decimation.
+
+  - id: FR-8
+    text: >-
+      The crop-non-zero component lazily publishes the bounding crop of the
+      largest non-zero region in a supported single-channel image and skips
+      unsuitable or all-zero images.
+
+  - id: FR-9
+    text: >-
+      The resize component lazily resizes synchronized image and camera-info
+      pairs by configured scale factors or explicit dimensions and updates
+      output calibration and ROI metadata.
+
+  - id: FR-10
+    text: >-
+      The marker-tracking component lazily detects the configured ArUco
+      marker in a camera image and publishes its estimated pose using the
+      paired camera calibration.

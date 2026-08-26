@@ -4,3 +4,27 @@ intent:
     calibration, into an XYZRGB PointCloud2 stream.
   scope: Provides the converter executable and launch-time input and depth-value handling
     configuration; external camera systems provide image and calibration data.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The converter publishes an XYZRGB PointCloud2 constructed from
+      approximately synchronized supported depth and RGB images using
+      received depth-camera calibration.
+
+  - id: FR-2
+    text: >-
+      The converter withholds point-cloud output until camera information is
+      available and skips conversion when RGB image conversion fails or the
+      depth image encoding is unsupported.
+
+  - id: FR-3
+    text: >-
+      The converter limits invalid and over-range depth samples by emitting
+      quiet NaNs or substituting the configured maximum range.
+
+  - id: FR-4
+    text: >-
+      The installed launch file starts the converter with configurable RGB,
+      depth, calibration-base, maximum-range, and invalid-depth handling
+      settings and publishes its output on /camera/pointcloud2.

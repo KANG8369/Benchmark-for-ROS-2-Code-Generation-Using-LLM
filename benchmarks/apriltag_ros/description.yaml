@@ -4,3 +4,38 @@ intent:
     detection metadata and optional pose transforms.
   scope: Provides an AprilTag detector component and standalone executable; its installed
     launch configuration configures a camera-processing composition around the detector.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The detector accepts camera images and calibration data, detects
+      configured AprilTags, and publishes an AprilTagDetectionArray
+      containing accepted detection metadata.
+
+  - id: FR-2
+    text: >-
+      When pose estimation is enabled and valid camera intrinsics are
+      available, the detector broadcasts one transform per accepted tag from
+      the image frame to its configured or generated tag frame.
+
+  - id: FR-3
+    text: >-
+      The detector filters detected tags by configured IDs and maximum
+      Hamming distance, and uses per-tag frame names and sizes when
+      supplied.
+
+  - id: FR-4
+    text: >-
+      The detector rejects startup configurations with an unsupported tag
+      family or mismatched tag ID, frame-name, or size list lengths.
+
+  - id: FR-5
+    text: >-
+      Runtime updates to detector tuning, maximum Hamming distance, and
+      profiling settings alter subsequent detection processing.
+
+  - id: FR-6
+    text: >-
+      The installed camera demonstration launch accepts a camera-device
+      selection and configures AprilTag detection for rectified camera
+      imagery.

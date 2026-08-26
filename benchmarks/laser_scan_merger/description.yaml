@@ -4,3 +4,45 @@ intent:
     LaserScan expressed in a configured frame.
   scope: Provides a composable laser-scan-merging node; upstream scan publishers and
     the TF transforms between their frames and the merged frame are external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The merger accepts two through nine configured LaserScan inputs,
+      approximately synchronizes them, transforms their projected points
+      into the configured merged frame, and publishes a combined LaserScan.
+
+  - id: FR-2
+    text: >-
+      The merged scan retains the nearest valid point in each configured
+      angular bin while applying configured angular, range, height, timing,
+      and empty-range policies.
+
+  - id: FR-3
+    text: >-
+      The node waits and retries when required transforms are unavailable,
+      and can either reuse initial transforms for fixed scan frames or
+      refresh them for moving scan frames.
+
+  - id: FR-4
+    text: >-
+      The node suppresses merged-scan publication when the output topic has
+      no subscribers.
+
+  - id: FR-5
+    text: >-
+      The node refuses to initialize scan synchronization when fewer than
+      two or more than nine input topics are configured.
+
+  - id: FR-6
+    text: >-
+      When fewer QoS policies than scan topics are provided, the node fills
+      missing policies with reliable delivery, and ignores policies beyond
+      the configured input count.
+
+  - id: FR-7
+    text: >-
+      The provided launch files host the merger component in a component
+      container selected by a robot-specific configuration directory, and
+      the demo launch also starts RViz and attempts looping playback of its
+      demo bag.

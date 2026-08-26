@@ -6,3 +6,32 @@ intent:
     a standalone executable, and launch orchestration; image and point-cloud producers,
     clock synchronization, TF publication, and downstream sensor-fusion consumers are
     external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The node approximately pairs Image and PointCloud2 messages from
+      configurable input topics using a configurable synchronization queue
+      and maximum timestamp interval.
+
+  - id: FR-2
+    text: >-
+      For every accepted pair, the node publishes copied image and
+      point-cloud messages whose header timestamps both equal the earlier
+      input timestamp while preserving the remaining input message contents.
+
+  - id: FR-3
+    text: >-
+      The node uses sensor-data QoS for both configurable input
+      subscriptions and both configurable synchronized-output publishers.
+
+  - id: FR-4
+    text: >-
+      The supplied launch description exposes all topic and synchronization
+      settings as launch arguments and starts the synchronizer executable
+      with those values as node parameters.
+
+  - id: FR-5
+    text: >-
+      The package makes the synchronizer available as both a composable ROS
+      2 component and a standalone executable.

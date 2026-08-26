@@ -5,3 +5,27 @@ intent:
   scope: The package implements the laser-scan-to-velocity control node and supplies
     a launch file that includes a Gazebo simulation launch; provision of laser scans,
     robot actuation, and simulation implementation are external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The controller classifies each received laser scan into five
+      directional obstacle zones and publishes Twist commands that move
+      forward, turn left, or reverse and turn according to the detected
+      obstacle pattern.
+
+  - id: FR-2
+    text: >-
+      The controller does not publish motion commands until it has received
+      at least one laser scan.
+
+  - id: FR-3
+    text: >-
+      The controller publishes a zero-valued Twist command when it receives
+      SIGINT before shutting down.
+
+  - id: FR-4
+    text: >-
+      The supplied wall-follower launch starts the controller with
+      configured linear and angular velocity settings and includes the
+      package's empty Gazebo simulation launch.

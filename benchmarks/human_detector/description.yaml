@@ -6,3 +6,37 @@ intent:
   scope: Provides a lifecycle-managed Mediapipe-based human detector and optional
     annotated-image output; camera data sources and lifecycle activation control are
     external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The lifecycle node configures a pose detector and synchronized RGB,
+      depth, and camera-info inputs when it enters the configured state.
+
+  - id: FR-2
+    text: >-
+      The node estimates a detected person's three-dimensional position from
+      pose landmarks, depth pixels, and camera calibration when valid
+      synchronized input data is available.
+
+  - id: FR-3
+    text: >-
+      While active, the node periodically broadcasts a transform from the
+      configured camera frame to the configured detected-human frame when it
+      has a positive detected position.
+
+  - id: FR-4
+    text: >-
+      When enabled, the node publishes RGB images annotated with detected
+      pose landmarks, or the received RGB image when no landmarks are
+      available.
+
+  - id: FR-5
+    text: >-
+      The node avoids human-position estimation when required image data is
+      unavailable or RGB and depth image dimensions differ.
+
+  - id: FR-6
+    text: >-
+      The node stops its periodic output timer when deactivated and destroys
+      it during cleanup, shutdown, or error handling.

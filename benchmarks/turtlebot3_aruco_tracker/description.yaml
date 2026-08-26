@@ -4,3 +4,22 @@ intent:
     a pose transform for each detected marker.
   scope: The package performs marker detection and pose-to-TF conversion; external
     camera drivers provide the camera calibration and compressed image stream.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The tracker accepts the first camera calibration message, derives
+      camera intrinsic and distortion data from it, and then stops
+      subscribing to calibration updates.
+
+  - id: FR-2
+    text: >-
+      The tracker ignores compressed images and reports missing calibration
+      until it has received camera information.
+
+  - id: FR-3
+    text: >-
+      For every detected DICT_5X5_250 ArUco marker in a calibrated image,
+      the tracker estimates its pose using the configured marker size and
+      broadcasts a timestamped transform from the camera frame to that
+      marker's dynamic frame.

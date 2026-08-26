@@ -5,3 +5,20 @@ intent:
   scope: This package orchestrates external executables and supplies the RRBot description
     and RViz configuration; dependency packages implement map serving, sensor data
     production, robot-state publication, and visualization.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      Each installed bringup launch description starts the dummy map server,
+      robot state publisher, dummy joint-state publisher, and dummy laser
+      publisher.
+
+  - id: FR-2
+    text: >-
+      The launch descriptions provide the packaged single-RRBot URDF as the
+      robot description parameter for the robot state publisher.
+
+  - id: FR-3
+    text: >-
+      The Python bringup launch additionally starts RViz2 with the packaged
+      RViz configuration.

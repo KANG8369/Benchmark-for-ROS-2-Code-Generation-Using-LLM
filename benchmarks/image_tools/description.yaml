@@ -5,3 +5,44 @@ intent:
   scope: Captures images from a local camera or generates synthetic burger images,
     publishes and displays ROS images, and supplies image conversion utilities; camera
     hardware, image publishers, and TF providers are external responsibilities.
+
+functional_requirements:
+  - id: FR-1
+    text: >-
+      The cam2image node periodically publishes sensor image messages
+      acquired from a configured camera device or generated in synthetic
+      burger mode, with a current timestamp and configured frame ID.
+
+  - id: FR-2
+    text: >-
+      The cam2image node horizontally flips subsequently published images
+      when it receives a true Boolean command on its flip_image
+      subscription.
+
+  - id: FR-3
+    text: >-
+      The cam2image node skips publication for a timer iteration when no
+      camera frame is available.
+
+  - id: FR-4
+    text: >-
+      The cam2image node raises an error when its camera cannot be opened,
+      its QoS reliability or history setting is invalid, or synthetic-image
+      dimensions are too small for the burger image.
+
+  - id: FR-5
+    text: >-
+      The showimage node receives configured-QoS sensor image messages and,
+      when enabled, converts supported image encodings for display in an
+      OpenCV window.
+
+  - id: FR-6
+    text: >-
+      The exported ROSCvMatContainer utility adapts OpenCV matrices and
+      sensor_msgs Image messages while preserving image headers and
+      providing owned or referenced image-data access and copies.
+
+  - id: FR-7
+    text: >-
+      The exported image type adapter raises an error for unsupported OpenCV
+      matrix types and unsupported incoming sensor image encodings.

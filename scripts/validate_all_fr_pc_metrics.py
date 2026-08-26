@@ -63,13 +63,25 @@ def main() -> None:
         baseline = git_show(repository, args.baseline_revision, relative_path)
         if fr_identity(metric) != fr_identity(baseline):
             raise ValueError(f"FR ids or text changed: {case_dir.name}")
+        description = yaml.safe_load(
+            (case_dir / "description.yaml").read_text(encoding="utf-8")
+        )
+        if not isinstance(description, dict):
+            raise ValueError(f"description must be a mapping: {case_dir.name}")
+        if "interfaces" in description:
+            raise ValueError(f"interfaces remain in description: {case_dir.name}")
+        public_requirements = description.get("functional_requirements")
+        if not isinstance(public_requirements, list) or not public_requirements:
+            raise ValueError(f"description has no public FRs: {case_dir.name}")
+        if fr_identity({"metrics": public_requirements}) != fr_identity(metric):
+            raise ValueError(f"description/metric FR mismatch: {case_dir.name}")
         total_requirements += requirement_count
         total_criteria += criterion_count
         print(f"{case_dir.name}: FRs={requirement_count} PCs={criterion_count}")
 
     print(
         f"TOTAL cases={len(case_dirs)} FRs={total_requirements} PCs={total_criteria} "
-        "FR_text_preserved=yes forbidden_layers=absent"
+        "FR_text_preserved=yes public_FRs_match=yes forbidden_layers=absent"
     )
 
 
