@@ -90,11 +90,11 @@ metrics:
         color product.
     - id: FR-5-PC-2
       text: >-
-        A requested mono product is published directly or through cv_bridge
-        conversion.
+        A requested monochrome output is published for supported input
+        encodings.
     - id: FR-5-PC-3
       text: >-
-        Malformed Bayer input is rejected before OpenCV image construction.
+        Malformed Bayer input is rejected without producing an output image.
     - id: FR-5-PC-4
       text: >-
         Ambiguous 8UC3 input is reported explicitly.
@@ -170,7 +170,7 @@ metrics:
         Unsupported channel layouts are rejected without output.
     - id: FR-8-PC-3
       text: >-
-        The largest external nonzero region is selected.
+        The largest nonzero image region is selected for cropping.
     - id: FR-8-PC-4
       text: >-
         The bounding crop of the selected region is published.

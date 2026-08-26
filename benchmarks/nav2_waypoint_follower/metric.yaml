@@ -69,8 +69,8 @@ metrics:
         client for the configured geographic conversion service.
     - id: FR-4-PC-2
       text: >-
-        Each geographic pose populates a FromLL request with latitude,
-        longitude, and altitude and invokes the service.
+        Each geographic pose is submitted to the configured conversion
+        service with its latitude, longitude, and altitude.
     - id: FR-4-PC-3
       text: >-
         Successful conversions become timestamped poses in the configured

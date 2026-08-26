@@ -12,8 +12,8 @@ metrics:
         nearest range in every zone is retained.
     - id: FR-1-PC-2
       text: >-
-        Obstacle combinations are classified against safety_distance into
-        explicit driving states.
+        Obstacle combinations are classified against the configured safety
+        distance into driving states.
     - id: FR-1-PC-3
       text: >-
         Driving states produce forward, left-turn, and reverse-left Twist
