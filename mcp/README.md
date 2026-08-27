@@ -184,8 +184,12 @@ The separate ROS_MA orchestrator and Evaluator still need to adopt this
 PC-level structure before the benchmark is release-ready end to end.
 
 The orchestrator verifies that the description hash and package artifact ID
-belong to the current run before it forwards only permitted feedback to the
-Coder. It must not give the Evaluator's server connection to the Coder.
+belong to the current run and that every hidden PC is covered exactly once.
+The complete PC-level result is retained as internal evaluation evidence. Before
+the next Coder turn, the orchestrator projects it into public FR-level status,
+candidate evidence, and improvement guidance; hidden PC identities and PC-level
+feedback are not forwarded. It must not give the Evaluator's server connection
+to the Coder.
 
 ## Resource Responses
 
