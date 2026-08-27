@@ -324,6 +324,7 @@ mcp/
 │   └── server.py            # MCP resources, tools, and CLI
 └── tests/
     ├── test_registry.py
+    ├── test_schemas.py
     ├── test_server.py
     └── test_services.py
 ```

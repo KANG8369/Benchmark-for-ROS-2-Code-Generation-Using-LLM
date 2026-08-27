@@ -35,7 +35,7 @@ def fr_identity(metric: dict) -> list[tuple[str, str]]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("repository", type=Path)
-    parser.add_argument("--baseline-revision", default="HEAD")
+    parser.add_argument("--baseline-revision")
     parser.add_argument("--expected-case-count", type=int, default=17)
     args = parser.parse_args()
 
@@ -60,9 +60,10 @@ def main() -> None:
         if not isinstance(metric, dict):
             raise ValueError(f"metric must be a mapping: {relative_path}")
         requirement_count, criterion_count = validate(metric)
-        baseline = git_show(repository, args.baseline_revision, relative_path)
-        if fr_identity(metric) != fr_identity(baseline):
-            raise ValueError(f"FR ids or text changed: {case_dir.name}")
+        if args.baseline_revision:
+            baseline = git_show(repository, args.baseline_revision, relative_path)
+            if fr_identity(metric) != fr_identity(baseline):
+                raise ValueError(f"FR ids or text changed: {case_dir.name}")
         description = yaml.safe_load(
             (case_dir / "description.yaml").read_text(encoding="utf-8")
         )
@@ -81,7 +82,8 @@ def main() -> None:
 
     print(
         f"TOTAL cases={len(case_dirs)} FRs={total_requirements} PCs={total_criteria} "
-        "FR_text_preserved=yes public_FRs_match=yes forbidden_layers=absent"
+        f"FR_text_preserved={'yes' if args.baseline_revision else 'not_checked'} "
+        "public_FRs_match=yes forbidden_layers=absent"
     )
 
 

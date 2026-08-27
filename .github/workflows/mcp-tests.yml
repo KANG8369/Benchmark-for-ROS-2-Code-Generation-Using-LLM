@@ -6,6 +6,9 @@ on:
       - ".github/workflows/mcp-tests.yml"
       - "mcp/**"
       - "benchmarks/*/description.yaml"
+      - "benchmarks/*/metric.yaml"
+      - "templates/**"
+      - "scripts/validate_*.py"
   push:
     branches:
       - main
@@ -13,6 +16,9 @@ on:
       - ".github/workflows/mcp-tests.yml"
       - "mcp/**"
       - "benchmarks/*/description.yaml"
+      - "benchmarks/*/metric.yaml"
+      - "templates/**"
+      - "scripts/validate_*.py"
 
 permissions:
   contents: read
@@ -41,3 +47,7 @@ jobs:
         run: ruff check mcp/src mcp/tests
       - name: Check formatting
         run: ruff format --check mcp/src mcp/tests
+      - name: Validate benchmark templates
+        run: python scripts/validate_templates.py .
+      - name: Validate all benchmark cases
+        run: python scripts/validate_all_fr_pc_metrics.py .
