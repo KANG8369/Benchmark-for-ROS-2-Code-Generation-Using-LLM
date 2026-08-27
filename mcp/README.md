@@ -39,9 +39,9 @@ The Coder reads only the Description. The Evaluator reads the same Description,
 the hidden Metric, and the selected immutable generated-package artifact.
 Neither profile exposes optional reference-package files.
 
-The checked-in registry still requires a case-local `reference/` directory
-while the loader migration is pending. The directory is not registered as an
-MCP resource and is not an Evaluator evidence source.
+The checked-in registry does not require a case-local `reference/` directory.
+If one is retained as an authoring archive, it is not registered as an MCP
+resource and is not an Evaluator evidence source.
 
 All current PCs are evaluated statically from generated-package artifacts.
 Per-PC evaluation mode and reference evidence are not fields in the revised
@@ -179,10 +179,9 @@ MCP resource):
 }
 ```
 
-The explicit `criteria` array is the target revised output contract. The
-checked-in runtime schema is still being migrated from FR-only feedback to this
-PC-level structure; do not treat the branch as release-ready until that schema
-and its tests are updated.
+The explicit `criteria` array is the validated Benchmark MCP output contract.
+The separate ROS_MA orchestrator and Evaluator still need to adopt this
+PC-level structure before the benchmark is release-ready end to end.
 
 The orchestrator verifies that the description hash and package artifact ID
 belong to the current run before it forwards only permitted feedback to the

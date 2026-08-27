@@ -16,7 +16,7 @@ from benchmark_mcp.registry import BenchmarkRegistry, resolve_repository_root
 from benchmark_mcp.schemas import BuildResult, InterfaceShowResult, PackageFile
 from benchmark_mcp.services import BuildService, InterfaceService
 
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.3.0"
 Profile = Literal["coder", "evaluator"]
 
 
@@ -51,12 +51,14 @@ def create_server(
         version=SERVER_VERSION,
         instructions=(
             "Coder profile: read a complete public description before generating a "
-            "package; use ros2_interface_show only for declared existing ROS "
-            "interfaces; submit one complete package snapshot to build_ros_package."
+            "package; use ros2_interface_show only for existing ROS interfaces needed "
+            "by a public functional requirement; submit one complete package snapshot "
+            "to build_ros_package."
             if profile == "coder"
-            else "Evaluator profile: read the hidden metric and one immutable generated "
-            "package artifact, then return FunctionalEvaluationFeedback to the "
-            "orchestrator outside MCP. Do not build, generate, or modify packages."
+            else "Evaluator profile: read the public description, hidden FR/PC metric, "
+            "and one immutable generated-package artifact, then return PC-level "
+            "FunctionalEvaluationFeedback to the orchestrator outside MCP. Do not build, "
+            "generate, or modify packages."
         ),
     )
 
@@ -85,8 +87,8 @@ def create_server(
         name="benchmark_description_section",
         title="Public benchmark description section",
         description=(
-            "Returns intent, functional_requirements, or interfaces from the same "
-            "immutable description snapshot."
+            "Returns intent, functional_requirements, or optional target_environment "
+            "from the same immutable description snapshot."
         ),
         mime_type="application/json",
     )

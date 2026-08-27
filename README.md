@@ -9,9 +9,10 @@ decomposition, algorithm, or implementation technique when those choices are
 not required by the public functional requirements.
 
 > **Format status:** This branch uses the revised public-FR/hidden-PC format.
-> Benchmark data, templates, and format documents have been migrated, while
-> MCP registry/tests and explicit per-PC Evaluator output are still being
-> migrated.
+> Benchmark data, templates, format documents, and the Benchmark MCP
+> registry/tests/output contract have been migrated. The separate ROS_MA
+> orchestrator and Evaluator integration still needs to adopt the PC-level
+> result contract before an end-to-end release.
 
 ## Benchmark Unit
 
@@ -177,9 +178,9 @@ historical case intent, but:
 - Metric files do not contain reference evidence;
 - generated code is never compared for source similarity.
 
-The checked-in registry still requires a `reference/` directory while its
-schema migration is in progress. That legacy loader requirement does not make
-reference code an Agent input or an evaluation source.
+The checked-in registry does not require a `reference/` directory. Retaining
+one is an authoring choice and does not make reference code an Agent input or
+an evaluation source.
 
 ## MCP Server
 
@@ -187,9 +188,10 @@ The runnable MCP implementation under [`mcp/`](mcp/) provides fixed Coder and
 Evaluator profiles. See [mcp/README.md](mcp/README.md) for resource boundaries,
 tool contracts, installation, and local-build security constraints.
 
-The branch data format is already FR-to-PC. The explicit per-PC Evaluator result
-schema and remaining registry tests are still being updated; consult the status
-note above before treating this branch as a released end-to-end benchmark.
+The Benchmark MCP validates the FR-to-PC data contract and the explicit per-PC
+Evaluator result schema. The external ROS_MA orchestrator and Evaluator must
+still be updated to emit and consume that contract; consult the status note
+above before treating this branch as a released end-to-end benchmark.
 
 ## Repository Layout
 
