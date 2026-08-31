@@ -12,12 +12,12 @@ metrics:
         output has no subscribers.
     - id: FR-1-PC-2
       text: >-
-        Left and right calibration plus rectified MONO8 images are passed to
-        the stereo matcher to fill a DisparityImage.
+        Left and right calibration plus supported rectified monochrome images
+        are passed to the stereo matcher to fill a DisparityImage.
     - id: FR-1-PC-3
       text: >-
-        The completed stereo_msgs/msg/DisparityImage is published on
-        disparity.
+        The completed calibrated floating-point disparity image is published
+        through the processor's disparity output.
 
 - id: FR-2
   text: The point-cloud processor publishes a dense PointCloud2 projection of synchronized
@@ -26,8 +26,8 @@ metrics:
   pass_criteria:
     - id: FR-2-PC-1
       text: >-
-        No point-cloud projection or publication occurs while points2 has no
-        subscribers.
+        No point-cloud projection or publication occurs while the point-cloud
+        output has no subscribers.
     - id: FR-2-PC-2
       text: >-
         The floating-point disparity image is projected through the stereo
@@ -44,9 +44,9 @@ metrics:
   pass_criteria:
     - id: FR-3-PC-1
       text: >-
-        The disparity node selects exact synchronization when
-        approximate_sync is false, ordinary approximate synchronization for
-        zero tolerance, and epsilon synchronization for nonzero tolerance.
+        The disparity node supports exact synchronization, ordinary
+        approximate synchronization for zero tolerance, and epsilon
+        synchronization for nonzero tolerance.
     - id: FR-3-PC-2
       text: >-
         The point-cloud node provides the same three synchronization choices
@@ -72,12 +72,11 @@ metrics:
   pass_criteria:
     - id: FR-5-PC-1
       text: >-
-        stereo_algorithm selects block matching or semi-global block
-        matching.
+        A configurable algorithm selection chooses block matching or
+        semi-global block matching.
     - id: FR-5-PC-2
       text: >-
-        An unsupported stereo_algorithm parameter update is rejected with a
-        reason.
+        An unsupported stereo-algorithm selection is rejected with a reason.
     - id: FR-5-PC-3
       text: >-
         Runtime parameter updates cover matching windows, search range,
@@ -90,11 +89,12 @@ metrics:
   pass_criteria:
     - id: FR-6-PC-1
       text: >-
-        use_color selects XYZRGB fields or XYZ-only fields.
+        A configurable color setting selects XYZRGB fields or XYZ-only
+        fields.
     - id: FR-6-PC-2
       text: >-
-        avoid_point_cloud_padding selects explicit compact XYZRGB or XYZ
-        field layouts without alignment padding.
+        A configurable compact-packing setting selects XYZRGB or XYZ field
+        layouts without alignment padding.
 
 - id: FR-7
   text: The exported StereoProcessor utility produces selected rectified images, disparity
@@ -103,9 +103,8 @@ metrics:
   pass_criteria:
     - id: FR-7-PC-1
       text: >-
-        Stereo output requests automatically request the rectified mono
-        inputs and point-cloud requests also request disparity and left
-        rectified color.
+        Each requested stereo output performs the prerequisite monocular,
+        disparity, and color processing needed to produce that output.
     - id: FR-7-PC-2
       text: >-
         Failure of required left or right monocular processing causes

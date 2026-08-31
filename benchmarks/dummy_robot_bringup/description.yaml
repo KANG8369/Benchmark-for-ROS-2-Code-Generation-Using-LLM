@@ -9,13 +9,13 @@ intent:
 functional_requirements:
   - id: FR-1
     text: >-
-      Each installed bringup launch description starts the dummy map server,
-      robot state publisher, dummy joint-state publisher, and dummy laser
-      publisher.
+      The package provides at least one installed bringup launch description,
+      and every provided bringup launch starts the dummy map server, robot
+      state publisher, dummy joint-state publisher, and dummy laser publisher.
 
   - id: FR-2
     text: >-
-      The launch descriptions provide the packaged single-RRBot URDF as the
+      Every provided bringup launch passes a packaged single-RRBot URDF as the
       robot description parameter for the robot state publisher.
 
   - id: FR-3

@@ -3,8 +3,8 @@ package_name: dummy_sensors
 metrics:
 - id: FR-1
   text: The dummy_laser executable continuously publishes timestamped LaserScan messages
-    with sinusoidally varying uniform range values in the single_rrbot_hokuyo_link
-    frame.
+    on the scan topic with sinusoidally varying uniform range values in the
+    single_rrbot_hokuyo_link frame.
   pass_criteria:
     - id: FR-1-PC-1
       text: >-
@@ -28,8 +28,8 @@ metrics:
 
 - id: FR-2
   text: The dummy_joint_states executable continuously publishes timestamped JointState
-    messages for single_rrbot_joint1 and single_rrbot_joint2 with matching sinusoidally
-    varying positions.
+    messages on the joint_states topic for single_rrbot_joint1 and
+    single_rrbot_joint2 with matching sinusoidally varying positions.
   pass_criteria:
     - id: FR-2-PC-1
       text: >-

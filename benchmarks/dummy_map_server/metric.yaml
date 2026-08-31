@@ -8,8 +8,8 @@ metrics:
   pass_criteria:
     - id: FR-1-PC-1
       text: >-
-        The node publishes nav_msgs/msg/OccupancyGrid messages on the map
-        topic.
+        The node publishes nav_msgs/msg/OccupancyGrid messages through its
+        map output.
     - id: FR-1-PC-2
       text: >-
         The occupancy grid uses the world frame.
@@ -25,6 +25,10 @@ metrics:
     - id: FR-1-PC-6
       text: >-
         Map messages are published repeatedly.
+    - id: FR-1-PC-7
+      text: >-
+        The occupancy grid uses fixed nonzero resolution and dimensions, a
+        consistent origin, and a data array sized to its declared geometry.
 
 - id: FR-2
   text: The node retains its latest map publication so compatible subscribers that
@@ -32,7 +36,8 @@ metrics:
   pass_criteria:
     - id: FR-2-PC-1
       text: >-
-        The map publisher retains only the latest sample with depth one.
+        The publisher retains a current map sample for compatible subscribers
+        that join after the initial publication.
     - id: FR-2-PC-2
       text: >-
         Transient-local or equivalent durability is used for late-subscriber

@@ -11,7 +11,8 @@ metrics:
         parking-spot geometry.
     - id: FR-1-PC-2
       text: >-
-        Scan and odometry state feed a staged parking controller.
+        Scan and odometry state feed the parking controller's maneuver
+        decisions.
     - id: FR-1-PC-3
       text: >-
         Sensed parking geometry and robot pose are used to maneuver toward
@@ -30,8 +31,8 @@ metrics:
         The copied scan is published on /scan_spot.
     - id: FR-2-PC-3
       text: >-
-        The detected spot start, center, and end are marked in the intensity
-        array.
+        The republished scan marks the detected spot's start, center, and end
+        measurements in a consistent machine-readable form.
     - id: FR-2-PC-4
       text: >-
         Scans are still republished when no parking spot is available.
@@ -74,17 +75,12 @@ metrics:
   pass_criteria:
     - id: FR-5-PC-1
       text: >-
-        Repeated parking-spot search failures are counted.
+        Repeated unsuccessful parking-spot searches are detected and
+        reported.
     - id: FR-5-PC-2
       text: >-
-        The repeated-search failure condition is logged.
-    - id: FR-5-PC-3
-      text: >-
-        Search state is reset after the repeated recoverable failure.
-    - id: FR-5-PC-4
-      text: >-
-        Scanning continues after the recoverable failure instead of
-        terminating the node.
+        The node continues processing later scans and searching after the
+        repeated failure instead of terminating.
 
 - id: FR-6
   text: The node terminates after successful parking following its final stop and

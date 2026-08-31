@@ -41,12 +41,13 @@ metrics:
   pass_criteria:
     - id: FR-3-PC-1
       text: >-
-        Invalid depth samples become range_max when enabled without quiet
-        NaNs, and otherwise become quiet NaNs.
+        Invalid depth samples use the configured maximum-range substitute
+        when substitution is enabled and otherwise become quiet NaNs.
     - id: FR-3-PC-2
       text: >-
-        Valid samples beyond range_max become quiet NaNs or are clamped to
-        range_max according to use_quiet_nan.
+        Valid samples beyond the configured maximum range are clamped to that
+        range or converted to quiet NaNs according to the configured
+        invalid-depth policy.
 
 - id: FR-4
   text: The installed launch file starts the converter with configurable RGB, depth,

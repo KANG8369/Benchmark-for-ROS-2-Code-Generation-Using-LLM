@@ -26,7 +26,7 @@ metrics:
 
 - id: FR-2
   text: The cam2image node horizontally flips subsequently published images when it
-    receives a true Boolean command on its flip_image subscription.
+    receives a true std_msgs/msg/Bool command on its flip_image subscription.
   pass_criteria:
     - id: FR-2-PC-1
       text: >-

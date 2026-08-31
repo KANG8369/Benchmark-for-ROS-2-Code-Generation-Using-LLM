@@ -97,14 +97,14 @@ metrics:
         Malformed Bayer input is rejected without producing an output image.
     - id: FR-5-PC-4
       text: >-
-        Ambiguous 8UC3 input is reported explicitly.
+        Ambiguous raw color input encodings are reported explicitly.
     - id: FR-5-PC-5
       text: >-
         Unsupported input encodings are reported explicitly.
     - id: FR-5-PC-6
       text: >-
-        Raw-image subscription is created or shut down according to output
-        demand.
+        Raw-image processing and output publication occur only while at least
+        one output has subscribers.
 
 - id: FR-6
   text: The rectification component lazily produces a calibrated rectified image,
@@ -113,8 +113,8 @@ metrics:
   pass_criteria:
     - id: FR-6-PC-1
       text: >-
-        The camera subscription is managed lazily according to
-        rectified-output demand.
+        Rectification processing and publication occur only while the
+        rectified output has subscribers.
     - id: FR-6-PC-2
       text: >-
         Rectified output is suppressed for uncalibrated input.
@@ -153,8 +153,8 @@ metrics:
         CameraInfo ROI fields are updated for the transformed image.
     - id: FR-7-PC-7
       text: >-
-        The camera subscription is managed lazily according to output
-        demand.
+        Crop-and-decimate processing and publication occur only while its
+        output has subscribers.
 
 - id: FR-8
   text: The crop-non-zero component lazily publishes the bounding crop of the largest
@@ -163,8 +163,8 @@ metrics:
   pass_criteria:
     - id: FR-8-PC-1
       text: >-
-        The input subscription is managed lazily according to cropped-output
-        demand.
+        Nonzero-region processing and publication occur only while the
+        cropped output has subscribers.
     - id: FR-8-PC-2
       text: >-
         Unsupported channel layouts are rejected without output.
@@ -185,15 +185,15 @@ metrics:
   pass_criteria:
     - id: FR-9-PC-1
       text: >-
-        The camera subscription is managed lazily according to
-        resized-output demand.
+        Resize processing and publication occur only while the resized output
+        has subscribers.
     - id: FR-9-PC-2
       text: >-
         Output dimensions can be resolved from configured scale factors.
     - id: FR-9-PC-3
       text: >-
-        Explicit output dimensions override scale-derived dimensions when
-        configured.
+        Explicit output dimensions can be selected instead of dimensions
+        derived from scale factors.
     - id: FR-9-PC-4
       text: >-
         The input image is resized to the resolved dimensions.
@@ -211,13 +211,13 @@ metrics:
         Dictionary, marker ID, and marker size configuration is declared.
     - id: FR-10-PC-2
       text: >-
-        Synchronized camera subscription is managed lazily according to
-        pose-output demand.
+        Marker detection and pose publication occur only while the pose output
+        has subscribers.
     - id: FR-10-PC-3
       text: >-
         The configured ArUco marker is detected and its calibrated pose is
         estimated.
     - id: FR-10-PC-4
       text: >-
-        The estimated marker pose is published as
-        geometry_msgs/msg/PoseStamped.
+        The estimated marker pose is published through the component's pose
+        output.

@@ -62,8 +62,8 @@ metrics:
     pass_criteria:
       - id: FR-4-PC-1
         text: >-
-          The follower checks whether its FollowPath action server is
-          available before submitting a goal.
+          The follower detects when its FollowPath action server is
+          unavailable before a goal is submitted.
       - id: FR-4-PC-2
         text: >-
           An unavailable FollowPath action server produces an explicit
@@ -93,6 +93,5 @@ metrics:
           manages its controller server and velocity smoother.
       - id: FR-5-PC-4
         text: >-
-          Each follower pipeline uses packaged controller and velocity-smoother
-          configuration with follower-specific scan and velocity-command
-          bindings.
+          Each follower pipeline applies controller and velocity-smoother
+          settings with follower-specific scan and velocity-command bindings.

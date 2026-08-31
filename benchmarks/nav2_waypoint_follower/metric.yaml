@@ -9,15 +9,15 @@ metrics:
     - id: FR-1-PC-1
       text: >-
         The lifecycle node exposes a Cartesian waypoint-following action
-        server and a navigation action client.
+        server and a client interface for submitting navigation requests.
     - id: FR-1-PC-2
       text: >-
-        The current indexed Cartesian pose is sent as a NavigateToPose goal
-        before the index advances.
+        The current indexed Cartesian pose is sent through the navigation
+        interface before the index advances.
     - id: FR-1-PC-3
       text: >-
-        The action publishes current_waypoint feedback using the active
-        sequence index.
+        The waypoint-following action publishes feedback containing the
+        active sequence index.
     - id: FR-1-PC-4
       text: >-
         Failed waypoints are appended with index, pose, and error details,
@@ -101,8 +101,8 @@ metrics:
         duration settings.
     - id: FR-6-PC-2
       text: >-
-        An enabled wait task sleeps for the configured milliseconds at a
-        reached waypoint and reports success.
+        An enabled wait task delays completion for the configured duration at
+        a reached waypoint and then reports success.
 
 - id: FR-7
   text: The exported photo-at-waypoint task executor subscribes to a configured image

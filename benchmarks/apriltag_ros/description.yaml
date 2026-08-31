@@ -8,9 +8,9 @@ intent:
 functional_requirements:
   - id: FR-1
     text: >-
-      The detector accepts camera images and calibration data, detects
-      configured AprilTags, and publishes an AprilTagDetectionArray
-      containing accepted detection metadata.
+      The detector accepts synchronized camera images and calibration data,
+      detects configured AprilTags, and publishes an
+      AprilTagDetectionArray containing accepted detection metadata.
 
   - id: FR-2
     text: >-

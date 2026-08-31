@@ -17,8 +17,8 @@ metrics:
         inputs.
     - id: FR-1-PC-3
       text: >-
-        The merged points are converted to a LaserScan whose frame_id is
-        merged_frame_id and the result is published.
+        The merged points are converted to a LaserScan in the configured
+        merged frame and the result is published.
 
 - id: FR-2
   text: The merged scan retains the nearest valid point in each configured angular
@@ -27,12 +27,12 @@ metrics:
   pass_criteria:
     - id: FR-2-PC-1
       text: >-
-        Output angle, range, scan-time, and zero time-increment metadata are
-        populated from configured policies.
+        Output angle, range, and scan-timing metadata are populated
+        consistently from the configured policies.
     - id: FR-2-PC-2
       text: >-
-        Empty angular bins use positive infinity or range_max plus
-        inf_epsilon according to use_inf.
+        Empty angular bins use the value selected by the configured
+        empty-range policy.
     - id: FR-2-PC-3
       text: >-
         NaN points and points outside configured height, range, or angular

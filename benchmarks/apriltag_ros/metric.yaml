@@ -2,9 +2,9 @@ package_name: apriltag_ros
 
 metrics:
 - id: FR-1
-  text: The detector accepts camera images and calibration data, detects configured
-    AprilTags, and publishes an AprilTagDetectionArray containing accepted detection
-    metadata.
+  text: The detector accepts synchronized camera images and calibration data, detects
+    configured AprilTags, and publishes an AprilTagDetectionArray containing accepted
+    detection metadata.
   pass_criteria:
     - id: FR-1-PC-1
       text: >-

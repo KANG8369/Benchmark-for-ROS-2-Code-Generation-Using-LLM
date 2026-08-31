@@ -16,7 +16,7 @@ functional_requirements:
   - id: FR-2
     text: >-
       The cam2image node horizontally flips subsequently published images
-      when it receives a true Boolean command on its flip_image
+      when it receives a true std_msgs/msg/Bool command on its flip_image
       subscription.
 
   - id: FR-3
