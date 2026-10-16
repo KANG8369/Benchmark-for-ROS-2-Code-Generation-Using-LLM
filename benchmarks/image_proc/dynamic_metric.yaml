@@ -1,0 +1,95 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: image_proc
+metrics:
+  - id: DYN-01
+    requirement: >-
+      With valid raw images, calibration, and output subscribers, the
+      supplied launch shall run debayer and mono/color rectification
+      components in the selected existing or new container and namespace.
+      The debayer component shall publish the requested mono and color
+      content for supported encodings and reject malformed, ambiguous,
+      or unsupported encodings. Components specified as lazy shall process
+      input only while their relevant outputs have subscribers.
+    evaluation_period: >-
+      For 30 seconds per valid or invalid input condition after startup,
+      with separate subscriber-present and subscriber-absent intervals.
+      Startup and response allowances, encoding coverage, and non-intrusive
+      lazy-processing observation require review (Q-TIME-01, Q-IMAGE-01,
+      Q-IMAGE-02).
+  - id: DYN-02
+    requirement: >-
+      Executing the public Processor and edge-aware debayer utilities on
+      supported mono, color, and Bayer inputs shall produce the requested
+      image representations, including optional pinhole-model rectification
+      and the stated edge-aware interpolation variants. Output correctness
+      shall use an agreed input-grounded oracle and tolerances rather than
+      source-code similarity (Q-IMAGE-01, Q-IPROC-01).
+    evaluation_period: >-
+      From each utility invocation through its returned result, within an
+      agreed call-completion deadline (Q-TIME-01).
+  - id: DYN-03
+    requirement: >-
+      Given synchronized images and valid calibration, the rectification
+      component shall output geometrically rectified image content. With
+      zero distortion it shall pass through the image content; without
+      calibration it shall suppress output. For the recorded 640x480 mono8
+      checkerboard and calibration fixture only, each distorted output
+      must have maximum absolute intensity error at most 16 and mean
+      absolute intensity error at most 0.01 against the defined full-frame
+      oracle; both bounds apply in 0-255 intensity units. Zero-distortion
+      output must preserve pixel values exactly. Other numerical and
+      geometric tolerances remain under review (Q-IPROC-01).
+    evaluation_period: >-
+      For 30 seconds per calibrated, zero-distortion, or missing-calibration
+      condition, with an output subscriber present. For the measured
+      standalone Jazzy 5.0.13 zero/known-distortion conditions at 10 Hz,
+      allow 7 wall-time seconds from process start to the first rectified
+      image, 1 second per matched input-pair response, and 2 seconds from
+      operator SIGINT to exit. Calibration-loss recovery and other
+      components remain under review (Q-TIME-01).
+  - id: DYN-04
+    requirement: >-
+      Given synchronized images and camera information, crop-and-decimate
+      and resize components shall produce the configured image region and
+      size with corresponding binning, ROI, and camera-calibration updates.
+      Invalid crop regions and unsupported Bayer decimation shall be
+      rejected. Coordinate, rounding, and numerical comparison rules
+      require agreement (Q-IPROC-02).
+    evaluation_period: >-
+      For 30 seconds per valid or invalid transformation configuration with
+      an output subscriber present. Response allowance remains subject
+      to review (Q-TIME-01).
+  - id: DYN-05
+    requirement: >-
+      For a supported single-channel image with a largest non-zero region,
+      crop-non-zero shall publish that region's bounding crop. It shall
+      skip all-zero and unsuitable images. The region-connectivity and
+      tied-region interpretation require clarification (Q-IPROC-03).
+    evaluation_period: >-
+      For 30 seconds per valid, all-zero, or unsuitable input condition with
+      an output subscriber present, using an agreed response allowance
+      (Q-TIME-01).
+  - id: DYN-06
+    requirement: >-
+      In calibrated images containing the configured ArUco marker, the
+      tracking component shall detect that marker and publish its estimated
+      pose from the paired calibration. Pose accuracy shall be assessed
+      against known scene geometry using tolerances to be agreed
+      (Q-POSE-01). No detection-rate or difficult-scene robustness target
+      is introduced.
+    evaluation_period: >-
+      For 30 seconds after valid marker images and paired calibration begin
+      reaching the component, with an output subscriber present. Response
+      allowance remains subject to review (Q-TIME-01).
+  - id: DYN-07
+    requirement: >-
+      When invoked for an input topic with no known publisher, the public
+      QoS utility shall select a sensor-data profile. With a known publisher,
+      the selected reliability and durability shall be compatible with that
+      publisher and permit delivery of supported test messages.
+    evaluation_period: >-
+      Through each utility invocation and endpoint discovery, followed by
+      30 seconds of message delivery where a publisher is present.
+      Discovery and call deadlines require agreement (Q-TIME-01).

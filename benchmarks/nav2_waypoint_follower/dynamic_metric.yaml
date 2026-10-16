@@ -1,0 +1,75 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: nav2_waypoint_follower
+metrics:
+  - id: DYN-01
+    requirement: >-
+      For an accepted Cartesian waypoint goal, the active follower shall
+      send waypoints to the external navigation system in order, report
+      the active index, and return missed-waypoint details consistent with
+      the navigation and task results. External navigation performance is
+      not evaluated as part of this package's implementation.
+    evaluation_period: >-
+      From acceptance of the waypoint goal through its final result, with
+      external navigation responses available. Goal-completion and
+      inter-step response deadlines require agreement (Q-TIME-01,
+      Q-NAV-01).
+  - id: DYN-02
+    requirement: >-
+      The follower shall repeat a waypoint sequence for the requested
+      number of loops. Cancellation shall stop further progression of the
+      canceled request, and preemption shall transfer processing to the
+      replacement request rather than continue the superseded sequence.
+      Transition handling for an already dispatched waypoint requires
+      clarification (Q-NAV-02).
+    evaluation_period: >-
+      From acceptance through sequence completion, cancellation, or
+      preemption and processing of the replacement request. Response
+      deadlines remain unagreed (Q-TIME-01, Q-NAV-01).
+  - id: DYN-03
+    requirement: >-
+      When navigation, a waypoint task, or GPS conversion fails, the
+      follower shall stop or proceed to later waypoints according to its
+      configured failure policy. Returned results shall reflect the
+      failures rather than report every waypoint as successful.
+    evaluation_period: >-
+      From a controlled failure response through the resulting stop or
+      next-waypoint progression and final action result. Response deadlines
+      require agreement (Q-TIME-01, Q-NAV-01).
+  - id: DYN-04
+    requirement: >-
+      For an accepted GPS waypoint goal, the follower shall request
+      conversion of each geographic pose through the configured external
+      conversion service and navigate the successfully converted poses in
+      the configured global frame. Numeric pose-transfer tolerances require
+      agreement (Q-NAV-03); GPS localization accuracy is not assessed here.
+    evaluation_period: >-
+      From acceptance of the GPS goal through conversion, navigation
+      requests, and the final result, with bounded external responses and
+      overall deadlines still to be agreed (Q-TIME-01, Q-NAV-01).
+  - id: DYN-05
+    requirement: >-
+      Activation shall make both Cartesian and GPS waypoint actions
+      available and establish the lifecycle-manager bond. Deactivation
+      shall make both actions unavailable and remove the bond.
+    evaluation_period: >-
+      In the measured Jazzy lifecycle-service condition, allow 7 wall-time
+      seconds from process start to service availability, 1 second for
+      each configure, activate or deactivate service reply, and 2 seconds
+      from operator SIGINT to process exit. These do not establish action
+      discovery or bond-state deadlines, which remain under review
+      (Q-TIME-01).
+  - id: DYN-06
+    requirement: >-
+      When enabled at a reached waypoint, the wait executor shall delay
+      progression for its configured duration, the photo executor shall
+      save the latest available image when its output directory can be
+      created, and the input executor shall wait for an empty input message
+      until its configured timeout and report failure if none arrives.
+      Timing and saved-image comparison tolerances require agreement
+      (Q-TIME-01, Q-NAV-04).
+    evaluation_period: >-
+      From each waypoint-task invocation through completion or the
+      configured timeout. Configured durations come from the test inputs;
+      they are not replaced by the 30-second stream-observation window.

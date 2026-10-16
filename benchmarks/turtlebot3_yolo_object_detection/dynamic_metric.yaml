@@ -1,0 +1,33 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: turtlebot3_yolo_object_detection
+metrics:
+  - id: DYN-01
+    requirement: >-
+      When started through its launch with a selected compatible YOLO model,
+      the node shall run that model on each received valid raw image and,
+      when encoding succeeds, publish a decodable JPEG image containing
+      the model's rendered detections and the source image's header.
+      Annotation checking shall use the selected model's detections, not
+      an invented detector-accuracy target (Q-YOLO-01, Q-IMAGE-01).
+    evaluation_period: >-
+      For 30 seconds after valid images begin reaching the launched node.
+      For the measured standalone YOLOv8n CPU condition with 640x640 input
+      at 1 Hz, allow 8 wall-time seconds from process start to the first
+      JPEG, 2 seconds per matched valid-image response, and 2 seconds from
+      operator SIGINT to exit. Other models, image conditions, launch
+      overhead and timestamp tolerances remain under review (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      If image conversion, inference, annotation, or output processing
+      fails, the node shall log the error and continue processing subsequent
+      valid images into annotated JPEG outputs. Faults shall exercise the
+      actual package's recovery path without replacing its implementation
+      (Q-YOLO-02).
+    evaluation_period: >-
+      During a 30-second image sequence containing a controlled failure
+      followed by valid inputs. In the measured invalid-encoding condition,
+      the next valid image retains the same 2-wall-time-second response
+      limit. Other fault types and recovery delays remain under review
+      (Q-TIME-01).

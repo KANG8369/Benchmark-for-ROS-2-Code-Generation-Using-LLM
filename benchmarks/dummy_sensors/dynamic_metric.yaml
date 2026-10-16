@@ -1,0 +1,34 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: dummy_sensors
+metrics:
+  - id: DYN-01
+    requirement: >-
+      dummy_laser shall repeatedly publish timestamped LaserScan messages
+      on scan in the single_rrbot_hokuyo_link frame. Ranges within each scan
+      shall be uniform, and their common value shall vary sinusoidally over
+      time. Numerical fitting tolerances require agreement (Q-SENSOR-01);
+      no particular frequency, amplitude, or publication rate is imposed.
+    evaluation_period: >-
+      For 30 seconds after executable startup. In the measured default
+      standalone condition, allow 7 wall-time seconds from process start
+      to the first scan and 2 seconds from operator SIGINT to exit.
+      The window must provide
+      sufficient temporal coverage to assess sinusoidal variation; an
+      insufficient window is unresolved, not evidence of compliance
+      (Q-SENSOR-01, Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      dummy_joint_states shall repeatedly publish timestamped JointState
+      messages on joint_states for single_rrbot_joint1 and
+      single_rrbot_joint2. Their reported positions shall match and vary
+      sinusoidally over time within agreed numerical tolerances
+      (Q-SENSOR-01). No physical joint motion is required from this
+      sensor-message generator.
+    evaluation_period: >-
+      For 30 seconds after executable startup. In the measured default
+      standalone condition, allow 7 wall-time seconds from process start
+      to the first joint-state message and 2 seconds from operator SIGINT
+      to exit. Temporal coverage and timestamp allowances remain under
+      review (Q-SENSOR-01, Q-TIME-01).

@@ -1,0 +1,47 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: wall_follower_ros2
+metrics:
+  - id: DYN-01
+    requirement: >-
+      When launched with configured velocity settings and supplied with
+      valid scans covering the five directional obstacle zones, the
+      controller shall produce forward, left-turn, or reverse-and-turn
+      Twist commands appropriate to the obstacle pattern. The obstacle-zone
+      boundaries, response mapping, and numerical comparison tolerance
+      require agreement (Q-WALL-01); no fixed wall-distance or collision
+      threshold is introduced here.
+    evaluation_period: >-
+      For 30 seconds after each valid obstacle-pattern stimulus begins
+      reaching the controller. For the measured standalone clear,
+      front-blocked and all-blocked scan conditions at 10 Hz, allow 8 seconds
+      from process start to the first expected command and 1 second from
+      each pattern change to its corresponding command. These are wall-time
+      limits; other conditions remain under review (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      The controller shall not publish motion commands before receiving
+      its first laser scan.
+    evaluation_period: >-
+      For 30 seconds after controller startup while no scan is delivered,
+      ending early if the first scan is deliberately delivered. Startup
+      failure cannot count as successful command suppression.
+  - id: DYN-03
+    requirement: >-
+      On receipt of SIGINT, the running controller shall publish a
+      zero-valued Twist command before shutting down.
+    evaluation_period: >-
+      In the measured standalone-controller condition, publish the zero
+      Twist within 1 wall-time second of SIGINT and exit within 2 wall-time
+      seconds. This does not set a physical robot stopping deadline.
+      Other execution conditions remain under review (Q-TIME-01).
+  - id: DYN-04
+    requirement: >-
+      Running the supplied wall-follower launch shall start the controller
+      with the selected velocity settings and start the included empty
+      Gazebo simulation. Simulation functionality supplied by external
+      dependencies is not attributed to this package.
+    evaluation_period: >-
+      From launch invocation through startup, using an agreed startup
+      deadline, followed by 30 seconds of observation (Q-TIME-01).

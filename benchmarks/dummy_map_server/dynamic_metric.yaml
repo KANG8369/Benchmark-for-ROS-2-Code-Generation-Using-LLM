@@ -1,0 +1,31 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: dummy_map_server
+metrics:
+  - id: DYN-01
+    requirement: >-
+      The node shall repeatedly publish world-frame OccupancyGrid messages
+      with fixed geometry. Starting from unknown cells, the map shall
+      exhibit an occupied and free-cell pattern that changes position over
+      time. Exact dimensions, movement speed, and publication rate are not
+      prescribed. The observable initialization point requires clarification
+      (Q-MAP-01).
+    evaluation_period: >-
+      For 30 seconds from map-server startup, with observation prepared to
+      capture the initial publication. In the measured default configuration,
+      allow 7 wall-time seconds from process start to the first map and
+      2 seconds from operator SIGINT to exit. Timestamp tolerances and
+      other configurations remain under review (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      A compatible subscriber joining after a map publication shall receive
+      the retained latest map. Receiving only a later fresh publication
+      shall not be taken as evidence that the earlier map was retained.
+    evaluation_period: >-
+      During a 30-second run containing a late subscription, from the
+      subscription event through delivery of the retained map. In the
+      measured compatible transient-local subscriber condition, allow
+      1 wall-time second for delivery of the identified retained map.
+      A later fresh map is not equivalent evidence; other delivery
+      conditions remain under review (Q-TIME-01, Q-MAP-02).

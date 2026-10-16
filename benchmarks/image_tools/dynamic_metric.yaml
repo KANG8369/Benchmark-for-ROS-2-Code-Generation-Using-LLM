@@ -1,0 +1,53 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: image_tools
+metrics:
+  - id: DYN-01
+    requirement: >-
+      In supported camera and synthetic-burger modes, cam2image shall
+      repeatedly publish images with timestamps corresponding to acquisition
+      or generation and the configured frame ID. After a true flip_image
+      command, subsequently published image content shall be horizontally
+      flipped. No image shall be published for an iteration with no available
+      camera frame. Timestamp and transition tolerances require agreement
+      (Q-TIME-01, Q-IMAGE-01).
+    evaluation_period: >-
+      For 30 seconds of valid operation per mode, including an actual flip
+      command and, for camera mode, a controlled frame-unavailability
+      interval. For the measured 320x240 synthetic-burger condition at
+      configured 10 Hz with display disabled, allow 7 wall-time seconds
+      from process start to the first image and 2 seconds from operator
+      SIGINT to exit. Camera, flip, display and in-flight-frame response
+      allowances remain unagreed (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      cam2image shall report an error when the selected camera cannot be
+      opened, a QoS reliability or history setting is invalid, or synthetic
+      dimensions are too small for its burger image. The invalid-dimension
+      boundary is not specified by the Description and requires clarification
+      (Q-ITOOLS-01).
+    evaluation_period: >-
+      From applying each invalid startup configuration through the resulting
+      error, within an agreed response deadline (Q-TIME-01).
+  - id: DYN-03
+    requirement: >-
+      With display enabled and compatible configured QoS, showimage shall
+      receive supported sensor image messages and display the corresponding
+      image content in an OpenCV window. Display comparison tolerances and
+      the supported-encoding test set require agreement (Q-IMAGE-01).
+    evaluation_period: >-
+      For 30 seconds after supported images begin reaching the running
+      viewer, with an agreed display-response allowance (Q-TIME-01).
+  - id: DYN-04
+    requirement: >-
+      When exercised with supported inputs, the public image adapter shall
+      convert between OpenCV matrices and sensor image messages while
+      preserving headers and the image content appropriate to each supported
+      owned, referenced, or copied access mode. Unsupported matrix types or
+      incoming encodings shall raise an error. The accepted conversion oracle
+      and encoding coverage require agreement (Q-IMAGE-01, Q-ITOOLS-02).
+    evaluation_period: >-
+      From each adapter invocation through its result or error, within an
+      agreed call-completion deadline (Q-TIME-01). No generated package
+      source is substituted by a reference implementation.

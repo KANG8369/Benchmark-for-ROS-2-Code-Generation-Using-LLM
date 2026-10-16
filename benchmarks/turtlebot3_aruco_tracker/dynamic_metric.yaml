@@ -1,0 +1,33 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: turtlebot3_aruco_tracker
+metrics:
+  - id: DYN-01
+    requirement: >-
+      Before camera calibration is received, the tracker shall ignore
+      compressed images and report missing calibration rather than
+      produce marker-pose transforms. After the first valid calibration,
+      tracking shall use that calibration and the calibration subscription
+      shall stop; later calibration messages shall not replace it.
+    evaluation_period: >-
+      For 30 seconds before calibration delivery and a separate 30 seconds
+      after the first calibration, including a later changed-calibration
+      stimulus. Response and subscription-discovery allowances remain
+      subject to review (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      With valid calibration and compressed images containing visible
+      DICT_5X5_250 markers, the tracker shall detect supported markers and
+      broadcast a timestamped camera-to-marker transform for each detected
+      marker using the configured marker size. Pose tolerances and the
+      positive-control scene require agreement (Q-POSE-01, Q-ARUCO-01);
+      no detection-rate target is imposed for arbitrary scenes.
+    evaluation_period: >-
+      For 30 seconds after calibrated marker images begin reaching the
+      tracker. For the measured frontal marker-7 scene with 640x480 JPEG
+      input at 10 Hz, allow 8 wall-time seconds from process start to the
+      first TF when valid inputs are supplied, 1 second per corresponding
+      image-to-TF response, and 2 seconds from operator SIGINT to process
+      exit. Other scenes and timestamp tolerances remain under review
+      (Q-TIME-01); pose tolerances are not fixed by these timing limits.

@@ -1,0 +1,328 @@
+{
+  "status": "recorded_partial_path_calibration_not_full_metric_validation",
+  "initial_eight_cases": "Previously adopted measured-condition timing limits are retained in approved_timing.yaml; raw first-batch records are not republished here.",
+  "followup_cases": {
+    "image_proc__known_distortion": {
+      "attempts": 5,
+      "valid_partial_paths": 5,
+      "timing_s": {
+        "shutdown_observed": {
+          "n": 5,
+          "min": 0.13310795510187745,
+          "median": 0.14400643575936556,
+          "max": 0.1541253780014813
+        },
+        "start_to_first_rectified": {
+          "n": 5,
+          "min": 0.21310338424518704,
+          "median": 0.21383733488619328,
+          "max": 3.1205997271463275
+        }
+      },
+      "matched_message_latency_s": {
+        "n": 1489,
+        "min": 0.0016352101229131222,
+        "median": 0.002954179886728525,
+        "max": 0.010687771253287792
+      },
+      "pixel_max_error_8bit": {
+        "n": 1489,
+        "min": 8.0,
+        "median": 8.0,
+        "max": 8.0
+      },
+      "pixel_mean_error_8bit": {
+        "n": 1489,
+        "min": 0.000234375,
+        "median": 0.000234375,
+        "max": 0.000234375
+      },
+      "fixture": {
+        "image_size": [
+          640,
+          480
+        ],
+        "encoding": "mono8",
+        "input_hz": 10,
+        "K": [
+          [
+            500.0,
+            0.0,
+            319.5
+          ],
+          [
+            0.0,
+            500.0,
+            239.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "D": [
+          0.08,
+          -0.02,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "comparison": "OpenCV remap with supplied camera model; errors reported, not thresholded."
+      }
+    },
+    "image_proc__zero_distortion": {
+      "attempts": 5,
+      "valid_partial_paths": 5,
+      "timing_s": {
+        "shutdown_observed": {
+          "n": 5,
+          "min": 0.13322909595444798,
+          "median": 0.13382341619580984,
+          "max": 0.1439513759687543
+        },
+        "start_to_first_rectified": {
+          "n": 5,
+          "min": 0.20805603498592973,
+          "median": 3.1077860929071903,
+          "max": 3.1114182113669813
+        }
+      },
+      "matched_message_latency_s": {
+        "n": 1485,
+        "min": 0.0005603800527751446,
+        "median": 0.0012034201063215733,
+        "max": 0.003375600092113018
+      },
+      "pixel_max_error_8bit": {
+        "n": 1485,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 0.0
+      },
+      "pixel_mean_error_8bit": {
+        "n": 1485,
+        "min": 0.0,
+        "median": 0.0,
+        "max": 0.0
+      },
+      "fixture": {
+        "image_size": [
+          640,
+          480
+        ],
+        "encoding": "mono8",
+        "input_hz": 10,
+        "K": [
+          [
+            500.0,
+            0.0,
+            319.5
+          ],
+          [
+            0.0,
+            500.0,
+            239.5
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "D": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "comparison": "OpenCV remap with supplied camera model; errors reported, not thresholded."
+      }
+    },
+    "turtlebot3_automatic_parking__ideal_parking": {
+      "attempts": 5,
+      "valid_partial_paths": 5,
+      "timing_s": {
+        "start_to_first_twist": {
+          "n": 5,
+          "min": 0.6149874627590179,
+          "median": 0.6286136722192168,
+          "max": 3.244014218915254
+        },
+        "start_to_first_scan_spot": {
+          "n": 5,
+          "min": 0.5061707687564194,
+          "median": 0.5162419783882797,
+          "max": 3.1521339640021324
+        },
+        "ideal_parking_inputs_to_completed_exit": {
+          "n": 5,
+          "min": 34.55429393099621,
+          "median": 34.59598794486374,
+          "max": 34.60257032094523
+        }
+      },
+      "matched_message_latency_s": null,
+      "pixel_max_error_8bit": null,
+      "pixel_mean_error_8bit": null,
+      "fixture": {
+        "fixture": "ideal_2d_closed_loop_not_Gazebo",
+        "input_hz": 10,
+        "initial_pose": [
+          0.15,
+          0,
+          0
+        ],
+        "wall_y_m": 0.8,
+        "reflective_segment_x_m": [
+          -0.4,
+          0.4
+        ],
+        "reflective_intensity": 6000,
+        "bay_x_m": [
+          -0.25,
+          0.25
+        ],
+        "bay_y_m": [
+          0.4,
+          0.85
+        ],
+        "footprint_local_x_m": [
+          -0.11,
+          0.05
+        ],
+        "footprint_local_y_m": [
+          -0.1,
+          0.1
+        ],
+        "reset_behavior": "Reset odometry origin (x,y,yaw) on Empty; never teleport ground truth.",
+        "reset_basis": "Jazzy reset_odometry service semantics, provided here through the Description-required Empty-topic adapter.",
+        "watchdog_s": 180,
+        "watchdog_is_acceptance_limit": false
+      }
+    },
+    "turtlebot3_automatic_parking__no_spot": {
+      "attempts": 5,
+      "valid_partial_paths": 5,
+      "timing_s": {
+        "start_to_first_twist": {
+          "n": 5,
+          "min": 0.6159496000036597,
+          "median": 0.6251164800487459,
+          "max": 3.22589382622391
+        },
+        "input_to_unsuccessful_search_report": {
+          "n": 5,
+          "min": 20.367945719975978,
+          "median": 20.39872865471989,
+          "max": 20.400488496292382
+        },
+        "shutdown_observed": {
+          "n": 5,
+          "min": 0.07178994780406356,
+          "median": 0.07180395815521479,
+          "max": 0.10250684199854732
+        },
+        "start_to_first_scan_spot": {
+          "n": 5,
+          "min": 0.5044336472637951,
+          "median": 0.5143697476014495,
+          "max": 3.147016647271812
+        }
+      },
+      "matched_message_latency_s": {
+        "n": 1489,
+        "min": 0.0004326198250055313,
+        "median": 0.0010124407708644867,
+        "max": 0.013403652235865593
+      },
+      "pixel_max_error_8bit": null,
+      "pixel_mean_error_8bit": null,
+      "fixture": {
+        "input_hz": 10,
+        "scan_rays": 360,
+        "range_m": 3,
+        "intensity": 0,
+        "odometry": "stationary",
+        "LDS_MODEL": "LDS-01"
+      }
+    },
+    "turtlebot3_automatic_parking__unsupported_lds": {
+      "attempts": 5,
+      "valid_partial_paths": 5,
+      "timing_s": {
+        "startup_to_unsupported_model_rejection_exit": {
+          "n": 5,
+          "min": 0.5534105920232832,
+          "median": 0.5604604729451239,
+          "max": 0.5648852232843637
+        }
+      },
+      "matched_message_latency_s": null,
+      "pixel_max_error_8bit": null,
+      "pixel_mean_error_8bit": null,
+      "fixture": {
+        "LDS_MODEL": "LDS-02",
+        "valid_rejection_observed": true
+      }
+    },
+    "turtlebot3_yolo_object_detection__yolov8n_cpu": {
+      "attempts": 5,
+      "valid_partial_paths": 5,
+      "timing_s": {
+        "next_valid_input_to_recovered_output": {
+          "n": 5,
+          "min": 0.07451204909011722,
+          "median": 0.08230235986411572,
+          "max": 0.13303808588534594
+        },
+        "shutdown_observed": {
+          "n": 5,
+          "min": 0.2759775430895388,
+          "median": 0.3572163339704275,
+          "max": 0.4376322249881923
+        },
+        "start_to_first_jpeg": {
+          "n": 5,
+          "min": 2.019237199332565,
+          "median": 2.1784758106805384,
+          "max": 3.7444742396473885
+        }
+      },
+      "matched_message_latency_s": {
+        "n": 145,
+        "min": 0.05456993728876114,
+        "median": 0.07452764874324203,
+        "max": 0.7398210628889501
+      },
+      "pixel_max_error_8bit": null,
+      "pixel_mean_error_8bit": null,
+      "fixture": {
+        "model": "yolov8n.pt",
+        "device": "cpu",
+        "image_size": [
+          640,
+          640
+        ],
+        "input_hz": 1,
+        "fault": "one unsupported encoding then valid images",
+        "error_logged": true,
+        "fixture_sha256": "c02019c4979c191eb739ddd944445ef408dad5679acab6fd520ef9d434bfbc63",
+        "model_sha256": "f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36"
+      }
+    }
+  },
+  "adopted_limits": "See approved_timing.yaml and conservative_limits.yaml. These are later decisions; the original measurements were proposal-only.",
+  "oracle_audit": {
+    "baseline": "Official Jazzy image_proc 5.0.13, not pinned source 8.0.0",
+    "comparison": "OpenCV 4.6.0 fixed-point CV_16SC2 versus floating CV_32FC1 map comparison reproduced max intensity error 8 and MAE 0.000234375.",
+    "limitation": "Actual received images were not preserved, so this is scalar consistency, not independently verified pixelwise causation."
+  },
+  "limits": [
+    "Five repeats per condition do not establish statistical guarantees.",
+    "The new 60-second no-spot observation window was not rerun.",
+    "Ideal 2D parking does not calibrate real-robot or Gazebo completion times.",
+    "Do not apply these thresholds to unmeasured conditions."
+  ]
+}

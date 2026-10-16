@@ -1,0 +1,67 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: turtlebot3_automatic_parking
+metrics:
+  - id: DYN-01
+    requirement: >-
+      With supported laser scans containing a reflective parking spot, the
+      node shall republish every received scan on /scan_spot and mark the
+      spot's start, center, and end measurements when detected. The marked
+      measurements shall correspond to the supplied reflective spot.
+      The spot-matching tolerance requires agreement (Q-PARK-01).
+    evaluation_period: >-
+      For 30 seconds after valid laser scans and odometry begin reaching
+      the running node. For the measured no-spot scan-republication path
+      only, allow 7 wall-time seconds from process start to the first
+      scan_spot output, 1 second per corresponding scan response, and
+      2 seconds from operator SIGINT to exit. Reflective-spot processing
+      latency and other conditions remain under review (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      In a feasible reflective-spot parking scenario, the robot shall rotate,
+      position, reorient, and reverse into the detected spot using the node's
+      /cmd_vel commands. At successful completion, the robot's entire
+      planar footprint shall be inside the designated parking region and
+      the robot shall be stationary. The node shall publish its final zero
+      velocity command and Empty request on /reset before terminating.
+      No separate target-heading tolerance is imposed. The stationary-state
+      observation rule still requires agreement (Q-PARK-02); termination
+      alone does not demonstrate successful parking.
+    evaluation_period: >-
+      From delivery of valid scan and odometry inputs through the parking
+      maneuver and final termination. For the recorded ideal 2D parking
+      fixture, all completion conditions must hold within 120 wall-time
+      seconds. Deadline expiration or a completion log alone is not
+      success. This is not a real-robot or Gazebo deadline; other motion
+      and stationary-state tolerances remain under review (Q-PARK-02,
+      Q-TIME-01).
+  - id: DYN-03
+    requirement: >-
+      At each parking-maneuver reset point, the node shall publish a
+      zero velocity command and an Empty request on /reset. The externally
+      identifiable reset events require clarification (Q-PARK-03).
+    evaluation_period: >-
+      Around each agreed reset event during a parking maneuver, with the
+      response allowance still to be agreed (Q-PARK-03, Q-TIME-01).
+  - id: DYN-04
+    requirement: >-
+      When successive valid scans contain no detectable reflective parking
+      spot, the node shall report unsuccessful searches and continue
+      searching rather than report successful parking or terminate as if
+      parking had succeeded.
+    evaluation_period: >-
+      For the measured LDS-01 no-spot condition at 10 Hz with stationary
+      odometry, observe for 60 wall-time seconds from valid input delivery.
+      The first unsuccessful-search report must occur within 45 seconds,
+      and searching must continue through the observation window. No exact
+      message text or subsequent reporting cadence is imposed. Only this
+      reporting window is extended; other stream windows remain 30 seconds.
+      Other search conditions remain under review (Q-PARK-04).
+  - id: DYN-05
+    requirement: >-
+      When started with LDS_MODEL set to LDS-02, the node shall reject
+      startup rather than enter the parking-control sequence.
+    evaluation_period: >-
+      From process launch through the startup rejection, subject to an
+      agreed startup-response deadline (Q-TIME-01).

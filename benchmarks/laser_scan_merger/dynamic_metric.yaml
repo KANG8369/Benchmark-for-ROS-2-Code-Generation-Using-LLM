@@ -1,0 +1,63 @@
+# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
+# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
+# Publishing this filename does not authorize execution or resolve Q-* review items.
+package_name: laser_scan_merger
+metrics:
+  - id: DYN-01
+    requirement: >-
+      With two through nine configured scan inputs and valid TF transforms,
+      the merger shall combine approximately time-synchronized scans into
+      the configured merged frame. Each angular bin shall retain the nearest
+      valid transformed point while respecting configured angular, range,
+      height, timing, and empty-range policies. Temporal association and
+      numerical tolerances require agreement (Q-SCAN-01, Q-SCAN-02).
+    evaluation_period: >-
+      For 30 seconds after valid scan streams and the required TF transforms
+      are available, with an output subscriber present. For the measured
+      two-input, synchronized, identity-frame condition at 10 Hz, allow
+      7 wall-time seconds from container start to the first merged scan,
+      1 second for each corresponding scan-to-output response, and
+      2 seconds from operator SIGINT to exit. Other input counts, transform
+      changes and recovery conditions remain under review (Q-TIME-01).
+  - id: DYN-02
+    requirement: >-
+      If a transform required for a scan set is unavailable, the merger
+      shall wait and retry rather than publish that set as a complete
+      transformed merge. After the transform becomes available, merging
+      shall resume. Fixed-frame mode shall reuse the initial transforms;
+      moving-frame mode shall reflect subsequent transform updates.
+    evaluation_period: >-
+      For a 30-second input sequence containing transform unavailability
+      and recovery, and for a separate 30-second sequence containing
+      transform changes. Recovery allowance requires agreement (Q-TIME-01).
+  - id: DYN-03
+    requirement: >-
+      The merger shall suppress merged-scan publication while its output
+      topic has no subscribers. Observation must not create an output
+      subscription that changes this condition (Q-SCAN-03).
+    evaluation_period: >-
+      For 30 seconds after the absence of output subscribers is established,
+      while otherwise valid scan inputs continue arriving. Subscriber-state
+      settling allowance remains subject to review (Q-TIME-01).
+  - id: DYN-04
+    requirement: >-
+      Configuring fewer than two or more than nine input topics shall not
+      initialize scan synchronization. With a valid topic count, omitted
+      QoS entries shall use reliable delivery, and extra entries shall not
+      change the policies of the configured inputs.
+    evaluation_period: >-
+      Through startup with each configuration, using an agreed startup
+      deadline, followed by 30 seconds of input and endpoint observation
+      for valid configurations (Q-TIME-01).
+  - id: DYN-05
+    requirement: >-
+      With the required external dependencies available, the supplied
+      robot-configuration launch shall run the merger in a component
+      container and produce merged scans. The demo launch shall start RViz
+      and attempt repeated playback of its demo bag. End-to-end scan
+      correctness is assessed by DYN-01, not by process existence alone.
+    evaluation_period: >-
+      Through launch startup and 30 seconds of live scan observation.
+      Observation of repeated bag playback must span a bag boundary;
+      the bag duration and any additional observation time require review
+      (Q-SCAN-04, Q-TIME-01).
