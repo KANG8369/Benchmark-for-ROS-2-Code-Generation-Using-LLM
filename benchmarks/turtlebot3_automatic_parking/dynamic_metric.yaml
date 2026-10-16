@@ -5,7 +5,7 @@ metrics:
     Republish each supported input scan on /scan_spot and mark the detected reflective spot's
     start, center and end. Compare marking indices with the known input interval using a
     one-bin tolerance; allow either central index for an even-width interval. Preserve the
-    remaining scan content and use parking_spot_markers from the evaluation protocol.
+    remaining scan content. Use a supported LDS-01 scan with a known reflective interval.
   evaluation_period: >-
     Observe each control for 30 seconds from valid scan/odometry delivery. Keep 7 wall-time
     seconds to first output and 1 second per response for measured no-spot input; allow
@@ -18,8 +18,11 @@ metrics:
     commands, final reset and normal exit; no additional target heading is required.
   evaluation_period: >-
     All completion evidence, including the two-second stationary interval, must occur within
-    120 wall-time seconds from valid input delivery. Apply parking_completion and the recorded
-    ideal fixture, not a real-robot/Gazebo travel-time interpretation.
+    120 wall-time seconds from valid input delivery. Use ideal 2D closed-loop motion starting
+    at (0.15,0,0), with a wall at y=0.8 m, reflective segment x=-0.4..0.4 m, parking region
+    x=-0.25..0.25 m and y=0.4..0.85 m. The robot's local footprint spans x=-0.11..0.05 m
+    and y=-0.10..0.10 m. Reset changes odometry origin without moving ground truth. This
+    is not a real-robot time limit.
 - id: DYN-03
   requirement: >-
     Publish zero Twist and Empty reset requests at maneuver-frame establishment before positioning
@@ -27,8 +30,8 @@ metrics:
     extra resets. Each reset shall have a zero command within the preceding second, without
     an intervening nonzero command; resets must not teleport ground truth.
   evaluation_period: >-
-    Observe these events throughout the same 120-second ideal parking trial, applying parking_reset_events.
-    The final stop/reset pair may support both this metric and DYN-02.
+    Observe these events throughout the same 120-second ideal parking trial. The final stop/reset
+    pair may also serve as the parking completion evidence.
 - id: DYN-04
   requirement: >-
     With consecutive no-spot scans, report unsuccessful searches and continue searching.

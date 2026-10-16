@@ -2,10 +2,12 @@ package_name: wall_follower_ros2
 metrics:
 - id: DYN-01
   requirement: >-
-    Convert five-zone obstacle scans into configured-velocity commands. Exercise the wall_patterns
-    controls: all clear gives forward motion, front-only blocked gives a left turn, and
-    all five blocked gives reverse-and-left motion. Compare nonzero commands with absolute
-    1e-6 plus relative 1e-5 tolerance; required zeros remain exact.
+    Convert five-zone obstacle scans into configured-velocity commands. Exercise three controls
+    with a five-zone 450-ray scan: all clear (3 m) gives forward motion, front-only blocked
+    (0.2 m) gives a left turn, and all five zones blocked at 0.2 m gives reverse-and-left
+    motion. Set the obstacle threshold to 0.5 m and compare commands against the configured
+    velocities. For these controls, compare nonzero commands with absolute 1e-6 plus relative
+    1e-5 tolerance; required zeros remain exact.
   evaluation_period: >-
     Observe each 10-Hz control for 30 seconds. Keep 8 wall-time seconds to the first expected
     standalone command and 1 second from each pattern change to the corresponding command.

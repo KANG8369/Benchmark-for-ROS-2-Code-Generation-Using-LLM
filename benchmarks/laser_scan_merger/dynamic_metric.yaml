@@ -8,15 +8,18 @@ metrics:
     and known TF. Use absolute range error 0.0001 m plus relative 1e-5 and angle error 1e-5
     rad; discrete sentinels and specified timing policies remain exact.
   evaluation_period: >-
-    Observe each scan_association/scan_geometry control for 30 seconds. For the measured
-    two-input identity-frame condition, allow 7 wall-time seconds to first output and 1
-    second per response; other standalone conditions use 10 seconds startup and 5 seconds
-    response. A new full container launch has a 30-second startup budget.
+    Observe each configured input-count and known-transform control for 30 seconds. Distinct
+    points and sequence-identifiable timestamps must show that each output uses a complete
+    near-time scan set. For the measured two-input identity-frame condition, allow 7 wall-time
+    seconds to first output and 1 second per response; other standalone conditions use 10
+    seconds startup and 5 seconds response. A new full container launch has a 30-second
+    startup budget.
 - id: DYN-02
   requirement: >-
     Wait and retry when a required TF is missing rather than publish an incomplete transformed
     set. Resume after TF becomes available. In fixed-frame mode retain the initial transforms;
-    in moving-frame mode reflect subsequent known updates, using the scan_geometry oracle.
+    in moving-frame mode reflect subsequent known updates. Compare transformed points to
+    the analytically computed position within 0.0001 m plus relative 1e-5.
   evaluation_period: >-
     Run separate 30-second missing/recovered-TF and moving/fixed-frame sequences. Allow
     5 wall-time seconds after a usable transform becomes available or changes for corresponding
@@ -24,8 +27,8 @@ metrics:
 - id: DYN-03
   requirement: >-
     Suppress merged-scan publication with no output subscribers. Observe candidate publication
-    calls without adding a subscriber, using the scan_no_subscribers profile and connected
-    positive controls before and after the interval. Missing trace coverage invalidates
+    calls without adding a subscriber. Confirm the trace observes publication with a connected
+    reader before and after the disconnected interval. Missing trace coverage invalidates
     the test.
   evaluation_period: >-
     After disconnecting readers, allow 5 wall-time seconds for settling and observe 30 seconds

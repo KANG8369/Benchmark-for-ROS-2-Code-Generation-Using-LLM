@@ -4,9 +4,10 @@ metrics:
   requirement: >-
     dummy_laser shall repeatedly publish timestamped scans on scan in single_rrbot_hokuyo_link.
     Ranges in each scan shall be uniform within absolute 1e-6 m plus relative 1e-5, and
-    vary sinusoidally over time. Apply the dummy_signals profile: nonzero resolved amplitude,
-    at least two periods and 20 timestamps, and held-out fitting RMSE no greater than 5
-    percent of amplitude plus 1e-6. No specific frequency is imposed.
+    vary sinusoidally over time. Fit an offset plus a sine/cosine pair at a freely fitted
+    frequency: require nonzero resolved amplitude, at least two periods and 20 timestamps,
+    and held-out fitting RMSE no greater than 5 percent of amplitude plus 1e-6. No specific
+    frequency is imposed.
   evaluation_period: >-
     Allow 7 wall-time seconds to the first default-config scan. Observe initially for 30
     seconds and extend to two periods up to 300 seconds. Insufficient temporal coverage
@@ -15,9 +16,10 @@ metrics:
   requirement: >-
     dummy_joint_states shall publish timestamped positions for single_rrbot_joint1 and single_rrbot_joint2.
     Positions shall match within absolute 1e-6 rad plus relative 1e-5 and follow a nonconstant
-    sinusoid using the same dummy_signals fitting and coverage rules as DYN-01. Physical
-    joint motion is not required of this message generator.
+    sinusoid with freely fitted positive frequency and nonzero resolved amplitude. On held-out
+    samples, fitting RMSE must be <=5 percent of amplitude plus 1e-6; require at least 20
+    distinct timestamps spanning two fitted periods. Physical joint motion is not required.
   evaluation_period: >-
     Allow 7 wall-time seconds to the first default-config message, observe for 30 seconds
-    and extend to two periods up to 300 seconds. Apply the timestamp rule in docs/dynamic_metrics/evaluation_protocol.yaml
-    and allow 2 seconds for measured-condition cleanup.
+    and extend to two periods up to 300 seconds. Require finite, monotonically increasing
+    timestamps and allow 2 seconds for measured-condition cleanup.

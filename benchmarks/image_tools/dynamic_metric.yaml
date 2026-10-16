@@ -10,14 +10,14 @@ metrics:
   evaluation_period: >-
     Observe each mode for 30 seconds. Allow 7 wall-time seconds for measured synthetic startup,
     10 seconds for camera startup, and 5 seconds for flip/frame-loss transitions, excluding
-    demonstrably pre-command in-flight frames. Apply image_content and timing in the evaluation
-    protocol.
+    demonstrably pre-command in-flight frames. Copied frame IDs must match exactly and generated
+    stamps must increase and fall within 0.1 seconds of acquisition and publication.
 - id: DYN-02
   requirement: >-
     Report errors for an absent camera, invalid reliability/history value, and dimensions
     too small for the burger asset. Use invalid_policy, a preflight-confirmed missing device,
-    1x1 and asset-boundary controls from image_tools_invalid_inputs; retain a 320x240 positive
-    control.
+    1x1 dimensions and dimensions one pixel below the supplied burger asset size. Retain
+    a 320x240 positive control. Determine the asset size before candidate scoring.
   evaluation_period: >-
     Allow 10 wall-time seconds from invalid startup invocation to the error. Record the
     error and prohibit successful image publication for that invalid configuration; no particular
@@ -26,7 +26,8 @@ metrics:
   requirement: >-
     With display enabled and compatible QoS, showimage shall receive supported images and
     display their corresponding content. Observe the actual display-backend image buffer
-    and apply image_content conversion rules; merely opening a window is insufficient.
+    and compare its dimensions and content to the supplied image after the declared color
+    conversion; merely opening a window is insufficient.
   evaluation_period: >-
     Allow 10 wall-time seconds for viewer startup and 5 seconds for display response, then
     observe each encoding for 30 seconds. Verify the external display and observer before
@@ -38,5 +39,6 @@ metrics:
     aliasing, copy independence and owned buffer lifetime. Unsupported matrix types and
     encodings shall raise errors.
   evaluation_period: >-
-    Allow 5 wall-time seconds per call, using image_adapter and image_content in docs/dynamic_metrics/evaluation_protocol.yaml.
-    The client binds the exported API but never replaces the implementation with a reference.
+    Allow 5 wall-time seconds per call. Compare lossless pixels and copied headers exactly,
+    verify aliasing by changing the source buffer, and verify owned/copy lifetimes. The
+    client binds the exported API but never replaces the implementation with a reference.

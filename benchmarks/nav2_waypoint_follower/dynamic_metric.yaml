@@ -9,8 +9,8 @@ metrics:
   evaluation_period: >-
     Allow 5 wall-time seconds for candidate progression after each external response. The
     frozen goal bound is 10+N*(5+0.2+Dmax) seconds, where N is the total requested visits
-    and Dmax the largest configured task wait/timeout. Apply nav_completion in the evaluation
-    protocol.
+    and Dmax the largest configured task wait/timeout. Freeze N and Dmax before the test.
+    If an external server misses its scheduled reply, the test is invalid.
 - id: DYN-02
   requirement: >-
     Repeat the requested sequence loops and handle cancellation/preemption. Stop dispatching
@@ -18,9 +18,11 @@ metrics:
     not advance a canceled or superseded request. Begin processing a replacement request
     within 5 seconds with promptly responding external test servers.
   evaluation_period: >-
-    Use the nav_completion bound plus 5 wall-time seconds per injected transition, with
-    three-waypoint/two-loop controls. Apply nav_transition without requiring instantaneous
-    external goal cancellation or robot braking.
+    Use 10+N*(5+0.2+Dmax) wall-time seconds, where N is the requested waypoint visits and
+    Dmax the greatest configured task wait/timeout; add 5 seconds per injected transition.
+    Exercise three waypoints in two loops. An already dispatched navigation goal may finish,
+    but its late result must not advance the canceled request or affect the replacement
+    request.
 - id: DYN-03
   requirement: >-
     After navigation, task or GPS-conversion failure, stop or proceed according to the configured
@@ -28,8 +30,9 @@ metrics:
     both policy settings using controlled external replies, not failing external infrastructure.
   evaluation_period: >-
     Allow 5 wall-time seconds after an on-time failure response for the required stop/result
-    or next-waypoint progression. Use the precomputed nav_completion bound for the complete
-    request.
+    or next-waypoint progression. Bound the complete request by 10+N*(5+0.2+Dmax)+G*(5+0.2)
+    wall-time seconds, where N is the scheduled waypoint visits, G the GPS conversions and
+    Dmax the greatest configured task wait/timeout. Fix these before execution.
 - id: DYN-04
   requirement: >-
     Convert GPS waypoints through the configured external service and dispatch successfully
@@ -56,5 +59,7 @@ metrics:
     timeout.
   evaluation_period: >-
     A configured duration may finish at most 0.1 seconds early and max(1 second, 5 percent
-    of duration) late. Use nav_saved_image's frozen-input fixture, exact lossless comparison
-    or its JPEG bounds, and allow 5 seconds for file output after task invocation.
+    of duration) late. Supply identifiable images at 2 Hz, stop the stream after a known
+    final image, wait at least 1 second and then trigger the photo task. Compare lossless
+    saved content exactly, or decoded JPEG with MAE <=5 and 99th-percentile absolute error
+    <=20 on a 0-255 scale. Allow 5 seconds for file output.

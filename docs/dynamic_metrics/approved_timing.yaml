@@ -206,4 +206,5 @@ cases:
     - launch_container_overhead
 measurement_summary: calibration_summary.json
 approval_record_date: '2026-10-17'
-additional_conditions_policy: evaluation_protocol.yaml
+additional_conditions_policy: Recorded in each case dynamic_metric.yaml; evaluation_protocol.yaml
+  is background rationale only.

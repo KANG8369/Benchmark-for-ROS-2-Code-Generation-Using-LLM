@@ -8,14 +8,15 @@ metrics:
     movement across messages; no fixed map dimensions or movement speed are required.
   evaluation_period: >-
     Observe for 30 seconds from startup. Allow 7 seconds to the first map in the measured
-    default configuration, otherwise 10 seconds. Use monotonic wall time; apply the timestamp
-    rule in evaluation_protocol.yaml.
+    default configuration, otherwise 10 seconds. Use monotonic wall time. Newly generated
+    timestamps must lie within 0.1 seconds of acquisition/generation and publication and
+    increase monotonically; copied headers remain exact.
 - id: DYN-02
   requirement: >-
     A compatible late subscriber shall receive the cached latest map. Identify that map
     using pre-subscription publication events and its header/content fingerprint. A newly
-    published map alone is not evidence of retention. Apply the map_retention profile in
-    docs/dynamic_metrics/evaluation_protocol.yaml.
+    published map alone is not evidence of retention. Attach the subscriber just after an
+    observed publication and match the delivered header and content against that publication.
   evaluation_period: >-
     During a 30-second run, allow 1 second from subscriber matching to identified cached-map
     delivery. If publication races obscure the observation, repeat fixture setup up to three

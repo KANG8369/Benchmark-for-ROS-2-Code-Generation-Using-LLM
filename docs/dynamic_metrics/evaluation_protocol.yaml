@@ -1,5 +1,8 @@
 version: '1.0'
-criteria_status: adopted
+criteria_status: background_decision_record
+used_by_test_generator: false
+authoritative_agent_input: benchmarks/<case>/dynamic_metric.yaml
+purpose: Records how the operating choices were selected. Every requirement and limit needed by the Test Generator is written in its case dynamic_metric.yaml.
 decision_date: '2026-10-17'
 decision_basis: User-delegated operating choices, retaining previously adopted measured-condition limits.
 verification:

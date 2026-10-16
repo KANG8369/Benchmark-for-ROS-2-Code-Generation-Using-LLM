@@ -193,4 +193,5 @@ image_rectification:
   - Keep traceable correspondence to inputs; a reference implementation is not the sole
     authority for behavior.
   statistical_validation: false
-additional_rules: evaluation_protocol.yaml
+additional_rules: Recorded in each case dynamic_metric.yaml; evaluation_protocol.yaml is
+  background rationale only.

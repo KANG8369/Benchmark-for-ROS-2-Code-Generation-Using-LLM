@@ -313,7 +313,7 @@
       }
     }
   },
-  "adopted_limits": "Previously adopted measured-condition choices are in approved_timing.yaml and conservative_limits.yaml; additional delegated operating choices are in evaluation_protocol.yaml. No new runtime measurements accompany this resolution.",
+  "adopted_limits": "Previously adopted measured-condition choices are recorded in approved_timing.yaml and conservative_limits.yaml. Each case dynamic_metric.yaml supplies the agent-facing criteria. No new runtime measurements accompany this resolution.",
   "oracle_audit": {
     "baseline": "Official Jazzy image_proc 5.0.13, not pinned source 8.0.0",
     "comparison": "OpenCV 4.6.0 fixed-point CV_16SC2 versus floating CV_32FC1 map comparison reproduced max intensity error 8 and MAE 0.000234375.",
@@ -323,6 +323,6 @@
     "Five repeats per condition do not establish statistical guarantees.",
     "The new 60-second no-spot observation window was not rerun.",
     "Ideal 2D parking does not calibrate real-robot or Gazebo completion times.",
-    "Do not represent additional engineering limits as measured thresholds; apply evaluation_protocol.yaml to its named test profiles."
+    "Do not represent additional engineering limits as measured thresholds; the agent-facing criterion is in each case dynamic_metric.yaml."
   ]
 }
