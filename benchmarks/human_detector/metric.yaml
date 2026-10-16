@@ -1,339 +1,96 @@
 package_name: human_detector
-reference:
-  root: reference/
+
 metrics:
-- id: M-1
-  name: Lifecycle pose-detector configuration
-  description: Lifecycle configuration creates the pose detector and synchronized camera inputs required
-    by FR-1.
-  requirement_ids:
-  - FR-1
+- id: FR-1
+  text: The lifecycle node configures a pose detector and synchronized RGB, depth,
+    and camera-info inputs when it enters the configured state.
   pass_criteria:
-  - id: M-1-PC-1
-    text: Lifecycle configuration creates the pose-landmark detector.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: mp.solutions.pose.Pose
-      snippet: |2-
-                self.person_pose_estimator = mp.solutions.pose.Pose(
-                    min_detection_confidence=self.parameters.min_detection_confidence,
-                    min_tracking_confidence=self.parameters.min_tracking_confidence,
-                )
-      explanation: Creates the MediaPipe pose estimator from configured detection and tracking confidence.
-  - id: M-1-PC-2
-    text: RGB, aligned depth, and CameraInfo subscribers are initialized.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: /camera/color/image_raw
-      snippet: |2-
-                sync_topics = [
-                    Subscriber(
-                        self,
-                        Image,
-                        "/camera/color/image_raw",
-                        qos_profile=qos_profile_sensor_data,
-                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-                    ),
-      explanation: Creates the synchronized RGB Image subscriber.
-    - path: human_detector/human_detector.py
-      anchor: /camera/depth/image_rect_raw
-      snippet: |2-
-                    Subscriber(
-                        self,
-                        Image,
-                        "/camera/depth/image_rect_raw",
-                        qos_profile=qos_profile_sensor_data,
-                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-                    ),
-      explanation: Creates the synchronized aligned-depth Image subscriber.
-    - path: human_detector/human_detector.py
-      anchor: /camera/depth/camera_info
-      snippet: |2-
-                    Subscriber(
-                        self,
-                        CameraInfo,
-                        "/camera/depth/camera_info",
-                        qos_profile=qos_profile_sensor_data,
-                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-                    ),
-      explanation: Creates the synchronized CameraInfo subscriber.
-  - id: M-1-PC-3
-    text: The three camera inputs are connected through approximate-time synchronization.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: ApproximateTimeSynchronizer
-      snippet: |2-
-                self.image_approx_time_sync = ApproximateTimeSynchronizer(
-                    sync_topics,
-                    queue_size=5,
-                    slop=self.time_approximation_slope,
-                )
-                self.image_approx_time_sync.registerCallback(self.on_image_data)
-      explanation: Combines the three subscribers with approximate-time synchronization and registers
-        the image callback.
-- id: M-2
-  name: Landmark-based 3D position
-  description: Human landmarks and calibrated depth are converted into a 3D position as required by FR-2.
-  requirement_ids:
-  - FR-2
+    - id: FR-1-PC-1
+      text: >-
+        Lifecycle configuration creates the pose-landmark detector.
+    - id: FR-1-PC-2
+      text: >-
+        RGB, aligned depth, and CameraInfo subscribers are initialized.
+    - id: FR-1-PC-3
+      text: >-
+        RGB, aligned depth, and CameraInfo inputs are processed as synchronized
+        sets.
+
+- id: FR-2
+  text: The node estimates a detected person's three-dimensional position from pose
+    landmarks, depth pixels, and camera calibration when valid synchronized input
+    data is available.
   pass_criteria:
-  - id: M-2-PC-1
-    text: A representative human image point is derived from detected pose landmarks.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: LEFT_HIP
-      snippet: |2-
-                if self.detected_landmarks:
-                    landmarks = mp.solutions.pose.PoseLandmark
-                    left_hip_landmark = self.detected_landmarks.landmark[landmarks.LEFT_HIP]
-                    right_hip_landmark = self.detected_landmarks.landmark[landmarks.RIGHT_HIP]
-                    x, y = self.extract_hip_midpoint(left_hip_landmark, right_hip_landmark)
-      explanation: Selects left and right hip landmarks from the detected pose.
-    - path: human_detector/human_detector.py
-      anchor: extract_hip_midpoint
-      snippet: |2-
-            def extract_hip_midpoint(self, left_hip_landmark, right_hip_landmark):
-                height, width, _ = self.image.shape
-                x = int(min((left_hip_landmark.x * width + right_hip_landmark.x * width) / 2, width - 1))
-                y = int(min((left_hip_landmark.y * height + right_hip_landmark.y * height) / 2, height - 1))
-                return x, y
-      explanation: Computes and bounds the midpoint of the two hip landmarks in image coordinates.
-  - id: M-2-PC-2
-    text: Aligned depth is read at the selected human image point.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: get_position_of_human_in_the_image
-      snippet: |2-
-                self.detected_landmarks = self.person_pose_estimator.process(self.image).pose_landmarks
-                x_pos_of_detected_person, y_pos_of_detected_person = self.get_position_of_human_in_the_image(
-                    self.detected_landmarks
-                )
+    - id: FR-2-PC-1
+      text: >-
+        A representative human image point is derived from detected pose
+        landmarks.
+    - id: FR-2-PC-2
+      text: >-
+        Aligned depth is read at the selected human image point.
+    - id: FR-2-PC-3
+      text: >-
+        The depth and calibrated projection ray are combined into a 3D
+        position.
 
-                self.get_3d_human_position(x_pos_of_detected_person, y_pos_of_detected_person)
-
-            def get_3d_human_position(self, x_pos_of_detected_person, y_pos_of_detected_person):
-                if x_pos_of_detected_person <= 0 or y_pos_of_detected_person <= 0:
-                    return
-
-                depth_of_given_pixel = self.depth_image[y_pos_of_detected_person, x_pos_of_detected_person]
-      explanation: Derives detected-person image coordinates, passes them into 3D projection, rejects invalid coordinates, and indexes aligned depth at that point.
-  - id: M-2-PC-3
-    text: The depth and calibrated projection ray are combined into a 3D position.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: projectPixelTo3dRay
-      snippet: |2-
-                ray = self.model.projectPixelTo3dRay((x_pos_of_detected_person, y_pos_of_detected_person))
-                ray_3d = [ray_element / ray[2] for ray_element in ray]
-                point_xyz = [ray_element * depth_of_given_pixel for ray_element in ray_3d]
-                self.detected_human_position_world = {"x": mm_to_m(point_xyz[2]), "y": -mm_to_m(point_xyz[0])}
-      explanation: Projects the selected pixel through the calibrated camera model and scales the ray
-        by depth.
-- id: M-3
-  name: Active-state human transform
-  description: Active detection periodically produces the configured camera-to-human transform required
-    by FR-3.
-  requirement_ids:
-  - FR-3
+- id: FR-3
+  text: While active, the node periodically broadcasts a transform from the configured
+    camera frame to the configured detected-human frame when it has a positive detected
+    position.
   pass_criteria:
-  - id: M-3-PC-1
-    text: Lifecycle activation enables resources used for periodic transform publication.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: on_activate
-      snippet: |2-
-            def on_activate(self, previous_state: LifecycleState):
-                self.get_logger().info("IN on_activate")
-                self.timer.reset()
-                return super().on_activate(previous_state)
-      explanation: Resets the periodic timer when the lifecycle node activates.
-  - id: M-3-PC-2
-    text: Transform publication is skipped unless a valid positive 3D position
-      is available.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: detected_human_position_world
-      snippet: |2-
-            def timer_callback(self):
-                if self.detected_human_position_world["x"] > 0.0:
-                    self.broadcast_timer_callback()
-      explanation: Calls TF broadcasting only when the detected forward position is positive.
-  - id: M-3-PC-3
-    text: Transforms use the configured camera frame and human frame.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: transform.header.frame_id
-      snippet: |2-
-                transform = TransformStamped()
-                transform.header.stamp = self.image_time_stamp.to_msg()
-                transform.header.frame_id = self.parameters.camera_frame_id
-                transform.child_frame_id = self.parameters.detected_human_frame_id
-      explanation: Assigns the configured camera and detected-human frames to the transform.
-  - id: M-3-PC-4
-    text: Valid human transforms are sent through the TF broadcaster.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: sendTransform
-      snippet: |2-
-                self.tf_broadcaster.sendTransform(transform)
-      explanation: Sends the populated human transform through the TF broadcaster.
-- id: M-4
-  name: Optional annotated image output
-  description: Optional image publication follows the landmark and fallback behavior required by FR-4.
-  requirement_ids:
-  - FR-4
-  pass_criteria:
-  - id: M-4-PC-1
-    text: Annotated-image publication is controlled by the configured publication
-      setting.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: publish_image_with_detected
-      snippet: |2-
-            def publish_image_with_detected_human(self):
-                if not self.parameters.publish_image_with_detected:
-                    return
-      explanation: Returns without image publication when annotated-image output is disabled.
-  - id: M-4-PC-2
-    text: Detected pose landmarks are drawn on the output image when available.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: draw_landmarks
-      snippet: |2-
-            def draw_person_pose(self, image):
-                mp_drawing = mp.solutions.drawing_utils
-                mp_drawing.draw_landmarks(
-                    image,
-                    self.detected_landmarks,
-                    mp.solutions.pose.POSE_CONNECTIONS,
-                    mp.solutions.drawing_styles.get_default_pose_landmarks_style(),
-                )
-                return image
-      explanation: Draws the detected pose landmarks and connections on the image.
-    - path: human_detector/human_detector.py
-      anchor: modified_image_msg
-      snippet: |2-
-                if self.detected_landmarks is not None:
-                    modified_image_msg = self.cv_bridge.cv2_to_imgmsg(self.draw_person_pose(self.image.copy()))
-                    self.image_with_detected_human_pub.publish(modified_image_msg)
-      explanation: Publishes the image produced by the landmark-drawing path.
-  - id: M-4-PC-3
-    text: The original RGB image is published when landmarks are unavailable.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: if self.detected_landmarks is not None
-      snippet: |2-
-                if self.detected_landmarks is not None:
-                    modified_image_msg = self.cv_bridge.cv2_to_imgmsg(self.draw_person_pose(self.image.copy()))
-                    self.image_with_detected_human_pub.publish(modified_image_msg)
-                elif self.image is not None:
-                    image_msg = self.cv_bridge.cv2_to_imgmsg(self.image)
-                    self.image_with_detected_human_pub.publish(image_msg)
-      explanation: Publishes the annotated image when landmarks exist, and otherwise falls back to the original RGB image when available.
-- id: M-5
-  name: Invalid-input estimation guard
-  description: Missing or dimensionally inconsistent image data does not trigger estimation, satisfying
-    FR-5.
-  requirement_ids:
-  - FR-5
-  pass_criteria:
-  - id: M-5-PC-1
-    text: Detection is skipped when required RGB, depth, or CameraInfo data is
-      missing.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: camera_info is None
-      snippet: |2-
-            def should_detect_human(self):
-                if self.camera_info is None or self.image is None or self.depth_image is None:
-                    self.get_logger().error(
-                        "No camera info or image or depth image are not stored. Human will not be detected."
-                    )
-                    return False
-      explanation: Rejects processing when CameraInfo, RGB, or depth data is absent.
-  - id: M-5-PC-2
-    text: RGB and depth image dimensions are checked for compatibility.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: are_rgb_image_same_size_as_depth_image
-      snippet: |2-
-            def are_rgb_image_same_size_as_depth_image(self):
-                rgb_image_height, rgb_image_width, _ = self.image.shape
-                depth_image_height, depth_image_width = self.depth_image.shape
+    - id: FR-3-PC-1
+      text: >-
+        Lifecycle activation enables resources used for periodic transform
+        publication.
+    - id: FR-3-PC-2
+      text: >-
+        Transform publication is skipped unless a valid positive 3D position
+        is available.
+    - id: FR-3-PC-3
+      text: >-
+        Transforms use the configured camera frame and human frame.
+    - id: FR-3-PC-4
+      text: >-
+        Valid human transforms are sent through the TF broadcaster.
 
-                return rgb_image_height == depth_image_height and rgb_image_width == depth_image_width
-      explanation: Compares RGB and depth image height and width.
-  - id: M-5-PC-3
-    text: Mismatched RGB and depth dimensions prevent 3D estimation.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: not self.are_rgb_image_same_size_as_depth_image
-      snippet: |2-
-                if not self.are_rgb_image_same_size_as_depth_image():
-                    self.get_logger().error(
-                        "Dimensions of rgb image and depth image are not equal. Human will not be detected."
-                    )
-                    return False
-      explanation: Returns false and prevents detection when RGB and depth dimensions differ.
-- id: M-6
-  name: Lifecycle timer cleanup
-  description: Periodic detection work is stopped or destroyed across lifecycle exits as required by FR-6.
-  requirement_ids:
-  - FR-6
+- id: FR-4
+  text: When enabled, the node publishes RGB images annotated with detected pose landmarks,
+    or the received RGB image when no landmarks are available.
   pass_criteria:
-  - id: M-6-PC-1
-    text: Lifecycle deactivation cancels active periodic processing.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: on_deactivate
-      snippet: |2-
-            def on_deactivate(self, previous_state: LifecycleState):
-                self.get_logger().info("IN on_deactivate")
-                self.timer.cancel()
-                return super().on_deactivate(previous_state)
-      explanation: Cancels the periodic timer during lifecycle deactivation.
-  - id: M-6-PC-2
-    text: Cleanup, shutdown, and error transitions destroy the periodic timer.
-    evaluation: static
-    reference_evidence:
-    - path: human_detector/human_detector.py
-      anchor: destroy_resources
-      snippet: |2-
-            def on_cleanup(self, previous_state: LifecycleState):
-                self.get_logger().info("IN on_cleanup")
-                self.destroy_resources()
-                return TransitionCallbackReturn.SUCCESS
+    - id: FR-4-PC-1
+      text: >-
+        Annotated-image publication is controlled by the configured
+        publication setting.
+    - id: FR-4-PC-2
+      text: >-
+        Detected pose landmarks are drawn on the output image when
+        available.
+    - id: FR-4-PC-3
+      text: >-
+        The original RGB image is published when landmarks are unavailable.
 
-            def on_shutdown(self, previous_state: LifecycleState):
-                self.get_logger().info("IN on_shutdown")
-                self.destroy_resources()
-                return TransitionCallbackReturn.SUCCESS
+- id: FR-5
+  text: The node avoids human-position estimation when required image data is unavailable
+    or RGB and depth image dimensions differ.
+  pass_criteria:
+    - id: FR-5-PC-1
+      text: >-
+        Detection is skipped when required RGB, depth, or CameraInfo data is
+        missing.
+    - id: FR-5-PC-2
+      text: >-
+        RGB and depth image dimensions are checked for compatibility.
+    - id: FR-5-PC-3
+      text: >-
+        Mismatched RGB and depth dimensions prevent 3D estimation.
 
-            def on_error(self, previous_state: LifecycleState):
-                self.get_logger().info("IN on_error")
-                self.destroy_resources()
-                return TransitionCallbackReturn.SUCCESS
-      explanation: Routes cleanup, shutdown, and error transitions through shared resource destruction.
-    - path: human_detector/human_detector.py
-      anchor: destroy_timer
-      snippet: |2-
-            def destroy_resources(self):
-                self.destroy_timer(self.timer)
-      explanation: Destroys the periodic timer in the shared cleanup method.
+- id: FR-6
+  text: The node stops its periodic output timer when deactivated and destroys it
+    during cleanup, shutdown, or error handling.
+  pass_criteria:
+    - id: FR-6-PC-1
+      text: >-
+        Lifecycle deactivation cancels active periodic processing.
+    - id: FR-6-PC-2
+      text: >-
+        Cleanup, shutdown, and error transitions destroy the periodic timer.

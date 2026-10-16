@@ -4,20 +4,15 @@ intent:
     occupancy-grid map for navigation and visualization consumers.
   scope: Generates the synthetic map and its timestamps; map consumption, coordinate
     transforms, robot control, and navigation remain external responsibilities.
+
 functional_requirements:
-- id: FR-1
-  text: The dummy_map_server node continuously publishes a world-frame nav_msgs/msg/OccupancyGrid
-    with fixed geometry, initially unknown cells, and a moving occupied and free-cell
-    pattern.
-- id: FR-2
-  text: The node retains its latest map publication so compatible subscribers that
-    join after publication can receive the current map.
-interfaces:
-  nodes:
-  - name: dummy_map_server
-    responsibility: Generates and publishes a synthetic occupancy-grid map.
-    topics:
-    - name: map
-      type: nav_msgs/msg/OccupancyGrid
-      direction: publish
-      purpose: Provides the current synthetic occupancy-grid map.
+  - id: FR-1
+    text: >-
+      The dummy_map_server node continuously publishes a world-frame
+      nav_msgs/msg/OccupancyGrid with fixed geometry, initially unknown
+      cells, and a moving occupied and free-cell pattern.
+
+  - id: FR-2
+    text: >-
+      The node retains its latest map publication so compatible subscribers
+      that join after publication can receive the current map.

@@ -1,109 +1,44 @@
 package_name: dummy_map_server
-reference:
-  root: reference/
+
 metrics:
-- id: M-1
-  name: Dynamic dummy occupancy grid
-  description: The package implements the continuously updated dummy occupancy map required by FR-1.
-  requirement_ids:
-  - FR-1
+- id: FR-1
+  text: The dummy_map_server node continuously publishes a world-frame nav_msgs/msg/OccupancyGrid
+    with fixed geometry, initially unknown cells, and a moving occupied and free-cell
+    pattern.
   pass_criteria:
-  - id: M-1-PC-1
-    text: A nav_msgs/msg/OccupancyGrid publisher on the map topic.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: create_publisher<nav_msgs::msg::OccupancyGrid>
-      snippet: |2-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-      explanation: Creates a nav_msgs/msg/OccupancyGrid publisher whose topic is map.
-  - id: M-1-PC-2
-    text: The occupancy grid uses the world frame.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: msg.header.frame_id
-      snippet: |2-
-          msg.header.frame_id = "world";
-      explanation: Assigns world as the occupancy-grid frame.
-  - id: M-1-PC-3
-    text: Occupancy-grid cells are initialized as unknown.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: msg.data.push_back
-      snippet: |2-
-          for (size_t i = 0; i < msg.info.width * msg.info.height; ++i) {
-            msg.data.push_back(-1);
-          }
-      explanation: Fills every initial occupancy-grid cell with the unknown value -1.
-  - id: M-1-PC-4
-    text: Occupied and free cells are updated to form a moving map pattern.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: msg.data
-      snippet: |2-
-            msg.data[(lhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(center) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(rhs) % (msg.info.width * msg.info.height)] = -1;
-            msg.data[(++lhs) % (msg.info.width * msg.info.height)] = 0;
-            msg.data[(++center) % (msg.info.width * msg.info.height)] = 100;
-            msg.data[(++rhs) % (msg.info.width * msg.info.height)] = 0;
-      explanation: Clears the previous three cells and advances a free-occupied-free pattern.
-  - id: M-1-PC-5
-    text: Each map receives a current timestamp.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: msg.header.stamp
-      snippet: |2-
-            msg.header.stamp = clock->now();
-      explanation: Sets the outgoing map timestamp from the ROS clock.
-  - id: M-1-PC-6
-    text: Map messages are published repeatedly.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: while (rclcpp::ok())
-      snippet: |2-
-          while (rclcpp::ok()) {
-      explanation: Places map generation inside the node's continuous execution loop.
-    - path: src/dummy_map_server.cpp
-      anchor: map_pub->publish
-      snippet: |2-
-            map_pub->publish(msg);
-            executor.spin_some();
-            loop_rate.sleep();
-      explanation: Publishes the map and waits for the next loop iteration.
-- id: M-2
-  name: Late-subscriber map delivery
-  description: The map publisher retains the latest map for late subscribers as required by FR-2.
-  requirement_ids:
-  - FR-2
+    - id: FR-1-PC-1
+      text: >-
+        The node publishes nav_msgs/msg/OccupancyGrid messages through its
+        map output.
+    - id: FR-1-PC-2
+      text: >-
+        The occupancy grid uses the world frame.
+    - id: FR-1-PC-3
+      text: >-
+        Occupancy-grid cells are initialized as unknown.
+    - id: FR-1-PC-4
+      text: >-
+        Occupied and free cells are updated to form a moving map pattern.
+    - id: FR-1-PC-5
+      text: >-
+        Each map receives a current timestamp.
+    - id: FR-1-PC-6
+      text: >-
+        Map messages are published repeatedly.
+    - id: FR-1-PC-7
+      text: >-
+        The occupancy grid uses fixed nonzero resolution and dimensions, a
+        consistent origin, and a data array sized to its declared geometry.
+
+- id: FR-2
+  text: The node retains its latest map publication so compatible subscribers that
+    join after publication can receive the current map.
   pass_criteria:
-  - id: M-2-PC-1
-    text: The map publisher retains only the latest sample with depth one.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: KeepLast(1)
-      snippet: |2-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-      explanation: Configures the map publisher with KeepLast depth one.
-  - id: M-2-PC-2
-    text: Transient-local or equivalent durability is used for late-subscriber
-      delivery.
-    evaluation: static
-    reference_evidence:
-    - path: src/dummy_map_server.cpp
-      anchor: transient_local
-      snippet: |2-
-          auto map_pub = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
-            "map",
-            rclcpp::QoS(rclcpp::KeepLast(1)).transient_local());
-      explanation: Applies transient-local durability to the map publisher.
+    - id: FR-2-PC-1
+      text: >-
+        The publisher retains a current map sample for compatible subscribers
+        that join after the initial publication.
+    - id: FR-2-PC-2
+      text: >-
+        Transient-local or equivalent durability is used for late-subscriber
+        delivery.

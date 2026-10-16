@@ -1,134 +1,52 @@
 package_name: turtlebot3_yolo_object_detection
-reference:
-  root: reference/
+
 metrics:
-- id: M-1
-  name: Annotated YOLO image publication
-  description: Each received image is processed by YOLO and published as an annotated JPEG when encoding succeeds, satisfying FR-1.
-  requirement_ids:
-  - FR-1
+- id: FR-1
+  text: The node runs YOLO inference on each received raw camera image and publishes
+    a JPEG-compressed image containing rendered detection annotations when image encoding
+    succeeds.
   pass_criteria:
-  - id: M-1-PC-1
-    text: Every image callback converts the ROS image and runs the configured YOLO model on it.
-    evaluation: static
-    reference_evidence:
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: image_callback
-      snippet: |2-
-            def image_callback(self, msg):
-                try:
-                    frame = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
-                    results = self.model(frame)
-      explanation: Converts each callback image to RGB and submits it to the loaded model.
-  - id: M-1-PC-2
-    text: Detection results are rendered and JPEG-encoded before output publication.
-    evaluation: static
-    reference_evidence:
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: results[0].plot
-      snippet: |2-
-                    results = self.model(frame)
-                    annotated_frame = np.array(results[0].plot())
-                    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR)
-                    success, encoded_image = cv2.imencode('.jpg', annotated_frame)
-      explanation: Renders model detections, converts channel order, and JPEG-encodes the annotated frame.
-  - id: M-1-PC-3
-    text: A CompressedImage containing JPEG bytes is published only when encoding succeeds.
-    evaluation: static
-    reference_evidence:
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: if success
-      snippet: |2-
-                    if success:
-                        compressed_image = CompressedImage()
-                        compressed_image.header = msg.header
-                        compressed_image.format = 'jpeg'
-                        compressed_image.data = encoded_image.tobytes()
-                        self.image_pub.publish(compressed_image)
-      explanation: Guards publication on encoder success and fills the compressed JPEG message.
-- id: M-2
-  name: Source-header preservation
-  description: Annotated output retains source image metadata as required by FR-2.
-  requirement_ids:
-  - FR-2
+    - id: FR-1-PC-1
+      text: >-
+        Every received ROS image is converted and processed by the configured
+        YOLO model.
+    - id: FR-1-PC-2
+      text: >-
+        Detection results are rendered and JPEG-encoded before output
+        publication.
+    - id: FR-1-PC-3
+      text: >-
+        A CompressedImage containing JPEG bytes is published only when
+        encoding succeeds.
+
+- id: FR-2
+  text: Each published annotated image retains the header from its source camera image.
   pass_criteria:
-  - id: M-2-PC-1
-    text: Each published compressed image copies the source image header.
-    evaluation: static
-    reference_evidence:
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: compressed_image.header
-      snippet: |2-
-                    if success:
-                        compressed_image = CompressedImage()
-                        compressed_image.header = msg.header
-                        compressed_image.format = 'jpeg'
-      explanation: Copies the callback message header into the successful output message.
-- id: M-3
-  name: Recoverable image-processing errors
-  description: Conversion and general processing failures are logged without terminating the subscription workflow, satisfying FR-3.
-  requirement_ids:
-  - FR-3
+    - id: FR-2-PC-1
+      text: >-
+        Each published compressed image copies the source image header.
+
+- id: FR-3
+  text: The node logs an error and continues processing subsequent images if image
+    conversion, inference, annotation, or output processing fails.
   pass_criteria:
-  - id: M-3-PC-1
-    text: CvBridge conversion errors are caught and logged by the image callback.
-    evaluation: static
-    reference_evidence:
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: except CvBridgeError
-      snippet: |2-
-                except CvBridgeError as e:
-                    self.get_logger().error(f'CV Bridge error: {e}')
-      explanation: Handles ROS-to-OpenCV conversion failures locally instead of allowing the callback to fail the node.
-  - id: M-3-PC-2
-    text: Other inference, annotation, and output-processing failures are caught and logged so later callbacks can still run.
-    evaluation: static
-    reference_evidence:
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: except Exception
-      snippet: |2-
-                except Exception as e:
-                    self.get_logger().error(f'Error processing image: {e}')
-      explanation: Catches and logs general per-image processing exceptions without shutting down or re-raising.
-- id: M-4
-  name: Configurable model launch
-  description: The launch exposes and passes a selectable model path as required by FR-4.
-  requirement_ids:
-  - FR-4
+    - id: FR-3-PC-1
+      text: >-
+        CvBridge conversion errors are caught and logged without terminating
+        subsequent image processing.
+    - id: FR-3-PC-2
+      text: >-
+        Other inference, annotation, and output-processing failures are caught
+        and logged so later images can still be processed.
+
+- id: FR-4
+  text: The installed launch file starts the object-detection node with a user-selectable
+    path to its YOLO model.
   pass_criteria:
-  - id: M-4-PC-1
-    text: The launch declares a model_path argument.
-    evaluation: static
-    reference_evidence:
-    - path: launch/turtlebot3_yolo_object_detection.launch.py
-      anchor: model_path_arg
-      snippet: |2-
-            model_path_arg = DeclareLaunchArgument(
-                'model_path',
-                default_value='~/Downloads/best.pt',
-                description='Path to the YOLO model file'
-            )
-      explanation: Exposes the user-selectable model file path at launch time.
-  - id: M-4-PC-2
-    text: The launched object-detection node receives model_path as a parameter and loads the model from it.
-    evaluation: static
-    reference_evidence:
-    - path: launch/turtlebot3_yolo_object_detection.launch.py
-      anchor: parameters
-      snippet: |2-
-            object_detection_node = Node(
-                package='turtlebot3_yolo_object_detection',
-                executable='turtlebot3_yolo_object_detection',
-                name='turtlebot3_object_detection_node',
-                output='screen',
-                parameters=[{'model_path': model_path}]
-            )
-      explanation: Passes the launch configuration to the node parameter.
-    - path: turtlebot3_yolo_object_detection/turtlebot3_yolo_object_detection.py
-      anchor: YOLO(model_path)
-      snippet: |2-
-                self.declare_parameter('model_path', '~/Downloads/best.pt')
-                model_path = os.path.expanduser(
-                    self.get_parameter('model_path').get_parameter_value().string_value)
-                self.model = YOLO(model_path)
-      explanation: Reads, expands, and loads the configured model path.
+    - id: FR-4-PC-1
+      text: >-
+        The launch declares a user-selectable model-path argument.
+    - id: FR-4-PC-2
+      text: >-
+        The launched object-detection node receives the selected model path as
+        a parameter and loads the model from it.

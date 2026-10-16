@@ -1,0 +1,25 @@
+package_name: turtlebot3_aruco_tracker
+metrics:
+- id: DYN-01
+  requirement: >-
+    Before calibration, ignore compressed images and report missing calibration without
+    publishing marker TF. After the first valid camera information, use that calibration
+    and stop its subscription; later changed-calibration messages shall not replace it.
+    Observe subscription removal and pose consistency on the fixed positive scene.
+  evaluation_period: >-
+    Observe 30 seconds before and 30 seconds after first calibration, including a later
+    changed-calibration stimulus. Allow 5 wall-time seconds for discovery/subscription changes
+    and 5 seconds for recovery.
+- id: DYN-02
+  requirement: >-
+    Detect visible DICT_5X5_250 markers in the fixed calibrated scene and broadcast timestamped
+    camera-to-marker transforms using the configured size. Require translation error <=max(0.01
+    m, 5 percent of true range) and rotation error <=5 degrees; missing detections cannot
+    pass accuracy. Render centered frontal marker 7 with a 200-pixel side and 0.04 m configured
+    marker size; derive pose truth from its known corners and calibration. Equivalent quaternion
+    signs are accepted.
+  evaluation_period: >-
+    Observe the frontal marker-7 scene for 30 seconds with 640x480 JPEG images at 10 Hz,
+    focal lengths 600 pixels and known principal point. Allow 8 wall-time seconds from process
+    start to first TF with valid input, 1 second per matched image response, and 2 seconds
+    for cleanup. The TF timestamp must match its source image timestamp.

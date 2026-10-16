@@ -1,431 +1,107 @@
 package_name: laser_scan_merger
-reference:
-  root: reference/
+
 metrics:
-- id: M-1
-  name: Multi-scan synchronized merge
-  description: Two through nine scan streams are approximately synchronized, projected, transformed, consolidated, and published in the merged frame as required by FR-1.
-  requirement_ids:
-  - FR-1
+- id: FR-1
+  text: The merger accepts two through nine configured LaserScan inputs, approximately
+    synchronizes them, transforms their projected points into the configured merged
+    frame, and publishes a combined LaserScan.
   pass_criteria:
-  - id: M-1-PC-1
-    text: The configured subscriber count selects an approximate-time synchronizer implementation for every supported count from two through nine.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: switch (scan_subs_.size())
-      snippet: |2-
-          switch (scan_subs_.size()) {
-            case 2:
-              initLaserSync<2u>();
-              break;
-        
-            case 3:
-              initLaserSync<3u>();
-              break;
-        
-            case 4:
-              initLaserSync<4u>();
-              break;
-        
-            case 5:
-              initLaserSync<5u>();
-              break;
-        
-            case 6:
-              initLaserSync<6u>();
-              break;
-        
-            case 7:
-              initLaserSync<7u>();
-              break;
-        
-            case 8:
-              initLaserSync<8u>();
-              break;
-        
-            case 9:
-              initLaserSync<9u>();
-              break;
-      explanation: Dispatches each supported number of scan subscribers to its corresponding synchronizer.
-    - path: src/laser_scan_merger.cpp
-      anchor: initLaserSync<2u>
-      snippet: |2-
-        void LaserScanMerger::initLaserSync<2u>() {
-          scan_sync_ = std::make_unique<message_filters::Synchronizer<syncPolicyT2>>(
-              syncPolicyT2(queue_size_), *scan_subs_[0], *scan_subs_[1]);
-          if (auto v = std::get_if<
-                  std::unique_ptr<message_filters::Synchronizer<syncPolicyT2>>>(
-                  &scan_sync_)) {
-            (*v)->registerCallback<cbT2>([this](auto& cloud0, auto& cloud1, ...) {
-              laserScanMergerPrep(cloud0, cloud1);
-            });
-          }
-        }
-      explanation: Demonstrates that a supported count is approximately synchronized and forwarded as one callback set.
-  - id: M-1-PC-2
-    text: Every synchronized LaserScan is projected to a point cloud, transformed into the merged frame, and accumulated with the other inputs.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: projectLaser
-      snippet: |2-
-            std::for_each(indexes_.begin(), indexes_.end(), [&, this](auto& index) {
-              // Init cloud place holder
-              cloud_sources[index] = std::make_shared<sensor_msgs::msg::PointCloud2>();
-              // Scan -> cloud
-              projection_.projectLaser(*msgs[index], *cloud_sources[index]);
-              // transform cloud
-              tf2::doTransform(*cloud_sources[index], *cloud_sources[index],
-                               transforms_[index]);
-            });
-      explanation: Projects and transforms each synchronized scan source.
-    - path: src/laser_scan_merger.cpp
-      anchor: pcl::fromROSMsg
-      snippet: |2-
-          std::for_each(indexes_.begin(), indexes_.end(), [&, this](auto& index) {
-            pointCloudT cloud;
-            pcl::fromROSMsg(*cloud_sources[index], cloud);
-            *merged_cloud_ += cloud;
-          });
-      explanation: Converts and accumulates all transformed sources into one merged cloud.
-  - id: M-1-PC-3
-    text: The merged points are converted to a LaserScan whose frame_id is merged_frame_id and the result is published.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: scan_msg->header.frame_id
-      snippet: |2-
-          auto scan_msg = std::make_unique<sensor_msgs::msg::LaserScan>();
-          scan_msg->header = msgs.front()->header;
-          scan_msg->header.frame_id = merged_frame_id_;
-      explanation: Creates the output scan and assigns the configured merged frame.
-    - path: src/laser_scan_merger.cpp
-      anchor: merged_pub_->publish
-      snippet: |2-
-          merged_pub_->publish(std::move(scan_msg));
-      explanation: Publishes the completed merged LaserScan.
-- id: M-2
-  name: Output binning and filtering policies
-  description: Angular, range, height, timing, empty-bin, and nearest-point policies are applied to the merged scan as required by FR-2.
-  requirement_ids:
-  - FR-2
+    - id: FR-1-PC-1
+      text: >-
+        Approximate-time synchronization supports every configured input count
+        from two through nine.
+    - id: FR-1-PC-2
+      text: >-
+        Every synchronized LaserScan is projected to a point cloud,
+        transformed into the merged frame, and accumulated with the other
+        inputs.
+    - id: FR-1-PC-3
+      text: >-
+        The merged points are converted to a LaserScan in the configured
+        merged frame and the result is published.
+
+- id: FR-2
+  text: The merged scan retains the nearest valid point in each configured angular
+    bin while applying configured angular, range, height, timing, and empty-range
+    policies.
   pass_criteria:
-  - id: M-2-PC-1
-    text: Output angle, range, scan-time, and zero time-increment metadata are populated from configured policies.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: scan_msg->angle_min
-      snippet: |2-
-          scan_msg->angle_min = ang_min_;
-          scan_msg->angle_max = ang_max_;
-          scan_msg->angle_increment = ang_increment_;
-          scan_msg->time_increment = 0.0;
-          scan_msg->scan_time = scan_time_;
-          scan_msg->range_min = range_min_;
-          scan_msg->range_max = range_max_;
-      explanation: Copies the configured angular, range, and timing contract into the output message.
-  - id: M-2-PC-2
-    text: Empty angular bins use positive infinity or range_max plus inf_epsilon according to use_inf.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: if (use_inf_)
-      snippet: |2-
-          if (use_inf_) {
-            scan_msg->ranges.assign(ranges_size,
-                                    std::numeric_limits<double>::infinity());
-          } else {
-            scan_msg->ranges.assign(ranges_size, scan_msg->range_max + inf_eps_);
-          }
-      explanation: Initializes all empty bins with the selected empty-range representation.
-  - id: M-2-PC-3
-    text: NaN points and points outside configured height, range, or angular bounds are excluded from output bins.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: rejected for nan
-      snippet: |2-
-                if (std::isnan(point.x) || std::isnan(point.y) || std::isnan(point.z)) {
-                  RCLCPP_DEBUG(get_logger(), "rejected for nan in point(%f, %f, %f)\n",
-                               point.x, point.y, point.z);
-                  return;
-                }
-        
-                if (point.z > max_height_ || point.z < min_height_) {
-                  RCLCPP_DEBUG(get_logger(),
-                               "rejected for height %f not in range (%f, %f)\n",
-                               point.z, min_height_, max_height_);
-                  return;
-                }
-      explanation: Rejects invalid and out-of-height points before binning.
-    - path: src/laser_scan_merger.cpp
-      anchor: range < range_min_
-      snippet: |2-
-                double range = std::hypot(point.x, point.y);
-                if (range < range_min_) {
-                  RCLCPP_DEBUG(get_logger(),
-                               "rejected for range %f below minimum value %f. Point: "
-                               "(%f, %f, %f)",
-                               range, range_min_, point.x, point.y, point.z);
-                  return;
-                }
-                if (range > range_max_) {
-                  RCLCPP_DEBUG(get_logger(),
-                               "rejected for range %f above maximum value %f. Point: "
-                               "(%f, %f, %f)",
-                               range, range_max_, point.x, point.y, point.z);
-                  return;
-                }
-      explanation: Rejects points outside the configured radial range.
-    - path: src/laser_scan_merger.cpp
-      anchor: angle < scan_msg->angle_min
-      snippet: |2-
-                double angle = std::atan2(point.y, point.x);
-                if (angle < scan_msg->angle_min || angle > scan_msg->angle_max) {
-                  RCLCPP_DEBUG(get_logger(),
-                               "rejected for angle %f not in range (%f, %f)\n", angle,
-                               scan_msg->angle_min, scan_msg->angle_max);
-                  return;
-                }
-      explanation: Rejects points outside the configured output angular interval.
-  - id: M-2-PC-4
-    text: Each accepted point is assigned to its angular bin and replaces the bin only when it is nearer.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: overwrite range
-      snippet: |2-
-                // overwrite range at laserscan ray if new range is smaller
-                int index = (angle - scan_msg->angle_min) / scan_msg->angle_increment;
-                if (range < scan_msg->ranges[index]) {
-                  scan_msg->ranges[index] = range;
-                }
-      explanation: Computes the angular index and preserves the nearest point for that output ray.
-- id: M-3
-  name: Transform acquisition and retry
-  description: Required transforms are acquired before conversion, retried when unavailable, and either cached or refreshed according to moving_frames, satisfying FR-3.
-  requirement_ids:
-  - FR-3
+    - id: FR-2-PC-1
+      text: >-
+        Output angle, range, and scan-timing metadata are populated
+        consistently from the configured policies.
+    - id: FR-2-PC-2
+      text: >-
+        Empty angular bins use the value selected by the configured
+        empty-range policy.
+    - id: FR-2-PC-3
+      text: >-
+        NaN points and points outside configured height, range, or angular
+        bounds are excluded from output bins.
+    - id: FR-2-PC-4
+      text: >-
+        Each accepted point is assigned to its angular bin and replaces the
+        bin only when it is nearer.
+
+- id: FR-3
+  text: The node waits and retries when required transforms are unavailable, and can
+    either reuse initial transforms for fixed scan frames or refresh them for moving
+    scan frames.
   pass_criteria:
-  - id: M-3-PC-1
-    text: Transforms are acquired on the first callback and refreshed on every callback only when moving_frames is enabled.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: first_callback_ || moving_frames_
-      snippet: |2-
-          if (first_callback_ || moving_frames_) {
-            // Clean list for retry
-            transforms_.clear();
-            try {
-              std::for_each(indexes_.begin(), indexes_.end(), [&, this](auto& index) {
-                if (buffer_->canTransform(
-                        merged_frame_id_, msgs[index]->header.frame_id, rclcpp::Time(0),
-                        rclcpp::Duration::from_nanoseconds(tolerance_))) {
-                  transforms_.emplace_back(buffer_->lookupTransform(
-                      merged_frame_id_, msgs[index]->header.frame_id, rclcpp::Time(0),
-                      rclcpp::Duration::from_nanoseconds(tolerance_)));
-                }
-              });
-      explanation: Uses the configured merged and input frames and tolerance, with cache refresh controlled by first_callback and moving_frames.
-  - id: M-3-PC-2
-    text: Missing or failing transforms cause the current callback to return so a later synchronized set can retry.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: transforms_.size
-      snippet: |2-
-            if (scan_topics_.size() == transforms_.size()) {
-              first_callback_ = false;
-            } else {
-              return;  // Retry
-            }
-      explanation: Keeps the first-callback state active and returns until every input transform is available.
-    - path: src/laser_scan_merger.cpp
-      anchor: transformation scans
-      snippet: |2-
-          } catch (const tf2::TransformException& e) {
-            RCLCPP_ERROR_STREAM(
-                get_logger(),
-                " (" << __func__
-                     << ") caught tf2 transformException while transformation scans: "
-                     << e.what());
-            return;  // Retry
-          }
-      explanation: Logs transform failures and skips publication so processing can retry later.
-- id: M-4
-  name: Demand-driven output publication
-  description: The merger suppresses all conversion and publication work when no output subscriber exists, satisfying FR-4.
-  requirement_ids:
-  - FR-4
+    - id: FR-3-PC-1
+      text: >-
+        Initial transforms can be reused for fixed scan frames, while moving
+        scan frames obtain refreshed transforms for each synchronized set.
+    - id: FR-3-PC-2
+      text: >-
+        A synchronized input set is skipped when a required transform is
+        unavailable, allowing a later set to retry.
+
+- id: FR-4
+  text: The node suppresses merged-scan publication when the output topic has no subscribers.
   pass_criteria:
-  - id: M-4-PC-1
-    text: A zero output-subscription count causes an immediate return before scan conversion and publication.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: get_subscription_count
-      snippet: |2-
-          if (merged_pub_->get_subscription_count() == 0) {
-            RCLCPP_WARN_STREAM_ONCE(get_logger(),
-                                    " (" << __func__
-                                         << "): merged scan will only be published "
-                                            "when there is at least one subscriber.");
-            return;
-          }
-        
-          sensor_msgs::msg::PointCloud2::SharedPtr cloud_sources[9];
-      explanation: The controlling condition exits before allocating and processing merged data.
-- id: M-5
-  name: Supported input-count validation
-  description: Synchronizer initialization is refused outside the supported two-through-nine topic range as required by FR-5.
-  requirement_ids:
-  - FR-5
+    - id: FR-4-PC-1
+      text: >-
+        No merged scan is produced or published while the output has no
+        subscribers.
+
+- id: FR-5
+  text: The node refuses to initialize scan synchronization when fewer than two or
+    more than nine input topics are configured.
   pass_criteria:
-  - id: M-5-PC-1
-    text: More than nine configured scan topics produce an error and return before index and subscriber setup.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: scan_topics_.size() > 9
-      snippet: |2-
-          if (scan_topics_.size() > 9) {
-            RCLCPP_ERROR_STREAM(
-                get_logger(),
-                " (" << __func__
-                     << ") currently only support merging up to 9 laser scans.");
-            return;
-      explanation: Rejects input counts above the highest supported synchronizer arity.
-  - id: M-5-PC-2
-    text: Fewer than two configured scan topics produce an error and return before index and subscriber setup.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: scan_topics_.size() < 2
-      snippet: |2-
-          } else if (scan_topics_.size() < 2) {
-            RCLCPP_ERROR_STREAM(
-                get_logger(), " (" << __func__ << ") input scan topic is less than 2.");
-            return;
-          }
-      explanation: Rejects input counts below the minimum meaningful merge size.
-- id: M-6
-  name: Per-input QoS policy normalization
-  description: Missing QoS policies are filled with reliable delivery and excess policies are ignored, satisfying FR-6.
-  requirement_ids:
-  - FR-6
+    - id: FR-5-PC-1
+      text: >-
+        More than nine configured scan topics produce an error and prevent
+        scan synchronization from being initialized.
+    - id: FR-5-PC-2
+      text: >-
+        Fewer than two configured scan topics produce an error and prevent
+        scan synchronization from being initialized.
+
+- id: FR-6
+  text: When fewer QoS policies than scan topics are provided, the node fills missing
+    policies with reliable delivery, and ignores policies beyond the configured input
+    count.
   pass_criteria:
-  - id: M-6-PC-1
-    text: A shorter scan_policies list is resized to the scan topic count with reliable policy value zero.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: scan_policies_.resize
-      snippet: |2-
-          if (scan_policies_.size() < scan_topics_.size()) {
-            // Auto fill if not filled
-            RCLCPP_WARN_STREAM(
-                get_logger(),
-                " (" << __func__
-                     << ") policies and topics size mismatch or not found... "
-                        "auto filling QoS reliable...");
-            scan_policies_.resize(scan_topics_.size(), 0);
-      explanation: Pads every missing per-topic policy with the value used for reliable QoS.
-  - id: M-6-PC-2
-    text: Excess policies do not create extra subscribers, while each in-range policy selects reliable or best-effort delivery for its scan topic.
-    evaluation: static
-    reference_evidence:
-    - path: src/laser_scan_merger.cpp
-      anchor: policies > topics size
-      snippet: |2-
-          } else if (scan_policies_.size() > scan_topics_.size()) {
-            RCLCPP_WARN_STREAM(
-                get_logger(),
-                " (" << __func__
-                     << ") policies > topics size, ignoring additional policies.");
-          }
-      explanation: Explicitly treats policies beyond the topic count as ignored.
-    - path: src/laser_scan_merger.cpp
-      anchor: scan_policies_[index]
-      snippet: |2-
-          std::for_each(indexes_.begin(), indexes_.end(), [this](auto& index) {
-            if (scan_policies_[index] == 0) {
-              // reliable
-              qos_prof_.reliable();
-            } else {
-              // best effort
-              qos_prof_.best_effort();
-            }
-        
-            // Create subscriber for each given scan topic
-            scan_subs_.emplace_back(
-                std::make_shared<message_filters::Subscriber<laserScanMsgT>>(
-                    this, scan_topics_[index], qos_prof_.get_rmw_qos_profile()));
-          });
-      explanation: Iterates only topic-derived indexes and applies each corresponding policy to that topic's subscriber.
-- id: M-7
-  name: Component and demo launch orchestration
-  description: The package launch hosts the merger with robot-selected configuration, while the demo also starts RViz and looping bag playback as required by FR-7.
-  requirement_ids:
-  - FR-7
+    - id: FR-6-PC-1
+      text: >-
+        Missing scan policies are filled with reliable delivery until every
+        configured scan topic has a policy.
+    - id: FR-6-PC-2
+      text: >-
+        Excess policies do not create extra subscribers, while each in-range
+        policy selects reliable or best-effort delivery for its scan topic.
+
+- id: FR-7
+  text: The provided launch files host the merger component in a component container
+    selected by a robot-specific configuration directory, and the demo launch also
+    starts RViz and attempts looping playback of its demo bag.
   pass_criteria:
-  - id: M-7-PC-1
-    text: The standard launch creates an rclcpp component container and loads LaserScanMerger with config/<robotname>/param.yaml.
-    evaluation: static
-    reference_evidence:
-    - path: launch/start.launch.py
-      anchor: ComposableNodeContainer
-      snippet: |2-
-            container = ComposableNodeContainer(
-                package="rclcpp_components",
-                executable="component_container",
-                name="component_manager_node",
-                namespace="",
-                composable_node_descriptions=[
-                    ComposableNode(
-                        package="laser_scan_merger",
-                        plugin="util::LaserScanMerger",
-                        name="laser_scan_merger_node",
-                        parameters=[PathJoinSubstitution([
-                            get_package_share_directory('laser_scan_merger'),
-                            'config',
-                            LaunchConfiguration('robotname'),
-                            'param.yaml'
-                        ])]
-                    )
-                ],
-                output="screen"
-            )
-      explanation: Hosts the merger component and derives its parameter file from the robotname launch argument.
-  - id: M-7-PC-2
-    text: The demo launch adds RViz with the packaged configuration and attempts looping playback of the packaged demo bag.
-    evaluation: static
-    reference_evidence:
-    - path: launch/start_demo.launch.py
-      anchor: start_rviz2
-      snippet: |2-
-            start_rviz2 = Node(
-                package="rviz2",
-                executable="rviz2",
-                output="screen",
-                arguments=[
-                    "-d", path.join(get_package_share_directory("laser_scan_merger"),
-                    "rviz", "demo.rviz")
-                ],
-            )
-      explanation: Starts RViz with the package's demo display configuration.
-    - path: launch/start_demo.launch.py
-      anchor: play_rosbag
-      snippet: |2-
-            play_rosbag = ExecuteProcess(
-                cmd=[
-                    "ros2", "bag", "play", "-l",
-                    path.join(get_package_share_directory("laser_scan_merger"),
-                    "test", "demo_scan_rosbag", "demo_scan"
-                )],
-                shell=True,
-                output="screen"
-            )
-      explanation: Attempts to run looping ros2 bag playback for the packaged demo recording.
+    - id: FR-7-PC-1
+      text: >-
+        The standard launch starts a ROS 2 component container, loads the
+        merger component, and supplies the selected robot-specific
+        configuration.
+    - id: FR-7-PC-2
+      text: >-
+        The demo launch adds RViz with the packaged configuration and
+        attempts looping playback of the packaged demo bag.

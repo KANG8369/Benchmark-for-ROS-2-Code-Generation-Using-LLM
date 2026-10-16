@@ -5,39 +5,23 @@ intent:
   scope: This package orchestrates external executables and supplies the RRBot description
     and RViz configuration; dependency packages implement map serving, sensor data
     production, robot-state publication, and visualization.
+
 functional_requirements:
-- id: FR-1
-  text: Each installed bringup launch description starts the dummy map server, robot
-    state publisher, dummy joint-state publisher, and dummy laser publisher.
-- id: FR-2
-  text: The launch descriptions provide the packaged single-RRBot URDF as the robot
-    description parameter for the robot state publisher.
-- id: FR-3
-  text: The Python bringup launch additionally starts RViz2 with the packaged RViz
-    configuration.
-interfaces:
-  external_nodes:
-  - name: dummy_map_server
-    package: dummy_map_server
-    executable: dummy_map_server
-    purpose: Provides the dummy map component for the demo robot system.
-  - name: robot_state_publisher
-    package: robot_state_publisher
-    executable: robot_state_publisher
-    purpose: Uses the supplied RRBot description to provide robot-state publication.
-    parameters:
-    - name: robot_description
-      type: string
-      purpose: Contains the packaged single-RRBot URDF.
-  - name: dummy_joint_states
-    package: dummy_sensors
-    executable: dummy_joint_states
-    purpose: Provides dummy joint-state data for the demo robot.
-  - name: dummy_laser
-    package: dummy_sensors
-    executable: dummy_laser
-    purpose: Provides fake laser data for the demo robot.
-  - name: rviz2
-    package: rviz2
-    executable: rviz2
-    purpose: Visualizes the demo using the packaged RViz configuration.
+  - id: FR-1
+    text: >-
+      The package provides at least one installed bringup launch description,
+      and every provided bringup launch starts the dummy map server, robot
+      state publisher, dummy joint-state publisher, and dummy laser publisher.
+
+  - id: FR-2
+    text: >-
+      Every provided bringup launch passes a packaged single-RRBot URDF as the
+      robot description parameter for the robot state publisher.
+
+  - id: FR-3
+    text: >-
+      The Python bringup launch additionally starts RViz2 with the packaged
+      RViz configuration.
+
+target_environment: >-
+  A ROS 2 demonstration environment using the single-RRBot model.

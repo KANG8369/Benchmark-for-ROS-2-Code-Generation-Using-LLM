@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PackageFile(BaseModel):
@@ -75,15 +75,54 @@ class BuildResult(BaseModel):
     artifact_recorded: bool = False
 
 
-class FunctionalRequirementResult(BaseModel):
-    """One evaluator decision tied to a public functional requirement."""
+class PassCriterionResult(BaseModel):
+    """One evaluator decision tied to a hidden pass criterion."""
 
     model_config = ConfigDict(extra="forbid")
 
-    requirement_id: str
-    status: Literal["pass", "fail", "not_evaluated"]
+    criterion_id: str = Field(pattern=r"^FR-[1-9][0-9]*-PC-[1-9][0-9]*$")
+    status: Literal["pass", "fail"]
     evidence: list[str]
     feedback: str | None = None
+
+    @model_validator(mode="after")
+    def require_consistent_evidence_and_feedback(self) -> PassCriterionResult:
+        if self.status == "pass":
+            if not self.evidence:
+                raise ValueError("a passed criterion must include candidate evidence")
+            if self.feedback is not None:
+                raise ValueError("a passed criterion must set feedback to null")
+        elif not self.feedback:
+            raise ValueError("a failed criterion must include feedback")
+        return self
+
+
+class FunctionalRequirementResult(BaseModel):
+    """Deterministic aggregation of all PCs for one public FR."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    requirement_id: str = Field(pattern=r"^FR-[1-9][0-9]*$")
+    status: Literal["pass", "fail"]
+    criteria: list[PassCriterionResult] = Field(min_length=1)
+    feedback: str | None = None
+
+    @model_validator(mode="after")
+    def require_sequential_criteria_and_correct_aggregate(self) -> FunctionalRequirementResult:
+        expected_ids = [
+            f"{self.requirement_id}-PC-{index}" for index in range(1, len(self.criteria) + 1)
+        ]
+        actual_ids = [item.criterion_id for item in self.criteria]
+        if actual_ids != expected_ids:
+            raise ValueError("criterion IDs must be unique, sequential, and match the parent FR")
+        expected_status = "pass" if all(item.status == "pass" for item in self.criteria) else "fail"
+        if self.status != expected_status:
+            raise ValueError("FR status must be the deterministic aggregate of its criteria")
+        if self.status == "pass" and self.feedback is not None:
+            raise ValueError("a passed requirement must set feedback to null")
+        if self.status == "fail" and not self.feedback:
+            raise ValueError("a failed requirement must include feedback")
+        return self
 
 
 class FunctionalEvaluationFeedback(BaseModel):
@@ -94,4 +133,12 @@ class FunctionalEvaluationFeedback(BaseModel):
     case_id: str
     description_sha256: str
     package_artifact_id: str
-    requirements: list[FunctionalRequirementResult]
+    requirements: list[FunctionalRequirementResult] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_sequential_requirements(self) -> FunctionalEvaluationFeedback:
+        expected_ids = [f"FR-{index}" for index in range(1, len(self.requirements) + 1)]
+        actual_ids = [item.requirement_id for item in self.requirements]
+        if actual_ids != expected_ids:
+            raise ValueError("requirement IDs must be unique and sequential")
+        return self

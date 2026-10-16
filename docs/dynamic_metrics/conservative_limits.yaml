@@ -1,0 +1,197 @@
+status: adopted_under_explicit_user_delegation
+decision_date_kst: '2026-10-17'
+calibration_report: calibration_summary.json
+oracle_audit: calibration_summary.json
+selection_note: >-
+  Engineering margins chosen under user delegation, not statistically validated limits or
+  new experimental measurements.
+framework_enforcement_deployed: false
+parking_completion:
+  case: turtlebot3_automatic_parking
+  metric_id: DYN-02
+  condition_id: ideal_parking
+  clock: monotonic_wall_time
+  deadline_seconds: 120
+  measured_maximum_seconds: 34.60257032094523
+  rule: Round three times the observed maximum upward to a 30-second boundary.
+  starts_at: Valid scan and odometry inputs begin reaching the running controller.
+  ends_at: >-
+    Whole-footprint containment, stationary robot, final zero command and reset request,
+    followed by normal process termination.
+  required_completion_evidence:
+  - Entire robot footprint is inside the designated bay, not merely its center.
+  - The ideal robot is stationary and the final commanded linear/angular velocities are
+    zero.
+  - The required final reset request is observed and the process terminates normally.
+  - Expiration of the deadline or a completion log alone never counts as success.
+  fixture:
+    backend: ideal_2d_kinematics_not_Gazebo
+    initial_pose:
+    - 0.15
+    - 0.0
+    - 0.0
+    input_hz: 10
+    wall_y_m: 0.8
+    reflective_segment_x_m:
+    - -0.4
+    - 0.4
+    reflective_intensity: 6000
+    bay_x_m:
+    - -0.25
+    - 0.25
+    bay_y_m:
+    - 0.4
+    - 0.85
+    footprint_local_x_m:
+    - -0.11
+    - 0.05
+    footprint_local_y_m:
+    - -0.1
+    - 0.1
+    reset_behavior: Reset odometry origin without moving ground truth.
+  not_applicable_to:
+  - real_robot
+  - Gazebo_physics
+  - other_bay_geometry
+  - wheel_slip
+  - sensor_noise
+  - different_reset_service_delays
+  statistical_validation: false
+  stationary_observation: >-
+    Use the 2-second, 0.001 m and 0.001 rad ground-truth rule in evaluation_protocol.yaml;
+    retain exact final zero commands.
+search_failure_reporting:
+  case: turtlebot3_automatic_parking
+  metric_id: DYN-04
+  condition_id: no_spot
+  clock: monotonic_wall_time
+  first_report_deadline_seconds: 45
+  observation_period_seconds: 60
+  measured_first_report_maximum_seconds: 20.400488496292382
+  rule: >-
+    Round twice the observed maximum upward to a 5-second boundary; retain at least 15 seconds
+    to observe continued searching after the latest permitted first report.
+  starts_at: Valid no-spot scans and stationary odometry begin reaching the running node.
+  fixture: LDS-01, 360 rays at 10 Hz, 3 m ranges, zero intensities, stationary odometry.
+  conditions:
+  - An unsuccessful-search report must appear by 45 seconds.
+  - Require at least one later unsuccessful-search report by 60 seconds, operationalizing
+    repeated searches.
+  - The node must continue searching through the 60-second observation; merely staying alive
+    is not enough.
+  - No exact message text or periodic reporting interval is imposed; at least one later
+    report is required.
+  - This is not subject to the one-second scan-republication response limit.
+  observation_extension: Only DYN-04 changes from 30 to 60 seconds; other stream windows
+    remain 30 seconds.
+  full_60_second_window_previously_measured: false
+  statistical_validation: false
+image_rectification:
+  case: image_proc
+  metric_id: DYN-03
+  clock_independent: true
+  baseline: Official Jazzy 5.0.13; pinned source 8.0.0 is not modified.
+  fixture:
+    encoding: mono8
+    image_size:
+    - 640
+    - 480
+    pixel_values:
+    - 0
+    - 255
+    checkerboard: I[y,x] = 255 * ((floor(x/24) + floor(y/24)) mod 2)
+    K:
+    - - 500.0
+      - 0.0
+      - 319.5
+    - - 0.0
+      - 500.0
+      - 239.5
+    - - 0.0
+      - 0.0
+      - 1.0
+    R:
+    - - 1.0
+      - 0.0
+      - 0.0
+    - - 0.0
+      - 1.0
+      - 0.0
+    - - 0.0
+      - 0.0
+      - 1.0
+    P:
+    - - 500.0
+      - 0.0
+      - 319.5
+      - 0.0
+    - - 0.0
+      - 500.0
+      - 239.5
+      - 0.0
+    - - 0.0
+      - 0.0
+      - 1.0
+      - 0.0
+    D_nonzero:
+    - 0.08
+    - -0.02
+    - 0.0
+    - 0.0
+    - 0.0
+    D_zero:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+  oracle:
+    implementation: OpenCV 4.6.0 initUndistortRectifyMap and remap
+    map_type: CV_32FC1
+    interpolation: INTER_LINEAR
+    border_mode: BORDER_CONSTANT
+    border_value: 0
+    pixel_alignment: Same coordinates, full frame, no registration, cropping, masking, or
+      resizing to improve the score.
+  error_definition: >-
+    Absolute difference of 0-255 intensity values after conversion to a signed or floating
+    arithmetic type, not uint8 subtraction and not spatial displacement in pixels.
+  zero_distortion:
+    maximum_absolute_error: 0
+    mean_absolute_error: 0
+    reason: Exact content preservation is already required; do not weaken the lossless pass-through
+      contract.
+  known_nonzero_distortion:
+    maximum_absolute_error: 16
+    mean_absolute_error: 0.01
+    combination: Both upper bounds must hold for every corresponding output frame, not as
+      an average across frames.
+    measured_maximum_absolute_error: 8
+    measured_maximum_mean_absolute_error: 0.000234375
+    maximum_error_margin: Twice the observed maximum.
+    mean_error_margin: Round ten times the observed maximum MAE upward to a 0.01-intensity-unit
+      boundary.
+  required_preconditions: >-
+    Correct dimensions, encoding, frame correspondence and valid paired calibration must
+    hold; missing or malformed outputs cannot pass via a small error statistic.
+  not_applicable_to:
+  - other_image_inputs
+  - other_calibrations
+  - RGB_or_Bayer_conversion
+  - resize
+  - crop
+  - YOLO_JPEG
+  - marker_pose
+  caveats:
+  - >-
+    Observed scalar differences are consistent with fixed-point versus floating-point oracle
+    maps; actual pixelwise agreement was not independently confirmed because received image
+    frames were not preserved.
+  - >-
+    These are delegated conservative operating choices for this fixture, not proof of general
+    image accuracy or a uniquely correct algorithm.
+  - Keep traceable correspondence to inputs; a reference implementation is not the sole
+    authority for behavior.
+  statistical_validation: false
+additional_rules: Recorded in each case dynamic_metric.yaml; evaluation_protocol.yaml is
+  background rationale only.

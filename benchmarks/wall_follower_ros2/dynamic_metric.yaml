@@ -1,0 +1,39 @@
+package_name: wall_follower_ros2
+metrics:
+- id: DYN-01
+  requirement: >-
+    Convert five-zone obstacle scans into configured-velocity commands. Exercise three controls
+    with a five-zone 450-ray scan: all clear (3 m) gives forward motion, front-only blocked
+    (0.2 m) gives a left turn, and all five zones blocked at 0.2 m gives reverse-and-left
+    motion. Set the obstacle threshold to 0.5 m and compare commands against the configured
+    velocities. For these controls, compare nonzero commands with absolute 1e-6 plus relative
+    1e-5 tolerance; required zeros remain exact.
+  evaluation_period: >-
+    Observe each 10-Hz control for 30 seconds. Keep 8 wall-time seconds to the first expected
+    standalone command and 1 second from each pattern change to the corresponding command.
+    The finite control profile does not claim all 32 obstacle combinations were assessed.
+- id: DYN-02
+  requirement: >-
+    Publish no motion commands before the first laser scan. Establish that the controller
+    is running and that command observation works; a failed process is not successful suppression.
+  evaluation_period: >-
+    Observe 30 wall-time seconds after startup without delivering scans. In a separate positive-control
+    interval, deliver a clear scan and require the expected command within 1 second.
+- id: DYN-03
+  requirement: >-
+    On SIGINT, publish an exactly zero-valued Twist before process exit. Observe the candidate
+    publication and exit order, not merely external robot stopping or a cleanup command
+    from the harness.
+  evaluation_period: >-
+    Allow 1 wall-time second from SIGINT to zero Twist and 2 seconds to process exit in
+    the standalone-controller profile.
+- id: DYN-04
+  requirement: >-
+    The supplied launch shall start the controller with configured linear and angular velocities
+    and include the empty Gazebo simulation launch. Verify launched processes and settings
+    with external simulation dependencies ready; do not evaluate their algorithms as candidate
+    code.
+  evaluation_period: >-
+    Allow 30 wall-time seconds for full launch startup and then observe 30 seconds. External
+    simulator readiness failures invalidate the test instead of establishing either candidate
+    success or failure.

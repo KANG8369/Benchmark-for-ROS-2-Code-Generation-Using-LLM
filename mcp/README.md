@@ -3,8 +3,9 @@
 This directory contains the runnable MCP servers for the ROS 2 code-generation
 benchmark. A server has one fixed role at launch: the Coder can read public
 descriptions and build one complete package snapshot; the Evaluator can read a
-hidden metric and immutable generated-package artifacts. `metric.yaml` and
-`reference/` are never visible to the Coder.
+hidden metric and immutable generated-package artifacts. `metric.yaml` is
+registered only by the Evaluator profile. Optional `reference/` archives are
+not registered by either profile.
 
 ## Implemented Scope
 
@@ -22,6 +23,29 @@ by the model, a prompt, or an MCP tool call.
 The Evaluator receives the `run_id` from the orchestrator after a real Coder
 build. The Coder learns the build ID in its result but cannot read the artifact
 or metric through its server surface.
+
+## Benchmark Data Contract
+
+The public Description contains `intent`, ordered `functional_requirements`,
+and an optional `target_environment`. The hidden Metric repeats those FR IDs
+and texts exactly and adds ordered pass criteria directly below each FR.
+
+```text
+description.yaml: Intent + public FR + optional target environment
+metric.yaml:      matching FR + hidden PC
+```
+
+The Coder reads only the Description. The Evaluator reads the same Description,
+the hidden Metric, and the selected immutable generated-package artifact.
+Neither profile exposes optional reference-package files.
+
+The checked-in registry does not require a case-local `reference/` directory.
+If one is retained as an authoring archive, it is not registered as an MCP
+resource and is not an Evaluator evidence source.
+
+All current PCs are evaluated statically from generated-package artifacts.
+Per-PC evaluation mode and reference evidence are not fields in the revised
+Metric format.
 
 ## Requirements
 
@@ -133,18 +157,39 @@ MCP resource):
   "package_artifact_id": "the build_id returned by build_ros_package",
   "requirements": [
     {
-      "requirement_id": "FR-01",
-      "status": "pass",
-      "evidence": ["src/example.cpp:42"],
-      "feedback": null
+      "requirement_id": "FR-1",
+      "status": "fail",
+      "criteria": [
+        {
+          "criterion_id": "FR-1-PC-1",
+          "status": "pass",
+          "evidence": ["src/example.cpp:42 - verified candidate behavior"],
+          "feedback": null
+        },
+        {
+          "criterion_id": "FR-1-PC-2",
+          "status": "fail",
+          "evidence": [],
+          "feedback": "The required candidate behavior is missing."
+        }
+      ],
+      "feedback": "One or more pass criteria failed."
     }
   ]
 }
 ```
 
+The explicit `criteria` array is the validated Benchmark MCP output contract.
+The separate ROS_MA orchestrator and Evaluator still need to adopt this
+PC-level structure before the benchmark is release-ready end to end.
+
 The orchestrator verifies that the description hash and package artifact ID
-belong to the current run before it forwards only permitted feedback to the
-Coder. It must not give the Evaluator's server connection to the Coder.
+belong to the current run and that every hidden PC is covered exactly once.
+The complete PC-level result is retained as internal evaluation evidence. Before
+the next Coder turn, the orchestrator projects it into public FR-level status,
+candidate evidence, and improvement guidance; hidden PC identities and PC-level
+feedback are not forwarded. It must not give the Evaluator's server connection
+to the Coder.
 
 ## Resource Responses
 
@@ -161,14 +206,14 @@ The complete and section-level description resources return JSON envelopes:
   "description": {
     "intent": {},
     "functional_requirements": [],
-    "interfaces": {}
+    "target_environment": "A target robot, sensor, or system context."
   }
 }
 ```
 
 Every section read contains the same `description_sha256`, allowing an
-orchestrator to reject mixed snapshots. The optional `interfaces` section is
-represented with `present: false` when omitted.
+orchestrator to reject mixed snapshots. The optional `target_environment`
+section is represented with `present: false` when omitted.
 
 ## Tool Contracts
 
@@ -188,9 +233,9 @@ exit code, stderr, duration, truncation state, and a structured error kind.
 Results are cached once per server run.
 
 Use the tool only when generated code directly reads, constructs, or writes an
-existing interface. Do not use it to discover an interface absent from the
-public description. Custom interfaces belong in the generated package and are
-validated by the build.
+existing interface needed to implement a public FR. Do not use it to invent
+additional package requirements. Custom interfaces belong in the generated
+package and are validated by the build.
 
 ### `build_ros_package`
 
@@ -261,8 +306,8 @@ Coder -> build result -> functional evaluator -> explicit feedback -> Coder
   contract; retry policy remains external (`--max-build-calls`), rather than a
   hard-coded Coder repair loop.
 - Simulation harnesses should be authored and validated offline against the
-  benchmark contract/reference, then frozen before model evaluation. They must
-  not adapt to an individual candidate package.
+  public Description and frozen hidden Metric, then fixed before model
+  evaluation. They must not adapt to an individual candidate package.
 - A future Simulation Runner will receive only frozen artifacts and a restricted
   `run_simulation` tool; it will not generate or modify code.
 
@@ -283,6 +328,7 @@ mcp/
 │   └── server.py            # MCP resources, tools, and CLI
 └── tests/
     ├── test_registry.py
+    ├── test_schemas.py
     ├── test_server.py
     └── test_services.py
 ```

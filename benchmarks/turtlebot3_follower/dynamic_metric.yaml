@@ -1,0 +1,26 @@
+package_name: turtlebot3_follower
+
+metrics:
+  - id: DYN-01
+    requirement: >-
+      Each follower shall follow its immediate predecessor while keeping
+      their planar center-to-center distance at or below 110% of
+      the distance measured when that follower actually begins following.
+      This reference distance shall remain fixed throughout the evaluation
+      period. A decrease in spacing shall not constitute a violation of
+      this metric. A follower that never begins following shall not pass.
+    evaluation_period: >-
+      For 10 seconds of simulation time, starting when the
+      follower actually begins following its immediate predecessor.
+
+  - id: DYN-02
+    requirement: >-
+      Within 10 seconds of simulation time after its immediate
+      predecessor actually changes travel direction, each follower shall
+      update its actual travel direction to move toward that predecessor's
+      updated position. Restoring the initial spacing or reproducing the
+      predecessor's exact heading, angular velocity, or trajectory is
+      not required by this metric.
+    evaluation_period: >-
+      For 10 seconds of simulation time, starting when the
+      follower's immediate predecessor actually changes travel direction.

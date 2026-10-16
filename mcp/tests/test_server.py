@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -130,6 +131,8 @@ def test_evaluator_reads_hidden_metric_and_immutable_artifact(tmp_path: Path) ->
 
             assert metric["case_id"] == "dummy_sensors"
             assert metric["metric_sha256"]
+            assert metric["metric"]["metrics"][0]["id"] == "FR-1"
+            assert metric["metric"]["metrics"][0]["pass_criteria"][0]["id"] == "FR-1-PC-1"
             assert artifact["run_id"] == run_id
             assert artifact["build"]["status"] == "passed"
             assert package_file["content"] == "<package/>"
@@ -151,17 +154,18 @@ def test_resources_are_readable_through_an_in_memory_mcp_client(tmp_path: Path) 
                 "benchmark://cases/dummy_sensors/description"
             )
             section_result = await client.read_resource(
-                "benchmark://cases/dummy_sensors/description/interfaces"
+                "benchmark://cases/dummy_sensors/description/functional_requirements"
             )
 
             catalog = json.loads(catalog_result.contents[0].text)
             complete = json.loads(complete_result.contents[0].text)
             section = json.loads(section_result.contents[0].text)
 
-            assert catalog["case_count"] == 9
+            assert catalog["case_count"] == 17
             assert complete["description"]["intent"]["package_name"] == "dummy_sensors"
             assert complete["description_sha256"] == section["description_sha256"]
-            assert section["section"] == "interfaces"
+            assert section["section"] == "functional_requirements"
+            assert section["content"] == complete["description"]["functional_requirements"]
 
     asyncio.run(read_resources())
 
@@ -222,6 +226,10 @@ def test_console_server_uses_a_clean_stdio_transport() -> None:
             "--max-build-calls",
             "0",
         ],
+        env={
+            **os.environ,
+            "PYTHONPATH": str(REPOSITORY_ROOT / "mcp" / "src"),
+        },
     )
 
     async def inspect_subprocess() -> None:

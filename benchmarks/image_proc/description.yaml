@@ -5,240 +5,69 @@ intent:
   scope: Processes image and camera-calibration streams supplied by external publishers;
     camera acquisition, calibration production, display, and downstream consumption
     are external responsibilities.
+
 functional_requirements:
-- id: FR-1
-  text: The launch file loads a debayer component and mono and color rectification
-    components into an existing container or a newly started component container under
-    a configurable namespace.
-- id: FR-2
-  text: The public Processor utility converts supported raw mono, color, and Bayer
-    images into requested mono and color image matrices and optionally rectifies them
-    with a supplied pinhole camera model.
-- id: FR-3
-  text: The public edge-aware debayer utilities reconstruct color image matrices from
-    Bayer image matrices using edge-aware and weighted edge-aware interpolation.
-- id: FR-4
-  text: The public QoS utility selects a sensor-data QoS profile when no publisher
-    is known for an input topic and otherwise derives compatible reliability and durability
-    settings from an existing publisher.
-- id: FR-5
-  text: The debayer component lazily processes raw images only while an output has
-    subscribers and publishes monochrome and color outputs for supported encodings
-    while rejecting malformed, ambiguous, or unsupported input encodings.
-- id: FR-6
-  text: The rectification component lazily produces a calibrated rectified image,
-    passes through images with zero distortion, and suppresses output when camera
-    calibration is unavailable.
-- id: FR-7
-  text: The crop-and-decimate component lazily crops and downsamples synchronized
-    image and camera-info streams while updating output binning and ROI metadata and
-    rejecting invalid crop regions or unsupported Bayer decimation.
-- id: FR-8
-  text: The crop-non-zero component lazily publishes the bounding crop of the largest
-    non-zero region in a supported single-channel image and skips unsuitable or all-zero
-    images.
-- id: FR-9
-  text: The resize component lazily resizes synchronized image and camera-info pairs
-    by configured scale factors or explicit dimensions and updates output calibration
-    and ROI metadata.
-- id: FR-10
-  text: The marker-tracking component lazily detects the configured ArUco marker in
-    a camera image and publishes its estimated pose using the paired camera calibration.
-interfaces:
-  nodes:
-  - name: CropNonZeroNode
-    responsibility: Crops and decimates synchronized camera images and associated
-      calibration metadata.
-    topics:
-    - name: in/image_raw
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Input camera image.
-    - name: in/camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: subscribe
-      purpose: Calibration metadata paired with the input image.
-    - name: out/image_raw
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Cropped and decimated image.
-    - name: out/camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: publish
-      purpose: Calibration metadata updated for the output image.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Input image transport selection.
-    - name: queue_size
-      type: integer
-      purpose: Image and camera-info synchronization queue size.
-    - name: target_frame_id
-      type: string
-      purpose: Optional frame ID assigned to output image and camera-info headers.
-    - name: decimation_x
-      type: integer
-      purpose: Horizontal decimation factor.
-    - name: decimation_y
-      type: integer
-      purpose: Vertical decimation factor.
-    - name: width
-      type: integer
-      purpose: Crop width, with zero selecting the available width.
-    - name: height
-      type: integer
-      purpose: Crop height, with zero selecting the available height.
-    - name: offset_x
-      type: integer
-      purpose: Horizontal crop offset.
-    - name: offset_y
-      type: integer
-      purpose: Vertical crop offset.
-    - name: interpolation
-      type: integer
-      purpose: Resampling interpolation mode.
-  - name: CropNonZeroNode
-    responsibility: Crops a single-channel image to its largest non-zero region.
-    topics:
-    - name: image_raw
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Input monochrome or depth image.
-    - name: image
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Image cropped to its largest non-zero region.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Input image transport selection.
-  - name: DebayerNode
-    responsibility: Produces monochrome and color images from a raw image stream when
-      run directly.
-    topics:
-    - name: image_raw
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Input raw image.
-    - name: image_mono
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Monochrome image output.
-    - name: image_color
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Color image output.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Input image transport selection.
-    - name: debayer
-      type: integer
-      purpose: Debayering algorithm selection.
-  - name: RectifyNode
-    responsibility: Rectifies calibrated camera images when run directly.
-    topics:
-    - name: image
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Input unrectified image.
-    - name: camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: subscribe
-      purpose: Calibration metadata paired with the input image.
-    - name: image_rect
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Rectified image.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Input image transport selection.
-    - name: queue_size
-      type: integer
-      purpose: Image and camera-info synchronization queue size.
-    - name: interpolation
-      type: integer
-      purpose: Rectification interpolation mode.
-  - name: ResizeNode
-    responsibility: Resizes synchronized camera images and calibration metadata.
-    topics:
-    - name: image/image_raw
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Input image.
-    - name: image/camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: subscribe
-      purpose: Calibration metadata paired with the input image.
-    - name: resize/image_raw
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Resized image.
-    - name: resize/camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: publish
-      purpose: Calibration metadata scaled for the resized image.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Input image transport selection.
-    - name: interpolation
-      type: integer
-      purpose: Resampling interpolation mode.
-    - name: use_scale
-      type: bool
-      purpose: Selects scale-factor resizing instead of explicit dimensions.
-    - name: scale_height
-      type: double
-      purpose: Vertical image scale factor.
-    - name: scale_width
-      type: double
-      purpose: Horizontal image scale factor.
-    - name: height
-      type: integer
-      purpose: Output height when explicit-dimension resizing is selected.
-    - name: width
-      type: integer
-      purpose: Output width when explicit-dimension resizing is selected.
-  - name: TrackMarkerNode
-    responsibility: Detects a configured ArUco marker and estimates its pose from
-      camera calibration.
-    topics:
-    - name: image
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Input image containing candidate markers.
-    - name: camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: subscribe
-      purpose: Camera calibration used for pose estimation.
-    - name: tracked_pose
-      type: geometry_msgs/msg/PoseStamped
-      direction: publish
-      purpose: Estimated pose of the configured marker in the input image frame.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Input image transport selection.
-    - name: marker_id
-      type: integer
-      purpose: ArUco marker identifier to track.
-    - name: marker_size
-      type: double
-      purpose: Physical marker edge length in meters.
-    - name: dictionary
-      type: integer
-      purpose: OpenCV predefined ArUco dictionary identifier.
-  launch_arguments:
-  - name: namespace
-    purpose: Namespace applied to the components loaded by the launch file.
-  - name: container
-    purpose: Existing component container into which to load components, or an empty
-      value to create a new container.
-  external_nodes:
-  - name: <namespace>/image_proc_container
-    package: rclcpp_components
-    executable: component_container
-    purpose: Hosts the launch-configured image_proc components when no existing container
-      is selected.
+  - id: FR-1
+    text: >-
+      The launch file loads a debayer component and mono and color
+      rectification components into an existing container or a newly started
+      component container under a configurable namespace.
+
+  - id: FR-2
+    text: >-
+      The public Processor utility converts supported raw mono, color, and
+      Bayer images into requested mono and color image matrices and
+      optionally rectifies them with a supplied pinhole camera model.
+
+  - id: FR-3
+    text: >-
+      The public edge-aware debayer utilities reconstruct color image
+      matrices from Bayer image matrices using edge-aware and weighted
+      edge-aware interpolation.
+
+  - id: FR-4
+    text: >-
+      The public QoS utility selects a sensor-data QoS profile when no
+      publisher is known for an input topic and otherwise derives compatible
+      reliability and durability settings from an existing publisher.
+
+  - id: FR-5
+    text: >-
+      The debayer component lazily processes raw images only while an output
+      has subscribers and publishes monochrome and color outputs for
+      supported encodings while rejecting malformed, ambiguous, or
+      unsupported input encodings.
+
+  - id: FR-6
+    text: >-
+      The rectification component lazily produces a calibrated rectified
+      image, passes through images with zero distortion, and suppresses
+      output when camera calibration is unavailable.
+
+  - id: FR-7
+    text: >-
+      The crop-and-decimate component lazily crops and downsamples
+      synchronized image and camera-info streams while updating output
+      binning and ROI metadata and rejecting invalid crop regions or
+      unsupported Bayer decimation.
+
+  - id: FR-8
+    text: >-
+      The crop-non-zero component lazily publishes the bounding crop of the
+      largest non-zero region in a supported single-channel image and skips
+      unsuitable or all-zero images.
+
+  - id: FR-9
+    text: >-
+      The resize component lazily resizes synchronized image and camera-info
+      pairs by configured scale factors or explicit dimensions and updates
+      output calibration and ROI metadata.
+
+  - id: FR-10
+    text: >-
+      The marker-tracking component lazily detects the configured ArUco
+      marker in a camera image and publishes its estimated pose using the
+      paired camera calibration.
+
+target_environment: >-
+  A calibrated monocular-camera image-processing pipeline.

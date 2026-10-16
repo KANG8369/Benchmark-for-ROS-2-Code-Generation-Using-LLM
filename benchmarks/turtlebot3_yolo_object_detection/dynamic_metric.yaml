@@ -1,0 +1,25 @@
+package_name: turtlebot3_yolo_object_detection
+metrics:
+- id: DYN-01
+  requirement: >-
+    The installed launch shall accept the selected model path. On valid raw images, run
+    that model and publish decodable JPEGs with corresponding detection annotations and
+    exact source headers. Use fixed YOLOv8n CPU controls and independent detections; allow
+    3-pixel box-edge error and flexible annotation styles, without adding a detector mAP/recall
+    target.
+  evaluation_period: >-
+    Observe 30 seconds of 640x640 input at 1 Hz. Allow 8 wall-time seconds for measured
+    standalone first output, 2 seconds per matched image and 2 seconds for cleanup; allow
+    30 seconds for full launch startup. Use the fixed YOLOv8n model on CPU at 640x640. Compare
+    its independently obtained detections with the output; exact source headers are required.
+- id: DYN-02
+  requirement: >-
+    For conversion, inference, annotation and output-processing failures, log the error
+    and process subsequent valid inputs correctly. Use one-shot pass-through dependency
+    injections, confirm the targeted path was reached, and leave normal calls and candidate
+    code intact.
+  evaluation_period: >-
+    Observe a 30-second sequence for each fault class. Allow 2 wall-time seconds from next
+    valid input to output for the measured encoding failure, and 5 seconds for other fault
+    paths. A missing injection hook invalidates that subtest rather than passing all recovery
+    behavior.

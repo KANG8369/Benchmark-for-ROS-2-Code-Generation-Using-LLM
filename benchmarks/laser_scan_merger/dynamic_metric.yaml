@@ -1,0 +1,56 @@
+package_name: laser_scan_merger
+metrics:
+- id: DYN-01
+  requirement: >-
+    Combine near-time scans from two through nine configured inputs in the merged frame,
+    retaining the nearest valid point per bin and applying configured range, height, angle,
+    timing and empty-bin policies. Exercise 2, 3 and 9 inputs with 0/10 ms stamp spread
+    and known TF. Use absolute range error 0.0001 m plus relative 1e-5 and angle error 1e-5
+    rad; discrete sentinels and specified timing policies remain exact.
+  evaluation_period: >-
+    Observe each configured input-count and known-transform control for 30 seconds. Distinct
+    points and sequence-identifiable timestamps must show that each output uses a complete
+    near-time scan set. For the measured two-input identity-frame condition, allow 7 wall-time
+    seconds to first output and 1 second per response; other standalone conditions use 10
+    seconds startup and 5 seconds response. A new full container launch has a 30-second
+    startup budget.
+- id: DYN-02
+  requirement: >-
+    Wait and retry when a required TF is missing rather than publish an incomplete transformed
+    set. Resume after TF becomes available. In fixed-frame mode retain the initial transforms;
+    in moving-frame mode reflect subsequent known updates. Compare transformed points to
+    the analytically computed position within 0.0001 m plus relative 1e-5.
+  evaluation_period: >-
+    Run separate 30-second missing/recovered-TF and moving/fixed-frame sequences. Allow
+    5 wall-time seconds after a usable transform becomes available or changes for corresponding
+    correct merged outputs.
+- id: DYN-03
+  requirement: >-
+    Suppress merged-scan publication with no output subscribers. Observe candidate publication
+    calls without adding a subscriber. Confirm the trace observes publication with a connected
+    reader before and after the disconnected interval. Missing trace coverage invalidates
+    the test.
+  evaluation_period: >-
+    After disconnecting readers, allow 5 wall-time seconds for settling and observe 30 seconds
+    while valid inputs continue. Verify publication resumes within 5 seconds after reconnection.
+- id: DYN-04
+  requirement: >-
+    With 0, 1 or 10 configured input topics, do not initialize synchronization. With a valid
+    count, fill omitted QoS entries with reliable delivery and ignore excess entries without
+    changing configured-input policies. Verify endpoints and actual compatible delivery,
+    not just logs.
+  evaluation_period: >-
+    Allow 10 wall-time seconds for standalone startup and 5 seconds for endpoint discovery,
+    followed by 30 seconds per valid configuration. Observe invalid configurations for 30
+    seconds without counting a harness launch failure as successful rejection.
+- id: DYN-05
+  requirement: >-
+    The robot-configuration launch shall host the merger in a component container and produce
+    merged scans. The demo shall start RViz and actually invoke looping playback of its
+    demo bag. Record any observed replay boundary separately from the required playback
+    attempt.
+  evaluation_period: >-
+    Allow 30 wall-time seconds for launch startup and observe 30 seconds of live scans.
+    Optional replay-boundary observation lasts max(30, 2*bag_duration_seconds+5), capped
+    at 300 seconds. Exceeding that replay-observation cap does not fail the attempt-only
+    clause.

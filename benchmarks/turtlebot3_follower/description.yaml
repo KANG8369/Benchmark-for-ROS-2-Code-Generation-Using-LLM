@@ -13,8 +13,8 @@ functional_requirements:
   - id: FR-1
     text: >-
       The follower executable accepts a requested follower count and creates
-      one follower node for each index, pairing follower TB3_<i+1> with leader
-      TB3_<i>.
+      one follower node for each index, pairing follower TB3_<i+1> with
+      leader TB3_<i>.
 
   - id: FR-2
     text: >-
@@ -38,109 +38,5 @@ functional_requirements:
       controller and velocity-smoothing pipelines for TB3_2, TB3_3, and
       TB3_4, using follower-specific scan and velocity-command bindings.
 
-interfaces:
-  nodes:
-    - name: TB3_<follower_index>_follower_node
-      responsibility: >-
-        Broadcasts the leader-to-follower odometry transform and sends paths
-        that make the follower track the immediately preceding robot.
-
-      actions:
-        - name: /TB3_<follower_index>/follow_path
-          type: nav2_msgs/action/FollowPath
-          role: client
-          purpose: >-
-            Sends a two-pose follower path to the corresponding Nav2
-            controller.
-
-      tf:
-        - source_frame: TB3_<leader_index>/odom
-          target_frame: TB3_<follower_index>/odom
-          purpose: >-
-            Broadcasts the static odometry-frame relationship between the
-            leader and follower.
-
-        - source_frame: TB3_<leader_index>/base_link
-          target_frame: TB3_<follower_index>/base_link
-          purpose: >-
-            Looks up the leader pose expressed in the follower base frame.
-
-      parameters:
-        - name: use_sim_time
-          type: bool
-          purpose: >-
-            Selects simulated time and the corresponding static odometry
-            transform offset.
-
-  launch_arguments:
-    - name: use_sim_time
-      purpose: >-
-        Selects simulated ROS time for the follower nodes, controller servers,
-        and lifecycle managers.
-
-  external_nodes:
-    - name: /TB3_<follower_index>/controller_server
-      package: nav2_controller
-      executable: controller_server
-      purpose: >-
-        Executes FollowPath goals using follower-specific transforms and
-        laser-scan obstacle observations.
-
-      topics:
-        - name: /TB3_<follower_index>/cmd_vel_not_smoothed
-          type: geometry_msgs/msg/Twist
-          direction: publish
-          purpose: Publishes raw controller velocity commands.
-
-        - name: /TB3_<follower_index>/scan
-          type: sensor_msgs/msg/LaserScan
-          direction: subscribe
-          purpose: Supplies follower-specific obstacle observations.
-
-      actions:
-        - name: /TB3_<follower_index>/follow_path
-          type: nav2_msgs/action/FollowPath
-          role: server
-          purpose: Receives paths from the follower node.
-
-      parameters:
-        - name: use_sim_time
-          type: bool
-          purpose: Enables simulation time.
-
-    - name: /TB3_<follower_index>/lifecycle_manager_controller
-      package: nav2_lifecycle_manager
-      executable: lifecycle_manager
-      purpose: >-
-        Configures and activates the controller server and velocity smoother.
-
-      parameters:
-        - name: autostart
-          type: bool
-          purpose: Automatically activates the managed nodes.
-
-        - name: use_sim_time
-          type: bool
-          purpose: Enables simulation time.
-
-        - name: node_names
-          type: string_array
-          purpose: Manages controller_server and velocity_smoother.
-
-    - name: /TB3_<follower_index>/velocity_smoother
-      package: nav2_velocity_smoother
-      executable: velocity_smoother
-      purpose: >-
-        Limits and smooths controller velocity commands before forwarding
-        them to the follower robot.
-
-      topics:
-        - name: /TB3_<follower_index>/cmd_vel_not_smoothed
-          type: geometry_msgs/msg/Twist
-          direction: subscribe
-          purpose: Receives raw controller velocity commands.
-
-        - name: /TB3_<follower_index>/cmd_vel
-          type: geometry_msgs/msg/Twist
-          direction: publish
-          purpose: Publishes smoothed velocity commands.
+target_environment: >-
+  A multi-robot system using TurtleBot3 mobile robots.

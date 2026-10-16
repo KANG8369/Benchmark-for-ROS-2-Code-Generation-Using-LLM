@@ -4,29 +4,20 @@ intent:
     simulated laser-scan and joint-state data for a simple robot.
   scope: Generates synthetic sensor messages only; robot description, TF publication,
     visualization, and consumer behavior are external responsibilities.
+
 functional_requirements:
-- id: FR-1
-  text: The dummy_laser executable continuously publishes timestamped LaserScan messages
-    with sinusoidally varying uniform range values in the single_rrbot_hokuyo_link
-    frame.
-- id: FR-2
-  text: The dummy_joint_states executable continuously publishes timestamped JointState
-    messages for single_rrbot_joint1 and single_rrbot_joint2 with matching sinusoidally
-    varying positions.
-interfaces:
-  nodes:
-  - name: dummy_laser
-    responsibility: Publishes simulated planar laser-scan measurements.
-    topics:
-    - name: scan
-      type: sensor_msgs/msg/LaserScan
-      direction: publish
-      purpose: Provides synthetic range scans in the single_rrbot_hokuyo_link sensor
-        frame.
-  - name: dummy_joint_states
-    responsibility: Publishes simulated positions for two robot joints.
-    topics:
-    - name: joint_states
-      type: sensor_msgs/msg/JointState
-      direction: publish
-      purpose: Provides synthetic positions for single_rrbot_joint1 and single_rrbot_joint2.
+  - id: FR-1
+    text: >-
+      The dummy_laser executable continuously publishes timestamped
+      LaserScan messages on the scan topic with sinusoidally varying uniform
+      range values in the single_rrbot_hokuyo_link frame.
+
+  - id: FR-2
+    text: >-
+      The dummy_joint_states executable continuously publishes timestamped
+      JointState messages on the joint_states topic for
+      single_rrbot_joint1 and single_rrbot_joint2 with matching sinusoidally
+      varying positions.
+
+target_environment: >-
+  A test or simulation environment using the single-RRBot model.

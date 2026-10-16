@@ -1,0 +1,22 @@
+package_name: dummy_robot_bringup
+metrics:
+- id: DYN-01
+  requirement: >-
+    Every supplied bringup launch shall start the dummy map server, robot state publisher,
+    joint-state publisher and laser publisher, with external dependencies available. The
+    robot state publisher shall receive the packaged single-RRBot description and produce
+    corresponding TF with valid joint states. Do not attribute external component algorithms
+    to this package.
+  evaluation_period: >-
+    Allow 7 wall-time seconds for outputs from the measured XML launch, or 30 seconds for
+    other full launch variants, followed by 30 seconds of process/topic/TF observation.
+    Cleanup allows 2 seconds for the measured condition or 5 seconds otherwise.
+- id: DYN-02
+  requirement: >-
+    The Python bringup launch shall additionally start RViz2 using the packaged RViz configuration.
+    Verify the actual launched process and configuration, not just a launch-file string.
+    A working display and external RViz installation are prerequisites.
+  evaluation_period: >-
+    Allow 30 wall-time seconds for full launch startup and observe for 30 seconds. An unavailable
+    external display invalidates this subtest; it does not demonstrate a package failure
+    or a pass.

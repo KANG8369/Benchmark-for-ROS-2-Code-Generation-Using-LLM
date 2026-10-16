@@ -1,0 +1,44 @@
+package_name: image_tools
+metrics:
+- id: DYN-01
+  requirement: >-
+    In camera and synthetic-burger modes, publish images with current acquisition/generation
+    timestamps and the configured frame ID. After true flip_image input, subsequently processed
+    frames shall be exact horizontal reversals of their unflipped content. Use a frozen
+    asymmetric camera input or observe the actual pre-flip buffer; consecutive moving burger
+    frames are not an exact-content oracle. Skip iterations with no frame.
+  evaluation_period: >-
+    Observe each mode for 30 seconds. Allow 7 wall-time seconds for measured synthetic startup,
+    10 seconds for camera startup, and 5 seconds for flip/frame-loss transitions, excluding
+    demonstrably pre-command in-flight frames. Copied frame IDs must match exactly and generated
+    stamps must increase and fall within 0.1 seconds of acquisition and publication.
+- id: DYN-02
+  requirement: >-
+    Report errors for an absent camera, invalid reliability/history value, and dimensions
+    too small for the burger asset. Use invalid_policy, a preflight-confirmed missing device,
+    1x1 dimensions and dimensions one pixel below the supplied burger asset size. Retain
+    a 320x240 positive control. Determine the asset size before candidate scoring.
+  evaluation_period: >-
+    Allow 10 wall-time seconds from invalid startup invocation to the error. Record the
+    error and prohibit successful image publication for that invalid configuration; no particular
+    error wording is required.
+- id: DYN-03
+  requirement: >-
+    With display enabled and compatible QoS, showimage shall receive supported images and
+    display their corresponding content. Observe the actual display-backend image buffer
+    and compare its dimensions and content to the supplied image after the declared color
+    conversion; merely opening a window is insufficient.
+  evaluation_period: >-
+    Allow 10 wall-time seconds for viewer startup and 5 seconds for display response, then
+    observe each encoding for 30 seconds. Verify the external display and observer before
+    scoring the candidate.
+- id: DYN-04
+  requirement: >-
+    Exercise the installed public image adapter through a compiled client. Preserve exact
+    headers/content and the promised owned, referenced and copied access semantics; test
+    aliasing, copy independence and owned buffer lifetime. Unsupported matrix types and
+    encodings shall raise errors.
+  evaluation_period: >-
+    Allow 5 wall-time seconds per call. Compare lossless pixels and copied headers exactly,
+    verify aliasing by changing the source buffer, and verify owned/copy lifetimes. The
+    client binds the exported API but never replaces the implementation with a reference.

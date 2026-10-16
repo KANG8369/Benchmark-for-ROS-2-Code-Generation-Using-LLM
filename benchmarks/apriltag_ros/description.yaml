@@ -4,101 +4,41 @@ intent:
     detection metadata and optional pose transforms.
   scope: Provides an AprilTag detector component and standalone executable; its installed
     launch configuration configures a camera-processing composition around the detector.
+
 functional_requirements:
-- id: FR-1
-  text: The detector accepts camera images and calibration data, detects configured
-    AprilTags, and publishes an AprilTagDetectionArray containing accepted detection
-    metadata.
-- id: FR-2
-  text: When pose estimation is enabled and valid camera intrinsics are available,
-    the detector broadcasts one transform per accepted tag from the image frame to
-    its configured or generated tag frame.
-- id: FR-3
-  text: The detector filters detected tags by configured IDs and maximum Hamming distance,
-    and uses per-tag frame names and sizes when supplied.
-- id: FR-4
-  text: The detector rejects startup configurations with an unsupported tag family
-    or mismatched tag ID, frame-name, or size list lengths.
-- id: FR-5
-  text: Runtime updates to detector tuning, maximum Hamming distance, and profiling
-    settings alter subsequent detection processing.
-- id: FR-6
-  text: The installed camera demonstration launch accepts a camera-device selection
-    and configures AprilTag detection for rectified camera imagery.
-interfaces:
-  nodes:
-  - name: apriltag
-    responsibility: Detects AprilTags in camera imagery and publishes detection results
-      and optional tag pose transforms.
-    topics:
-    - name: image_rect
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Receives rectified raw camera images through the selected image transport.
-    - name: camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: subscribe
-      purpose: Receives camera calibration information synchronized with input images.
-    - name: detections
-      type: apriltag_msgs/msg/AprilTagDetectionArray
-      direction: publish
-      purpose: Publishes accepted AprilTag IDs, image-space geometry, homographies,
-        and detection quality metadata.
-    tf:
-    - source_frame: <image_header.frame_id>
-      target_frame: <configured_tag_frame_or_detected_family:id>
-      purpose: Broadcasts the estimated pose of each accepted calibrated tag when
-        pose estimation is enabled.
-    parameters:
-    - name: image_transport
-      type: string
-      purpose: Selects the image transport used for camera-image subscription.
-    - name: qos_profile
-      type: string
-      purpose: Selects the camera subscription QoS profile.
-    - name: family
-      type: string
-      purpose: Selects the AprilTag family to detect.
-    - name: size
-      type: double
-      purpose: Sets the default physical tag edge size in meters.
-    - name: tag.ids
-      type: integer_array
-      purpose: Selects tag IDs for which detections and transforms are published.
-    - name: tag.frames
-      type: string_array
-      purpose: Assigns child TF frame names to configured tag IDs.
-    - name: tag.sizes
-      type: double_array
-      purpose: Overrides the default physical edge size for configured tag IDs.
-    - name: pose_estimation_method
-      type: string
-      purpose: Selects PnP or homography pose estimation, or disables pose estimation
-        when empty.
-    - name: detector.threads
-      type: integer
-      purpose: Sets the AprilTag detector worker-thread count.
-    - name: detector.decimate
-      type: double
-      purpose: Sets image decimation for quadrilateral detection.
-    - name: detector.blur
-      type: double
-      purpose: Sets Gaussian blur for quadrilateral detection.
-    - name: detector.refine
-      type: bool
-      purpose: Enables edge-gradient refinement.
-    - name: detector.sharpening
-      type: double
-      purpose: Sets decoding sharpening.
-    - name: detector.debug
-      type: bool
-      purpose: Enables detector debug-image output.
-    - name: max_hamming
-      type: integer
-      purpose: Sets the maximum corrected-bit distance accepted for a detection.
-    - name: profile
-      type: bool
-      purpose: Enables detector profiling output.
-  launch_arguments:
-  - name: device
-    purpose: Selects the camera device for the installed camera demonstration launch.
+  - id: FR-1
+    text: >-
+      The detector accepts synchronized camera images and calibration data,
+      detects configured AprilTags, and publishes an
+      AprilTagDetectionArray containing accepted detection metadata.
+
+  - id: FR-2
+    text: >-
+      When pose estimation is enabled and valid camera intrinsics are
+      available, the detector broadcasts one transform per accepted tag from
+      the image frame to its configured or generated tag frame.
+
+  - id: FR-3
+    text: >-
+      The detector filters detected tags by configured IDs and maximum
+      Hamming distance, and uses per-tag frame names and sizes when
+      supplied.
+
+  - id: FR-4
+    text: >-
+      The detector rejects startup configurations with an unsupported tag
+      family or mismatched tag ID, frame-name, or size list lengths.
+
+  - id: FR-5
+    text: >-
+      Runtime updates to detector tuning, maximum Hamming distance, and
+      profiling settings alter subsequent detection processing.
+
+  - id: FR-6
+    text: >-
+      The installed camera demonstration launch accepts a camera-device
+      selection and configures AprilTag detection for rectified camera
+      imagery.
+
+target_environment: >-
+  A calibrated monocular camera system observing AprilTags.

@@ -14,7 +14,13 @@ from typing import Any
 import yaml
 
 CASE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
-DESCRIPTION_SECTIONS = ("intent", "functional_requirements", "interfaces")
+DESCRIPTION_SECTIONS = ("intent", "functional_requirements", "target_environment")
+DESCRIPTION_KEYS = frozenset(DESCRIPTION_SECTIONS)
+INTENT_KEYS = frozenset({"package_name", "summary", "scope"})
+FR_KEYS = frozenset({"id", "text"})
+METRIC_KEYS = frozenset({"package_name", "metrics"})
+METRIC_FR_KEYS = frozenset({"id", "text", "pass_criteria"})
+PC_KEYS = frozenset({"id", "text"})
 
 
 @dataclass(frozen=True)
@@ -24,6 +30,7 @@ class CaseSnapshot:
     case_id: str
     description_sha256: str
     description: dict[str, Any]
+    requirement_identity: tuple[tuple[str, str], ...]
 
     @property
     def available_sections(self) -> list[str]:
@@ -133,34 +140,21 @@ class BenchmarkRegistry:
 
             description_path = case_dir / "description.yaml"
             metric_path = case_dir / "metric.yaml"
-            reference_path = case_dir / "reference"
             if not self._is_regular_direct_file(description_path, resolved_case_dir):
                 continue
             if not self._is_regular_direct_file(metric_path, resolved_case_dir):
                 continue
-            if (
-                not reference_path.is_dir()
-                or reference_path.is_symlink()
-                or reference_path.resolve(strict=True).parent != resolved_case_dir
-            ):
-                continue
 
             raw_description = description_path.read_bytes()
             parsed = yaml.safe_load(raw_description)
-            if not isinstance(parsed, dict):
-                raise ValueError(f"Description must be a mapping: {description_path}")
-            if not all(section in parsed for section in ("intent", "functional_requirements")):
-                raise ValueError(f"Description is missing required sections: {description_path}")
-            intent = parsed.get("intent")
-            if not isinstance(intent, dict) or intent.get("package_name") != case_id:
-                raise ValueError(
-                    f"intent.package_name must match directory {case_id!r}: {description_path}"
-                )
+            requirement_identity = self._validate_description(case_id, parsed, description_path)
+            self._read_metric_snapshot(case_id, metric_path, requirement_identity)
 
             cases[case_id] = CaseSnapshot(
                 case_id=case_id,
                 description_sha256=hashlib.sha256(raw_description).hexdigest(),
                 description=parsed,
+                requirement_identity=requirement_identity,
             )
         return cases
 
@@ -168,16 +162,129 @@ class BenchmarkRegistry:
         metrics: dict[str, MetricSnapshot] = {}
         for case_id in self.case_ids:
             metric_path = self.benchmarks_root / case_id / "metric.yaml"
-            raw_metric = metric_path.read_bytes()
-            parsed = yaml.safe_load(raw_metric)
-            if not isinstance(parsed, dict):
-                raise ValueError(f"Metric must be a mapping: {metric_path}")
-            metrics[case_id] = MetricSnapshot(
-                case_id=case_id,
-                metric_sha256=hashlib.sha256(raw_metric).hexdigest(),
-                metric=parsed,
+            metrics[case_id] = self._read_metric_snapshot(
+                case_id,
+                metric_path,
+                self._cases[case_id].requirement_identity,
             )
         return metrics
+
+    @classmethod
+    def _validate_description(
+        cls,
+        case_id: str,
+        parsed: Any,
+        description_path: Path,
+    ) -> tuple[tuple[str, str], ...]:
+        if not isinstance(parsed, dict):
+            raise ValueError(f"Description must be a mapping: {description_path}")
+        keys = set(parsed)
+        required = {"intent", "functional_requirements"}
+        if not required.issubset(keys):
+            raise ValueError(f"Description is missing required sections: {description_path}")
+        unexpected = keys - DESCRIPTION_KEYS
+        if unexpected:
+            raise ValueError(
+                f"Description contains unsupported sections {sorted(unexpected)}: "
+                f"{description_path}"
+            )
+
+        intent = parsed["intent"]
+        if not isinstance(intent, dict):
+            raise ValueError(f"intent must be a mapping: {description_path}")
+        if set(intent) - INTENT_KEYS or not {"package_name", "summary"}.issubset(intent):
+            raise ValueError(f"intent contains invalid fields: {description_path}")
+        if intent.get("package_name") != case_id:
+            raise ValueError(
+                f"intent.package_name must match directory {case_id!r}: {description_path}"
+            )
+        for field in ("package_name", "summary"):
+            cls._require_nonempty_string(intent.get(field), f"intent.{field}", description_path)
+        if "scope" in intent:
+            cls._require_nonempty_string(intent["scope"], "intent.scope", description_path)
+
+        if "target_environment" in parsed:
+            cls._require_nonempty_string(
+                parsed["target_environment"], "target_environment", description_path
+            )
+
+        requirements = parsed["functional_requirements"]
+        if not isinstance(requirements, list) or not requirements:
+            raise ValueError(f"functional_requirements must be non-empty: {description_path}")
+        identity: list[tuple[str, str]] = []
+        for index, requirement in enumerate(requirements, 1):
+            expected_id = f"FR-{index}"
+            if not isinstance(requirement, dict) or set(requirement) != FR_KEYS:
+                raise ValueError(f"{expected_id} must contain only id and text: {description_path}")
+            if requirement.get("id") != expected_id:
+                raise ValueError(
+                    f"Expected sequential requirement {expected_id}: {description_path}"
+                )
+            text = cls._require_nonempty_string(
+                requirement.get("text"), f"{expected_id}.text", description_path
+            )
+            identity.append((expected_id, text))
+        return tuple(identity)
+
+    @classmethod
+    def _read_metric_snapshot(
+        cls,
+        case_id: str,
+        metric_path: Path,
+        public_identity: tuple[tuple[str, str], ...],
+    ) -> MetricSnapshot:
+        raw_metric = metric_path.read_bytes()
+        parsed = yaml.safe_load(raw_metric)
+        if not isinstance(parsed, dict) or set(parsed) != METRIC_KEYS:
+            raise ValueError(f"Metric must contain only package_name and metrics: {metric_path}")
+        if parsed.get("package_name") != case_id:
+            raise ValueError(f"metric.package_name must match directory {case_id!r}: {metric_path}")
+        requirements = parsed.get("metrics")
+        if not isinstance(requirements, list) or not requirements:
+            raise ValueError(f"metrics must be a non-empty list: {metric_path}")
+        hidden_identity: list[tuple[str, str]] = []
+        for requirement_index, requirement in enumerate(requirements, 1):
+            expected_id = f"FR-{requirement_index}"
+            if not isinstance(requirement, dict) or set(requirement) != METRIC_FR_KEYS:
+                raise ValueError(
+                    f"Metric {expected_id} must contain only id, text, and pass_criteria: "
+                    f"{metric_path}"
+                )
+            if requirement.get("id") != expected_id:
+                raise ValueError(f"Expected sequential Metric FR {expected_id}: {metric_path}")
+            text = cls._require_nonempty_string(
+                requirement.get("text"), f"metric {expected_id}.text", metric_path
+            )
+            hidden_identity.append((expected_id, text))
+
+            criteria = requirement.get("pass_criteria")
+            if not isinstance(criteria, list) or not criteria:
+                raise ValueError(f"{expected_id}.pass_criteria must be non-empty: {metric_path}")
+            for criterion_index, criterion in enumerate(criteria, 1):
+                expected_pc_id = f"{expected_id}-PC-{criterion_index}"
+                if not isinstance(criterion, dict) or set(criterion) != PC_KEYS:
+                    raise ValueError(
+                        f"{expected_pc_id} must contain only id and text: {metric_path}"
+                    )
+                if criterion.get("id") != expected_pc_id:
+                    raise ValueError(f"Expected sequential PC {expected_pc_id}: {metric_path}")
+                cls._require_nonempty_string(
+                    criterion.get("text"), f"{expected_pc_id}.text", metric_path
+                )
+
+        if tuple(hidden_identity) != public_identity:
+            raise ValueError(f"Description and Metric FRs differ: {metric_path}")
+        return MetricSnapshot(
+            case_id=case_id,
+            metric_sha256=hashlib.sha256(raw_metric).hexdigest(),
+            metric=parsed,
+        )
+
+    @staticmethod
+    def _require_nonempty_string(value: Any, field: str, path: Path) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{field} must be a non-empty string: {path}")
+        return value
 
     @staticmethod
     def _is_regular_direct_file(path: Path, expected_parent: Path) -> bool:
@@ -189,7 +296,7 @@ class BenchmarkRegistry:
 
 
 def resolve_repository_root(explicit_root: str | Path | None = None) -> Path:
-    """Find a checkout containing both ``benchmarks`` and ``templates``."""
+    """Find a checkout containing a ``benchmarks`` directory."""
 
     if explicit_root is not None:
         return _validate_repository_root(Path(explicit_root))
@@ -225,8 +332,6 @@ def _validate_repository_root(candidate: Path) -> Path:
         resolved = candidate.expanduser().resolve(strict=True)
     except OSError as exc:
         raise ValueError(f"Benchmark repository root does not exist: {candidate}") from exc
-    if not (resolved / "benchmarks").is_dir() or not (resolved / "templates").is_dir():
-        raise ValueError(
-            f"Benchmark repository root must contain benchmarks/ and templates/: {resolved}"
-        )
+    if not (resolved / "benchmarks").is_dir():
+        raise ValueError(f"Benchmark repository root must contain benchmarks/: {resolved}")
     return resolved

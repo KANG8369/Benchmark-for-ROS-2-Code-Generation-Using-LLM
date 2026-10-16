@@ -6,83 +6,40 @@ intent:
   scope: Provides a lifecycle-managed Mediapipe-based human detector and optional
     annotated-image output; camera data sources and lifecycle activation control are
     external responsibilities.
+
 functional_requirements:
-- id: FR-1
-  text: The lifecycle node configures a pose detector and synchronized RGB, depth,
-    and camera-info inputs when it enters the configured state.
-- id: FR-2
-  text: The node estimates a detected person's three-dimensional position from pose
-    landmarks, depth pixels, and camera calibration when valid synchronized input
-    data is available.
-- id: FR-3
-  text: While active, the node periodically broadcasts a transform from the configured
-    camera frame to the configured detected-human frame when it has a positive detected
-    position.
-- id: FR-4
-  text: When enabled, the node publishes RGB images annotated with detected pose landmarks,
-    or the received RGB image when no landmarks are available.
-- id: FR-5
-  text: The node avoids human-position estimation when required image data is unavailable
-    or RGB and depth image dimensions differ.
-- id: FR-6
-  text: The node stops its periodic output timer when deactivated and destroys it
-    during cleanup, shutdown, or error handling.
-interfaces:
-  nodes:
-  - name: human_detector
-    responsibility: Lifecycle-managed human pose detection, position estimation, transform
-      broadcasting, and optional annotated-image publication.
-    topics:
-    - name: /camera/color/image_raw
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: RGB camera image input for pose detection.
-    - name: /camera/depth/image_rect_raw
-      type: sensor_msgs/msg/Image
-      direction: subscribe
-      purpose: Depth image input for detected-person position estimation.
-    - name: /camera/depth/camera_info
-      type: sensor_msgs/msg/CameraInfo
-      direction: subscribe
-      purpose: Camera calibration input for projecting detected image coordinates
-        into three dimensions.
-    - name: image_with_detected_human
-      type: sensor_msgs/msg/Image
-      direction: publish
-      purpose: Optional image output containing pose-landmark annotations when a person
-        is detected.
-    tf:
-    - source_frame: <camera_frame_id>
-      target_frame: <detected_human_frame_id>
-      purpose: Broadcasts the estimated detected-human position relative to the camera
-        frame.
-    parameters:
-    - name: camera_frame_id
-      type: string
-      purpose: Parent camera frame used for detected-human transform broadcasts.
-    - name: detected_human_frame_id
-      type: string
-      purpose: Child frame name used for detected-human transform broadcasts.
-    - name: detected_human_transform_frequency
-      type: integer
-      purpose: Frequency of periodic detected-human transform and optional image output
-        processing.
-    - name: publish_image_with_detected
-      type: bool
-      purpose: Enables publication of the annotated or unannotated RGB image output.
-    - name: min_detection_confidence
-      type: double
-      purpose: Minimum Mediapipe person-detection confidence threshold.
-    - name: min_tracking_confidence
-      type: double
-      purpose: Minimum Mediapipe landmark-tracking confidence threshold.
-    - name: time_approximation_slope
-      type: double
-      purpose: Allowed timestamp difference for synchronized RGB, depth, and camera-info
-        input messages.
-    - name: use_sim_time
-      type: bool
-      purpose: Selects simulated time when supplied by the launch interface.
-  launch_arguments:
-  - name: use_sim
-    purpose: Sets the human_detector node's use_sim_time parameter.
+  - id: FR-1
+    text: >-
+      The lifecycle node configures a pose detector and synchronized RGB,
+      depth, and camera-info inputs when it enters the configured state.
+
+  - id: FR-2
+    text: >-
+      The node estimates a detected person's three-dimensional position from
+      pose landmarks, depth pixels, and camera calibration when valid
+      synchronized input data is available.
+
+  - id: FR-3
+    text: >-
+      While active, the node periodically broadcasts a transform from the
+      configured camera frame to the configured detected-human frame when it
+      has a positive detected position.
+
+  - id: FR-4
+    text: >-
+      When enabled, the node publishes RGB images annotated with detected
+      pose landmarks, or the received RGB image when no landmarks are
+      available.
+
+  - id: FR-5
+    text: >-
+      The node avoids human-position estimation when required image data is
+      unavailable or RGB and depth image dimensions differ.
+
+  - id: FR-6
+    text: >-
+      The node stops its periodic output timer when deactivated and destroys
+      it during cleanup, shutdown, or error handling.
+
+target_environment: >-
+  A calibrated RGB-D camera system providing aligned RGB and depth images.

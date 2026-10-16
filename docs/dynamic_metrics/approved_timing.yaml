@@ -1,0 +1,210 @@
+status: user_approved_for_measured_conditions_only
+clock: monotonic_wall_time_not_simulation_time
+conservative_delegated_choices: conservative_limits.yaml
+scope_rules:
+- Values apply only to the conditions listed below, not every metric in a case.
+- >-
+  Startup is process invocation to the specified observable output or service with valid
+  prerequisites available.
+- Response is stimulus publication or service request to the corresponding observed output
+  or reply.
+- Shutdown is an operator SIGINT to process exit; it is not physical robot stopping time.
+- >-
+  Except where shutdown is itself a stated requirement, the shutdown limit is a harness
+  cleanup budget, not an additional FR.
+- The 30-second observation window is separate from these waiting limits.
+- These records do not deploy or modify the runner and do not prove all FRs or runtime behaviors.
+- Earlier calibration reports retain their original proposal-only status as historical evidence.
+- >-
+  Additional paths use the separately adopted engineering rules in evaluation_protocol.yaml;
+  this file still distinguishes measured conditions from extrapolation.
+cases:
+  wall_follower_ros2:
+    startup_seconds: 8
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    - DYN-03
+    measured_condition: Standalone controller; clear, front-blocked and all-blocked scans
+      at 10 Hz; SIGINT.
+    response_events:
+    - scan_pattern_to_expected_Twist
+    - SIGINT_to_zero_Twist
+    startup_observation: first_expected_Twist
+    excluded:
+    - Gazebo_launch_startup
+    - physical_motion_completion
+    - other_obstacle_patterns
+  turtlebot3_aruco_tracker:
+    startup_seconds: 8
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-02
+    measured_condition: >-
+      Frontal DICT_5X5_250 marker 7; 640x480 JPEG; 200-pixel marker; 0.04 m marker size;
+      600-pixel focal length; 10 Hz.
+    response_events:
+    - matched_image_to_marker_TF
+    startup_observation: first_marker_TF_with_valid_calibration_and_images
+    excluded:
+    - other_scenes
+    - calibration_change_response
+    - general_pose_accuracy
+  image_tools:
+    startup_seconds: 7
+    response_seconds: null
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    measured_condition: cam2image synthetic burger mode; 320x240; configured 10 Hz; display
+      disabled.
+    response_events: []
+    startup_observation: first_image
+    excluded:
+    - camera_hardware
+    - flip_response
+    - display_response
+    - adapter_calls
+  dummy_sensors:
+    startup_seconds: 7
+    response_seconds: null
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    - DYN-02
+    measured_condition: >-
+      Default standalone dummy_laser and dummy_joint_states; installed Jazzy 0.33.9 baseline,
+      not pinned 0.38.0 source.
+    response_events: []
+    startup_observation: both_first_scan_and_first_joint_state
+    excluded:
+    - other_configurations
+    - general_sinusoidal_tolerance
+  dummy_map_server:
+    startup_seconds: 7
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    - DYN-02
+    measured_condition: Default map server and compatible transient-local late subscriber;
+      installed Jazzy 0.33.9 baseline.
+    response_events:
+    - late_subscription_to_identified_retained_map
+    startup_observation: first_map
+    excluded:
+    - other_map_configurations
+    - different_QoS_conditions
+  dummy_robot_bringup:
+    startup_seconds: 7
+    response_seconds: null
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    measured_condition: Pinned XML launch with installed Jazzy sensor/map dependencies;
+      no RViz.
+    response_events: []
+    startup_observation: first_map_scan_joint_state_and_TF
+    excluded:
+    - Python_launch_RViz
+    - graphical_display
+    - other_launch_variants
+  laser_scan_merger:
+    startup_seconds: 7
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    measured_condition: >-
+      Component loaded into an existing container; two synchronized 360-ray scans at 10
+      Hz, ranges 2 m and 3 m, identity base_link frame, output subscriber present.
+    response_events:
+    - component_load_service_reply
+    - matched_scans_to_merged_scan
+    startup_observation: first_merged_scan
+    excluded:
+    - TF_recovery
+    - moving_frames
+    - additional_inputs
+    - supplied_demo_launch
+    - rosbag_playback
+  nav2_waypoint_follower:
+    startup_seconds: 7
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-05
+    measured_condition: Installed Jazzy 1.3.12 lifecycle service transitions, not pinned
+      1.4.0 source.
+    response_events:
+    - configure_service_reply
+    - activate_service_reply
+    - deactivate_service_reply
+    startup_observation: lifecycle_service_available
+    excluded:
+    - navigation_goal_completion
+    - GPS_requests
+    - task_executors
+    - action_discovery
+    - lifecycle_bond_timing
+  turtlebot3_automatic_parking:
+    startup_seconds: 7
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    - DYN-04
+    measured_condition: Supported LDS-01; 360-ray no-spot scans at 10 Hz with range 3 m
+      and zero intensity; stationary odometry.
+    response_events:
+    - matched_scan_to_scan_spot_republication
+    startup_observation: first_scan_spot_republication
+    excluded:
+    - reflective_spot_processing_latency
+    - reset_latency
+    - unsupported_LDS_rejection_deadline
+    - physical_parking_completion
+  turtlebot3_yolo_object_detection:
+    startup_seconds: 8
+    response_seconds: 2
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-01
+    - DYN-02
+    measured_condition: >-
+      Standalone node; YOLOv8n on CPU; 640x640 bus-image input at 1 Hz; one invalid encoding
+      followed by valid frames; Ultralytics 8.3.221.
+    response_events:
+    - matched_valid_image_to_JPEG_including_after_encoding_fault
+    startup_observation: first_annotated_JPEG
+    excluded:
+    - other_models
+    - GPU_execution
+    - other_resolutions
+    - launch_overhead
+    - inference_failure_recovery
+    - annotation_failure_recovery
+  image_proc:
+    startup_seconds: 7
+    response_seconds: 1
+    shutdown_seconds: 2
+    metric_ids:
+    - DYN-03
+    measured_condition: >-
+      Official Jazzy 5.0.13 standalone rectify_node; synchronized 640x480 mono8 checkerboard
+      and camera info at 10 Hz; zero or recorded nonzero distortion.
+    response_events:
+    - matched_image_camera_info_pair_to_rectified_image
+    startup_observation: first_rectified_image
+    excluded:
+    - pinned_8_0_0_runtime
+    - other_components
+    - other_image_conditions
+    - missing_calibration_recovery
+    - launch_container_overhead
+measurement_summary: calibration_summary.json
+approval_record_date: '2026-10-17'
+additional_conditions_policy: Recorded in each case dynamic_metric.yaml; evaluation_protocol.yaml
+  is background rationale only.
