@@ -1,31 +1,22 @@
-# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
-# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
-# Publishing this filename does not authorize execution or resolve Q-* review items.
 package_name: dummy_map_server
 metrics:
-  - id: DYN-01
-    requirement: >-
-      The node shall repeatedly publish world-frame OccupancyGrid messages
-      with fixed geometry. Starting from unknown cells, the map shall
-      exhibit an occupied and free-cell pattern that changes position over
-      time. Exact dimensions, movement speed, and publication rate are not
-      prescribed. The observable initialization point requires clarification
-      (Q-MAP-01).
-    evaluation_period: >-
-      For 30 seconds from map-server startup, with observation prepared to
-      capture the initial publication. In the measured default configuration,
-      allow 7 wall-time seconds from process start to the first map and
-      2 seconds from operator SIGINT to exit. Timestamp tolerances and
-      other configurations remain under review (Q-TIME-01).
-  - id: DYN-02
-    requirement: >-
-      A compatible subscriber joining after a map publication shall receive
-      the retained latest map. Receiving only a later fresh publication
-      shall not be taken as evidence that the earlier map was retained.
-    evaluation_period: >-
-      During a 30-second run containing a late subscription, from the
-      subscription event through delivery of the retained map. In the
-      measured compatible transient-local subscriber condition, allow
-      1 wall-time second for delivery of the identified retained map.
-      A later fresh map is not equivalent evidence; other delivery
-      conditions remain under review (Q-TIME-01, Q-MAP-02).
+- id: DYN-01
+  requirement: >-
+    Publish world-frame OccupancyGrid messages with fixed geometry, unknown background cells
+    (-1), and a moving pattern of free (0) and occupied (100) cells. Initialization need
+    not be a separate all-unknown message. Prepare observation before startup and verify
+    movement across messages; no fixed map dimensions or movement speed are required.
+  evaluation_period: >-
+    Observe for 30 seconds from startup. Allow 7 seconds to the first map in the measured
+    default configuration, otherwise 10 seconds. Use monotonic wall time; apply the timestamp
+    rule in evaluation_protocol.yaml.
+- id: DYN-02
+  requirement: >-
+    A compatible late subscriber shall receive the cached latest map. Identify that map
+    using pre-subscription publication events and its header/content fingerprint. A newly
+    published map alone is not evidence of retention. Apply the map_retention profile in
+    docs/dynamic_metrics/evaluation_protocol.yaml.
+  evaluation_period: >-
+    During a 30-second run, allow 1 second from subscriber matching to identified cached-map
+    delivery. If publication races obscure the observation, repeat fixture setup up to three
+    times; ambiguous delivery is a test-invalid result, not a pass.

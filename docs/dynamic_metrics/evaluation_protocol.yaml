@@ -1,0 +1,212 @@
+version: '1.0'
+criteria_status: adopted
+decision_date: '2026-10-17'
+decision_basis: User-delegated operating choices, retaining previously adopted measured-condition limits.
+verification:
+  new_runtime_runs: false
+  empirical_coverage: partial
+  runner_implementation_changed: false
+  statistical_guarantee: false
+  note: Defined acceptance rules are distinct from runtime validation of the harness and candidates.
+scope:
+  case_count: 12
+  dynamic_metric_count: 43
+  source_description_commit: 73b1cd6b217af973168fca39d10570c37daa9342
+  source_descriptions_changed: false
+  interpretation: The profiles below operationalize ambiguous tests; they do not claim that the original FRs specified these numbers or test inputs.
+  exclusions: [real_robot_safety_certification, arbitrary_sensor_noise, arbitrary_hardware_performance, exhaustive_input_coverage]
+records:
+  measured_condition_timing: approved_timing.yaml
+  previously_adopted_margins: conservative_limits.yaml
+  measurements: calibration_summary.json
+precedence:
+  - An exact Description contract such as a header, identifier, count, or zero command remains exact.
+  - A specific metric or profile bound overrides the generic limits below.
+  - Previously measured-condition bounds apply only to matching conditions, not whole-case startup by default.
+  - All test inputs, oracles, tolerances and external response schedules are fixed before inspecting candidate results and shared across candidates.
+outcomes:
+  pass: Every required assertion in the selected profile is observed and satisfied.
+  fail: A valid test observes a contract violation or a candidate-owned response deadline expires.
+  test_invalid: Required dependencies, stimulus delivery, instrumentation or the independent oracle fail; do not attribute this to the candidate.
+  not_assessed: An explicitly excluded condition or an observation that cannot establish the stated property; never count it as a pass.
+  aggregation: A metric passes only if all its selected mandatory subtests pass. Any invalid or unassessed mandatory subtest prevents a complete metric or case pass.
+  reporting: Report evaluated profiles and coverage alongside pass/fail results; do not equate finite profile success with all possible runtime behavior.
+policies:
+  timing:
+    basis: Previously measured limits plus delegated engineering limits for additional paths.
+    clocks: Monotonic wall time for process, service, discovery and processing deadlines; ROS simulation time for follower motion and explicitly simulated physical durations.
+    default_observation_seconds: 30
+    standalone_startup_seconds: 10
+    full_launch_startup_seconds: 30
+    response_or_recovery_seconds: 5
+    graph_discovery_or_settling_seconds: 5
+    utility_call_seconds: 5
+    cleanup_seconds: 5
+    follower_motion_watchdog_wall_seconds: 120
+    starts: Startup starts at invocation with prerequisites ready; observation starts at scheduled valid input delivery, never at first successful output.
+    timestamp_rule: Copied headers match exactly. Newly generated timestamps lie between the corresponding acquisition or generation event and publication, allowing 0.1 seconds clock-read/scheduling uncertainty; reject nonfinite, zero-on-nonzero-clock and backward stamps.
+    configured_durations: A wait or timeout may complete at most 0.1 seconds early and max(1 second, 5 percent of configured duration) late; record both configured and observed durations.
+    lds02_rejection_seconds: 2
+    lds02_basis: Recorded maximum 0.5648852232843637 seconds, rounded conservative bound.
+    resource_preflight: Verify clocks, dependency availability and stimulus delivery independently. Resource exhaustion in the harness is invalid, not a candidate functional failure.
+  image_content:
+    basis: Delegated reproducible input and oracle profile, not measured general image accuracy.
+    sizes: [[320, 240], [640, 480]]
+    ordinary_encodings: [mono8, mono16, bgr8, rgb8, bgra8, rgba8]
+    bayer_encodings: [bayer_rggb8, bayer_bggr8, bayer_grbg8, bayer_gbrg8]
+    scope: Use encoding subsets supported by the named public operation; do not require every utility to support every listed encoding.
+    inputs: Asymmetric color patches, grayscale ramps, constant colors and vertical/horizontal edges; fix input bytes before execution.
+    exact_operations: Copy, horizontal flip, channel permutation, integer crop, copied headers and lossless save must match exactly after the specified channel/coordinate transformation.
+    grayscale: Use BT.601 full-range weights 0.299 R + 0.587 G + 0.114 B with maximum rounding error 1 intensity unit.
+    jpeg: Use smooth patches with known content, decode to common color order, and require per-frame MAE <= 5 and 99th-percentile absolute error <= 20 in normalized 0-255 units. Preserve source headers exactly when required.
+    display: Capture the actual image buffer passed to the display backend with a pass-through observer; exclude window chrome and display scaling. Do not infer correct display from process existence.
+    recovery: Allow the generic 5-second recovery deadline outside the measured YOLO encoding-fault profile.
+  lazy_image_processing:
+    basis: Observability rule, not an extra performance target.
+    method: First establish processing with subscribers present, remove all candidate output subscribers, wait 5 seconds, and observe 30 seconds of continuing inputs. Demonstrate either candidate input unsubscription and queue drainage, or absence of new image-processing calls using pass-through tracing. Observe resumed processing after reconnecting.
+    controls: The tracer must identify the relevant candidate path and record positive-control processing before and after the interval. Watching an empty output topic alone is insufficient.
+    missing_instrumentation: test_invalid
+  parking_spot_markers:
+    fixture: Use the recorded ideal parking geometry and supported LDS-01 scan layout from conservative_limits.yaml; preserve exact original scan values except the three visualization markings.
+    tolerance_scan_bins: 1
+    interpretation: Compare marked start/end indices with the injected reflective interval and the center with its midpoint; allow either central index for an even-width interval. Do not infer physical position from an arbitrary range tolerance.
+  parking_completion:
+    deadline_seconds: 120
+    condition: Recorded ideal 2D closed-loop fixture only.
+    stationary_duration_seconds: 2
+    stationary_ground_truth: At most 0.001 m translation and 0.001 rad accumulated rotation over the final two seconds; ground truth remains observed after candidate exit.
+    commands: Final linear and angular commands are exactly zero; require final reset and normal exit, not a completion log alone.
+    containment: Every footprint vertex lies inside the closed parking polygon throughout the stationary interval; allow only 1e-9 m numerical geometry error, not a physical boundary margin.
+    completion_clock: All conditions including the stationary interval must finish within 120 wall-time seconds from valid input delivery.
+  parking_reset_events:
+    basis: Operational interpretation informed by the supplied reference, without requiring its internal state numbering.
+    required_events: [maneuver_frame_establishment_before_positioning_translation, final_parking_stop]
+    allowed_variation: Frame establishment may occur before or after initial alignment but before positioning translation. Extra resets are allowed; no fixed internal state count is required.
+    pairing: Each reset request is paired with an observed zero Twist in the preceding 1 second, without an intervening nonzero command. Observe at least the two required events.
+    reset_effect: The external reset updates the odometry origin only and never teleports ground truth.
+  parking_search:
+    condition: Recorded LDS-01 no-spot input with stationary odometry.
+    first_report_seconds: 45
+    observation_seconds: 60
+    rule: Require a first unsuccessful-search report by 45 seconds and at least one later unsuccessful-search report by 60 seconds, with continued scan processing/searching. Do not impose literal message text or an exact period.
+    basis: The second-report assertion operationalizes the Description's repeated-search requirement; the added 60-second window has not been rerun.
+  wall_patterns:
+    fixture: 450 finite scan rays over -135 to +135 degrees, ordered right to left, partitioned into five equal directional zones. Use 3 m clear and 0.2 m blocked ranges, a configured 0.5 m obstacle threshold, and configured positive linear/angular speeds.
+    controls:
+      all_clear: positive_linear_zero_angular
+      front_only_blocked: zero_linear_positive_angular
+      all_five_blocked: negative_linear_positive_angular
+    velocity_tolerance: abs(actual-expected) <= 1e-6 + 1e-5*abs(expected); required zero values remain exact.
+    boundary_rule: Keep stimuli away from sector and distance thresholds; this profile does not assign an exhaustive truth table for all 32 combinations.
+    scope: These three controls exercise the three required behavior classes. Other patterns are outside this finite profile, not implicitly passed.
+  scan_association:
+    input_counts: [2, 3, 9]
+    stimulus: Unique points and sequence-identifiable stamps per input, at 10 Hz, with inter-input stamp spread 0 or 0.01 seconds. Set synchronization allowance to 0.05 seconds where exposed.
+    rule: Each selected output must contain contributions from one complete near-time set; never combine a fresh scan with an unrelated stale sequence. These are positive association controls, not a universal maximum allowed slop.
+    output_timing: Match explicitly configured scan_time/time_increment values; where no policy fixes the output header, accept a stamp within the contributing input-stamp interval plus or minus 0.001 seconds. Preserve exact specified header policy if present.
+    frame_motion: Use published known rigid transforms. After TF becomes available or moving-frame TF changes, allow 5 seconds to resume corresponding correct outputs; fixed-frame mode may retain its initial transform.
+  scan_geometry:
+    range_absolute_tolerance_m: 0.0001
+    relative_tolerance: 0.00001
+    angle_absolute_tolerance_rad: 0.00001
+    oracle: Transform known input points analytically, apply configured range/height/angular policies, and select the nearest valid point in each bin. Tolerance is absolute allowance plus relative allowance times the expected magnitude.
+    boundary_rule: Place ordinary positive/negative filter controls at least 0.001 m from distance/height cutoffs and 0.1 angular bin from angular/bin boundaries; do not silently change configured cutoffs.
+    empty_bins: Compare the configured sentinel exactly, including signed infinity or NaN only where that policy explicitly permits it. Unexpected nonfinite values fail.
+  scan_no_subscribers:
+    method: Trace candidate publication calls at the applicable rcl/rmw or intra-process boundary without creating an output subscriber. Confirm tracing with a connected positive control, disconnect all readers, wait 5 seconds, then observe 30 seconds with valid scan inputs.
+    assertion: No merged-scan publication calls after settling; reconnect and confirm publication resumes.
+    missing_or_incomplete_trace: test_invalid
+  demo_playback:
+    startup_seconds: 30
+    live_observation_seconds: 30
+    playback_attempt: Observe an actual player invocation configured for looping with the package's demo bag, not merely a launch-source string. Equivalent looping APIs are accepted.
+    repeated_playback_observation_seconds: max(30, 2*bag_duration_seconds + 5), capped at 300.
+    interpretation: The FR requires a looping playback attempt. Report an observed replay boundary separately; a long bag that exceeds the observation cap does not fail this attempt-only clause and does not establish repeated playback.
+    external_failure: Separate an absent external player/display from candidate launch/configuration errors.
+  image_tools_invalid_inputs:
+    invalid_qos: Use the literal unsupported value invalid_policy for reliability and history separately.
+    invalid_camera: A preflight-confirmed absent device path, with an independently available working camera fixture for the positive control.
+    invalid_dimensions: Test 1x1 and a width or height one pixel below the intrinsic dimensions of the supplied burger asset. Test 320x240 as a positive control. Determine the asset dimensions before candidate results, not by binary-searching candidate failures.
+    variable_assets: If no independently identifiable asset defines a minimum, retain the 1x1 invalid control and positive 320x240 control; do not invent a more restrictive minimum.
+    error_deadline_seconds: 10
+  image_adapter:
+    method: Compile a small test client against the candidate's installed public adapter, exercising documented owned, referenced and copied access. Bind API spelling to exported declarations; never replace the implementation with a reference adapter.
+    assertions: Preserve header, dimensions, encoding and pixels; mutate a source buffer to verify promised reference aliasing, verify copy independence, and check owned-buffer lifetime after caller storage is released.
+    unsupported_inputs: A three-dimensional matrix or five-channel matrix and an explicitly invalid sensor encoding must raise an error when outside the exported contract; do not label a supported type unsupported.
+    call_seconds: 5
+  dummy_signals:
+    uniform_or_joint_match: abs(actual-expected) <= 1e-6 + 1e-5*abs(expected), in metres for range and radians for joint positions.
+    sine_model: Fit y(t)=offset+a*sin(omega*t)+b*cos(omega*t), using message timestamps and freely fitted positive omega; require finite samples, nonzero resolved amplitude, and RMSE <= 0.05*amplitude + 1e-6.
+    sample_coverage: At least 20 distinct timestamps spanning two fitted periods, with samples in every quarter-cycle and validation residual checked on alternating held-out samples. A constant output cannot pass by fitting zero amplitude.
+    observation_seconds: Begin with 30; extend to two periods up to a hard 300-second cap without imposing a particular frequency or publication rate.
+    insufficient_coverage: not_assessed; never substitute a constant-output pass or infer a missing functional failure from an unconstrained period alone.
+  map_initialization:
+    interpretation: Initially unknown refers to the background before the moving pattern is drawn, not a mandatory all-unknown first publication. Prepare observation before startup; require unknown background cells alongside free and occupied pattern cells, with fixed map geometry and movement over time.
+    values: Unknown=-1, free=0, occupied=100; compare these discrete values exactly. No fixed map dimensions or movement speed are imposed.
+  map_retention:
+    method: Record publisher events and message header/content fingerprints before attaching the late subscriber. Identify the last publication before subscriber matching and require receipt of that cached message, not just a later newly published map.
+    deadline_seconds: 1
+    race_control: Attach just after an observed publication. If publication races prevent identifying cached delivery, repeat the fixture setup up to three times with the publisher/DDS alive; do not pause the entire publisher process or count ambiguous fresh delivery as retained delivery.
+    ambiguous_observation_outcome: test_invalid
+  image_rectification:
+    calibrated_profile: Use conservative_limits.yaml for the recorded mono8 checkerboard and camera model; require maximum intensity error <=16 AND frame MAE <=0.01, with exact zero-distortion pass-through.
+    additional_utility_controls: Use constant-color and axis-aligned edge images for supported conversion and Bayer utilities. Compare independent analytic constant-color expectations and a separately pinned edge-aware oracle, allowing maximum error 8 and MAE 2 in normalized 0-255 units on interior pixels. Exclude only the one-pixel border declared before execution.
+    oracle_gate: Verify the independent oracle on analytic controls before testing candidates; record its version/hash. Missing or failing oracle is test_invalid, not evidence of candidate failure.
+    bounds: Every selected frame must satisfy both bounds; no averaging over frames, registration, arbitrary masks, or replacement of missing output by zero error.
+  crop_resize_geometry:
+    fixtures: Even-size images; integer crop offsets and dimensions; scale factors 0.5 and 2 with exact integral target dimensions. Use unique pixel ramps and configure interpolation where exposed.
+    crop: Integer ROI uses top-left origin and half-open pixel bounds; pure crop pixel values are exact. Decimation metadata multiplies incoming effective binning, adds crop offsets in original-resolution coordinates, and preserves consistent full-camera calibration.
+    resize: Scale fx,cx and the corresponding P first-row terms by sx, and fy,cy and P second-row terms by sy; preserve distortion/rotation. Scale ROI to the output resolution. Use effective image dimensions to compute sx,sy.
+    image_sampling: Compare the configured nearest or linear sampler. For linear resize use source pixel center (output+0.5)/scale-0.5 and maximum 1 intensity-unit rounding error; an explicitly exposed different convention is evaluated consistently with its calibration projection.
+    metadata_tolerance: Integer dimensions, ROI and binning are exact; floating calibration uses absolute 1e-6 plus relative 1e-5. Do not accept calibration metadata merely because output dimensions match.
+    invalid_controls: Crop origin outside the image, negative extent, or unsupported odd Bayer decimation must be rejected. Do not demand unsupported arbitrary fractional-size rounding behavior.
+  largest_region:
+    fixtures: Separated filled axis-aligned rectangles of 80x60 and 20x20 pixels with at least a 10-pixel zero gap; also two equal 40x40 rectangles, an all-zero image and an unsuitable multi-channel image.
+    rule: Return the exact integer bounding crop of the uniquely largest region; accept any tied largest region. Selected fixtures make four- and eight-connectivity agree, so no arbitrary diagonal-connectivity requirement is added.
+  marker_pose:
+    translation_error_m: max(0.01, 0.05*ground_truth_camera_to_marker_distance_m)
+    rotation_error_degrees: 5
+    comparison: Euclidean translation error and geodesic rotation angle between normalized rotations; quaternion q and -q are equivalent. Derive ground truth from the rendering geometry in the correct camera-to-marker convention, never from candidate output.
+    evidence: Prior frontal-scene range error was 0.0006030123755032119 m; full translation and angular limits are delegated engineering choices, not measured tail bounds.
+    validity: Missing detections in the positive-control sequence cannot pass pose accuracy; wrong frames, invalid quaternions or nonfinite coordinates fail.
+  yolo_model:
+    model: yolov8n
+    model_sha256: f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36
+    device: cpu
+    input_size: [640, 640]
+    input_hz: 1
+    ultralytics_version: 8.3.221
+    oracle: Run the same fixed model independently on identical input bytes and fix its detection list before candidate scoring. Check that corresponding rendered boxes/classes exist; allow 3 pixels per box edge, flexible fonts/colors and normal confidence rounding. No mAP or real-world detection-recall target is added.
+    images: Use a frozen non-empty-detection fixture and a blank no-detection control, recording input hashes. Check JPEG decodability and exact source headers; arbitrary box-looking overlays are not sufficient evidence.
+  yolo_faults:
+    methods: Inject an invalid incoming encoding; for inference/render/encoding exceptions use a pass-through dependency wrapper that raises exactly once at the selected external call and delegates all other calls to the original dependency. Do not edit candidate source, supply successful candidate outputs, or replace model inference on normal calls.
+    assertion: Observe that the selected call was reached, the error was logged, and the next valid image is processed correctly within 5 seconds, or 2 seconds for the previously measured encoding-fault condition.
+    unavailable_hook: test_invalid for that subtest; no claim that one conversion-error test covers all exception paths.
+  marker_positive_control:
+    scene: Frontal, centered marker 7 with a 200-pixel edge in a 640x480 image, white margin at least 40 pixels, marker size 0.04 m, focal lengths 600 pixels, known principal point and zero distortion. Render known corners and retain the exact camera model.
+    dictionary: DICT_5X5_250 for turtlebot3_aruco_tracker; explicitly configure the image_proc tracker to the same dictionary and marker ID through its exposed settings.
+    encoding: Raw supported image for image_proc and JPEG quality 95 for turtlebot3_aruco_tracker; no occlusion or motion blur.
+    preflight: The fixed input must be detectable by an independent detector before candidate scoring. This is a controlled positive case, not a general scene detection-rate claim.
+  nav_completion:
+    external_systems: Use deterministic external navigation-action and geographic-conversion test servers; these replace external services, not the candidate waypoint follower or task plugins.
+    external_reply_seconds: 0.2
+    candidate_step_seconds: 5
+    completion_bound: 10 + N*(5 + 0.2 + Dmax) + G*(5 + 0.2) seconds from goal acceptance, where N is the known total waypoint visits including loops, G is the scheduled GPS-conversion count, and Dmax is the largest configured task wait/timeout. Include a separate 5-second allowance for each injected cancel/preempt event. Freeze the bound before execution.
+    controls: Three distinct waypoints, two loops, success/failure responses and both stop/continue policies. Test GPS conversion similarly with known returned poses.
+    distinction: If an external test server misses its schedule the test is invalid; candidate silence after an on-time external response fails after 5 seconds. This is not a robot travel-time limit.
+  nav_transition:
+    transition_seconds: 5
+    cancel: Acknowledge the canceled outer request and stop dispatching further old-sequence waypoints within the bound. An already dispatched navigation goal may be canceled or drained, but its late result must not advance the canceled request.
+    preempt: Begin the replacement request within the bound using promptly responding test servers. Do not dispatch new goals from the superseded sequence or attribute its late results to the replacement request.
+    scope: No instantaneous braking or zero-latency external cancellation guarantee is imposed on this orchestration package.
+  nav_pose_transfer:
+    numeric_rule: Compare every transferred position component with absolute 1e-6 m plus relative 1e-6, orientation with 1e-6 rad geodesic tolerance, and frame identifiers exactly; quaternion sign is immaterial.
+    scope: Known conversion-service output to navigation-request transfer only, not GPS accuracy.
+  nav_saved_image:
+    fixture: Feed uniquely identifiable images at 2 Hz, then stop input after a known final image; wait at least 1 second and confirm its arrival before triggering the waypoint task. Test both successful output-directory creation and a controlled unwritable target.
+    latest_rule: The saved content must correspond to the latest available image at task invocation; do not use file creation order alone. Avoid simultaneous-arrival ambiguity by the frozen-input fixture.
+    comparison: Exact pixels for lossless formats; for a smooth-patch JPEG fixture use MAE <=5 and 99th-percentile absolute error <=20 in normalized 0-255 units, preserving dimensions and content identity.
+    lifecycle: Keep measured 1-second lifecycle-service replies; allow 5 seconds for action and bond-state transitions, checked by usable actions and bond events rather than graph presence alone.
+follower_existing_values:
+  adoption: Retain the existing 110-percent spacing ceiling and 10-second simulation-time windows as selected operating criteria; remove only their draft labels.
+  full_motion_calibration_claimed: false

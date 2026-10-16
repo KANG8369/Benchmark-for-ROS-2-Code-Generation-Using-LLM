@@ -1,30 +1,22 @@
-# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
-# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
-# Publishing this filename does not authorize execution or resolve Q-* review items.
 package_name: dummy_robot_bringup
 metrics:
-  - id: DYN-01
-    requirement: >-
-      With its external dependencies available, every supplied bringup
-      launch shall start the dummy map server, robot state publisher,
-      dummy joint-state publisher, and dummy laser publisher. The robot
-      state publisher shall receive the packaged single-RRBot description
-      and produce corresponding robot transforms when valid joint states
-      are available. External component algorithms are not re-evaluated
-      as implementations owned by this orchestration package.
-    evaluation_period: >-
-      From launch invocation through startup, followed by 30 seconds of
-      process, topic, and TF observation. For the measured XML launch with
-      the installed Jazzy dependencies, allow 7 wall-time seconds until
-      map, scan, joint-state and TF outputs are observed and 2 seconds
-      from operator SIGINT to process exit. Other launch variants remain
-      under review (Q-TIME-01).
-  - id: DYN-02
-    requirement: >-
-      The supplied Python bringup launch shall additionally start RViz2
-      using the packaged RViz configuration. An available display and the
-      external RViz installation are test prerequisites, not components
-      to be implemented by the generated package.
-    evaluation_period: >-
-      Through launch startup and 30 seconds of observation after startup,
-      with an agreed startup-response deadline (Q-TIME-01).
+- id: DYN-01
+  requirement: >-
+    Every supplied bringup launch shall start the dummy map server, robot state publisher,
+    joint-state publisher and laser publisher, with external dependencies available. The
+    robot state publisher shall receive the packaged single-RRBot description and produce
+    corresponding TF with valid joint states. Do not attribute external component algorithms
+    to this package.
+  evaluation_period: >-
+    Allow 7 wall-time seconds for outputs from the measured XML launch, or 30 seconds for
+    other full launch variants, followed by 30 seconds of process/topic/TF observation.
+    Cleanup allows 2 seconds for the measured condition or 5 seconds otherwise.
+- id: DYN-02
+  requirement: >-
+    The Python bringup launch shall additionally start RViz2 using the packaged RViz configuration.
+    Verify the actual launched process and configuration, not just a launch-file string.
+    A working display and external RViz installation are prerequisites.
+  evaluation_period: >-
+    Allow 30 wall-time seconds for full launch startup and observe for 30 seconds. An unavailable
+    external display invalidates this subtest; it does not demonstrate a package failure
+    or a pass.

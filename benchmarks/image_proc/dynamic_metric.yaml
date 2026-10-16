@@ -1,95 +1,77 @@
-# Review draft: some conditions remain unresolved; not a fully validated runtime contract.
-# See ../../docs/dynamic_metrics/review_questions.yaml and the scoped limit records.
-# Publishing this filename does not authorize execution or resolve Q-* review items.
 package_name: image_proc
 metrics:
-  - id: DYN-01
-    requirement: >-
-      With valid raw images, calibration, and output subscribers, the
-      supplied launch shall run debayer and mono/color rectification
-      components in the selected existing or new container and namespace.
-      The debayer component shall publish the requested mono and color
-      content for supported encodings and reject malformed, ambiguous,
-      or unsupported encodings. Components specified as lazy shall process
-      input only while their relevant outputs have subscribers.
-    evaluation_period: >-
-      For 30 seconds per valid or invalid input condition after startup,
-      with separate subscriber-present and subscriber-absent intervals.
-      Startup and response allowances, encoding coverage, and non-intrusive
-      lazy-processing observation require review (Q-TIME-01, Q-IMAGE-01,
-      Q-IMAGE-02).
-  - id: DYN-02
-    requirement: >-
-      Executing the public Processor and edge-aware debayer utilities on
-      supported mono, color, and Bayer inputs shall produce the requested
-      image representations, including optional pinhole-model rectification
-      and the stated edge-aware interpolation variants. Output correctness
-      shall use an agreed input-grounded oracle and tolerances rather than
-      source-code similarity (Q-IMAGE-01, Q-IPROC-01).
-    evaluation_period: >-
-      From each utility invocation through its returned result, within an
-      agreed call-completion deadline (Q-TIME-01).
-  - id: DYN-03
-    requirement: >-
-      Given synchronized images and valid calibration, the rectification
-      component shall output geometrically rectified image content. With
-      zero distortion it shall pass through the image content; without
-      calibration it shall suppress output. For the recorded 640x480 mono8
-      checkerboard and calibration fixture only, each distorted output
-      must have maximum absolute intensity error at most 16 and mean
-      absolute intensity error at most 0.01 against the defined full-frame
-      oracle; both bounds apply in 0-255 intensity units. Zero-distortion
-      output must preserve pixel values exactly. Other numerical and
-      geometric tolerances remain under review (Q-IPROC-01).
-    evaluation_period: >-
-      For 30 seconds per calibrated, zero-distortion, or missing-calibration
-      condition, with an output subscriber present. For the measured
-      standalone Jazzy 5.0.13 zero/known-distortion conditions at 10 Hz,
-      allow 7 wall-time seconds from process start to the first rectified
-      image, 1 second per matched input-pair response, and 2 seconds from
-      operator SIGINT to exit. Calibration-loss recovery and other
-      components remain under review (Q-TIME-01).
-  - id: DYN-04
-    requirement: >-
-      Given synchronized images and camera information, crop-and-decimate
-      and resize components shall produce the configured image region and
-      size with corresponding binning, ROI, and camera-calibration updates.
-      Invalid crop regions and unsupported Bayer decimation shall be
-      rejected. Coordinate, rounding, and numerical comparison rules
-      require agreement (Q-IPROC-02).
-    evaluation_period: >-
-      For 30 seconds per valid or invalid transformation configuration with
-      an output subscriber present. Response allowance remains subject
-      to review (Q-TIME-01).
-  - id: DYN-05
-    requirement: >-
-      For a supported single-channel image with a largest non-zero region,
-      crop-non-zero shall publish that region's bounding crop. It shall
-      skip all-zero and unsuitable images. The region-connectivity and
-      tied-region interpretation require clarification (Q-IPROC-03).
-    evaluation_period: >-
-      For 30 seconds per valid, all-zero, or unsuitable input condition with
-      an output subscriber present, using an agreed response allowance
-      (Q-TIME-01).
-  - id: DYN-06
-    requirement: >-
-      In calibrated images containing the configured ArUco marker, the
-      tracking component shall detect that marker and publish its estimated
-      pose from the paired calibration. Pose accuracy shall be assessed
-      against known scene geometry using tolerances to be agreed
-      (Q-POSE-01). No detection-rate or difficult-scene robustness target
-      is introduced.
-    evaluation_period: >-
-      For 30 seconds after valid marker images and paired calibration begin
-      reaching the component, with an output subscriber present. Response
-      allowance remains subject to review (Q-TIME-01).
-  - id: DYN-07
-    requirement: >-
-      When invoked for an input topic with no known publisher, the public
-      QoS utility shall select a sensor-data profile. With a known publisher,
-      the selected reliability and durability shall be compatible with that
-      publisher and permit delivery of supported test messages.
-    evaluation_period: >-
-      Through each utility invocation and endpoint discovery, followed by
-      30 seconds of message delivery where a publisher is present.
-      Discovery and call deadlines require agreement (Q-TIME-01).
+- id: DYN-01
+  requirement: >-
+    With valid inputs and output subscribers, the launch shall load debayer and mono/color
+    rectification components into the selected existing or new container and namespace.
+    Verify supported encoding conversion and rejection of invalid inputs using image_content.
+    Verify lazy processing using subscription/processing-call evidence, a 5-second settling
+    interval and connected positive controls; an empty output topic alone is insufficient.
+  evaluation_period: >-
+    Allow 30 wall-time seconds for full launch startup and 5 seconds per additional-path
+    response. Observe each valid/invalid encoding and subscriber-present/absent condition
+    for 30 seconds. Follow the image_content and lazy_image_processing profiles in docs/dynamic_metrics/evaluation_protocol.yaml.
+- id: DYN-02
+  requirement: >-
+    Exercise the candidate's installed public Processor and edge-aware utilities on supported
+    mono, color and Bayer inputs, including optional pinhole rectification. Compare analytic
+    constant-color expectations and an independently pinned edge-aware oracle using image_rectification;
+    do not substitute reference code for the candidate implementation.
+  evaluation_period: >-
+    Allow 5 wall-time seconds per call. Use the fixed utility control images and error rules
+    in docs/dynamic_metrics/evaluation_protocol.yaml: maximum interior error 8 and MAE 2
+    in normalized 0-255 units, with only the declared one-pixel border excluded. A failed
+    oracle preflight invalidates the test.
+- id: DYN-03
+  requirement: >-
+    Produce rectified content from synchronized images and calibration, preserve zero-distortion
+    pixels exactly, and suppress output without calibration. On the recorded 640x480 mono8
+    checkerboard/calibration fixture, each output must satisfy maximum absolute intensity
+    error <=16 AND MAE <=0.01 in 0-255 units against the full-frame oracle. Observe lazy
+    processing as specified by the evaluation protocol.
+  evaluation_period: >-
+    Observe each calibration-present, zero-distortion and missing-calibration condition
+    for 30 seconds. For the measured Jazzy 5.0.13 standalone condition allow 7 wall-time
+    seconds to first output, 1 second per matched input response and 2 seconds for cleanup.
+    Allow 5 seconds for calibration recovery or subscriber transitions.
+- id: DYN-04
+  requirement: >-
+    Crop/decimate and resize synchronized image/calibration pairs to the configured region
+    and size, updating binning, ROI and calibration consistently. Use the integer/even-size
+    crop_resize_geometry profile: exact integer metadata, floating metadata tolerance 1e-6
+    plus relative 1e-5, and the configured sampling oracle. Reject out-of-image regions
+    and unsupported Bayer decimation; verify lazy processing.
+  evaluation_period: >-
+    Observe each transformation and invalid-input condition for 30 seconds, allowing 10
+    wall-time seconds for standalone startup and 5 seconds per response or subscriber transition.
+    Apply crop_resize_geometry in docs/dynamic_metrics/evaluation_protocol.yaml.
+- id: DYN-05
+  requirement: >-
+    Publish the exact integer bounding crop of the largest nonzero region in a supported
+    single-channel image, and skip all-zero or unsuitable input. Use separated rectangle
+    controls where four/eight-connectivity agree; accept any tied largest rectangle. Verify
+    lazy processing.
+  evaluation_period: >-
+    Observe each largest_region control for 30 seconds after input delivery, with 10 wall-time
+    seconds for startup and 5 seconds per response or subscriber transition. Use the profile
+    in docs/dynamic_metrics/evaluation_protocol.yaml.
+- id: DYN-06
+  requirement: >-
+    Detect the configured ArUco marker in the fixed calibrated positive-control scene and
+    publish its camera-to-marker pose. Require translation error <=max(0.01 m, 5 percent
+    of ground-truth range) and rotation error <=5 degrees, with correct frame convention
+    and finite normalized rotation. Missing detections cannot pass accuracy. Verify lazy
+    processing.
+  evaluation_period: >-
+    Observe for 30 seconds from calibrated input delivery, allowing 10 wall-time seconds
+    for startup and 5 seconds per response. Use the marker_pose and marker_positive_control
+    profiles in docs/dynamic_metrics/evaluation_protocol.yaml.
+- id: DYN-07
+  requirement: >-
+    The public QoS utility shall select a sensor-data profile when no publisher is known
+    and otherwise choose reliability/durability compatible with an existing publisher. Exercise
+    reliable/best-effort and volatile/transient-local external publisher controls and demonstrate
+    message delivery; do not rely on configuration strings alone.
+  evaluation_period: >-
+    Allow 5 wall-time seconds for endpoint discovery and 5 seconds per utility invocation,
+    followed by 30 seconds of message delivery for each publisher-present condition.
